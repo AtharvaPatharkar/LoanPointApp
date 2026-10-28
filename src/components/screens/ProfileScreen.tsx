@@ -12,7 +12,7 @@ import {
   Keyboard,
   Platform,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import { UserProfile, NotificationPreferences } from '../../types';
 import { notificationService } from '../../services/notificationService';
 import { authService } from '../../services/authService';
@@ -172,8 +172,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-      {/* 1. Profile Summary Card */}
-      <View style={styles.card}>
+      {/* 1. Profile Summary Spotlight Hero Card */}
+      <View style={styles.headerHeroCard}>
+        <View style={styles.heroGlowCircle} />
+
         <View style={styles.userHeader}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
@@ -181,6 +183,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </Text>
           </View>
           <View style={styles.userInfo}>
+            <View style={styles.customerBadge}>
+              <View style={styles.customerBadgeDot} />
+              <Text style={styles.customerBadgeText}>VERIFIED BORROWER</Text>
+            </View>
             <Text style={styles.userName}>{user?.name || 'Customer'}</Text>
             <Text style={styles.userMobile}>+91 {user?.mobile || '9545555999'}</Text>
             <Text style={styles.userCity}>
@@ -189,15 +195,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </View>
         </View>
 
-        {/* Edit and Change Profile Button */}
+        {/* Edit Profile Button Pill */}
         <TouchableOpacity
           style={styles.editProfileBtn}
           onPress={openEditModal}
           activeOpacity={0.8}
         >
-          <Ionicons name="create-outline" size={17} color="#2563eb" />
-          <Text style={styles.editProfileBtnText}>Edit Profile Details</Text>
-          <Ionicons name="chevron-forward" size={16} color="#2563eb" />
+          <View style={styles.editIconCircle}>
+            <Ionicons name="create" size={14} color={colors.primary} />
+          </View>
+          <Text style={styles.editProfileBtnText}>Edit Profile & Income Details</Text>
+          <Ionicons name="chevron-forward" size={15} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
@@ -214,13 +222,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* Full Legal Name (Locked / Read-Only) */}
           <View style={styles.regInfoRow}>
             <View style={styles.regInfoLeft}>
-              <Ionicons name="person" size={16} color="#64748b" />
+              <View style={[styles.fieldIconBox, { backgroundColor: '#e0f2fe' }]}>
+                <Ionicons name="person" size={14} color="#0284c7" />
+              </View>
               <Text style={styles.regInfoLabel}>Full Legal Name</Text>
             </View>
             <View style={styles.regInfoRight}>
               <Text style={styles.regInfoValue}>{user?.name || 'Customer'}</Text>
               <View style={styles.lockedBadge}>
-                <Ionicons name="lock-closed" size={10} color="#64748b" />
+                <Ionicons name="lock-closed" size={10} color="#059669" />
                 <Text style={styles.lockedBadgeText}>Verified</Text>
               </View>
             </View>
@@ -229,13 +239,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* Registered Mobile Number (Locked / Read-Only) */}
           <View style={styles.regInfoRow}>
             <View style={styles.regInfoLeft}>
-              <Ionicons name="call" size={16} color="#64748b" />
+              <View style={[styles.fieldIconBox, { backgroundColor: '#dcfce7' }]}>
+                <Ionicons name="logo-whatsapp" size={14} color="#16a34a" />
+              </View>
               <Text style={styles.regInfoLabel}>WhatsApp Mobile</Text>
             </View>
             <View style={styles.regInfoRight}>
               <Text style={styles.regInfoValue}>+91 {user?.mobile || '9545555999'}</Text>
               <View style={styles.lockedBadge}>
-                <Ionicons name="lock-closed" size={10} color="#64748b" />
+                <Ionicons name="lock-closed" size={10} color="#059669" />
                 <Text style={styles.lockedBadgeText}>Verified</Text>
               </View>
             </View>
@@ -244,7 +256,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* Email Address (Editable) */}
           <View style={styles.regInfoRow}>
             <View style={styles.regInfoLeft}>
-              <Ionicons name="mail" size={16} color="#2563eb" />
+              <View style={[styles.fieldIconBox, { backgroundColor: '#fee2e2' }]}>
+                <Ionicons name="mail" size={14} color="#ee1c25" />
+              </View>
               <Text style={styles.regInfoLabel}>Email Address</Text>
             </View>
             <View style={styles.regInfoRight}>
@@ -258,7 +272,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* City & District (Editable) */}
           <View style={styles.regInfoRow}>
             <View style={styles.regInfoLeft}>
-              <Ionicons name="location" size={16} color="#2563eb" />
+              <View style={[styles.fieldIconBox, { backgroundColor: '#fef3c7' }]}>
+                <Ionicons name="location" size={14} color="#d97706" />
+              </View>
               <Text style={styles.regInfoLabel}>City / District</Text>
             </View>
             <View style={styles.regInfoRight}>
@@ -272,7 +288,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* Employment Type (Editable) */}
           <View style={styles.regInfoRow}>
             <View style={styles.regInfoLeft}>
-              <Ionicons name="briefcase" size={16} color="#2563eb" />
+              <View style={[styles.fieldIconBox, { backgroundColor: '#e0e7ff' }]}>
+                <Ionicons name="briefcase" size={14} color="#2d3091" />
+              </View>
               <Text style={styles.regInfoLabel}>Employment Type</Text>
             </View>
             <View style={styles.regInfoRight}>
@@ -286,7 +304,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* Monthly Income (Editable) */}
           <View style={styles.regInfoRow}>
             <View style={styles.regInfoLeft}>
-              <Ionicons name="cash" size={16} color="#16a34a" />
+              <View style={[styles.fieldIconBox, { backgroundColor: '#dcfce7' }]}>
+                <Ionicons name="cash" size={14} color="#16a34a" />
+              </View>
               <Text style={styles.regInfoLabel}>Monthly Net Income</Text>
             </View>
             <View style={styles.regInfoRight}>
@@ -300,7 +320,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* PAN Card */}
           <View style={styles.regInfoRow}>
             <View style={styles.regInfoLeft}>
-              <Ionicons name="card" size={16} color="#4f46e5" />
+              <View style={[styles.fieldIconBox, { backgroundColor: '#e0e7ff' }]}>
+                <FontAwesome5 name="id-card" size={12} color="#4f46e5" />
+              </View>
               <Text style={styles.regInfoLabel}>PAN Card Number</Text>
             </View>
             <View style={styles.regInfoRight}>
@@ -314,7 +336,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* Aadhaar Number (Optional) */}
           <View style={styles.regInfoRow}>
             <View style={styles.regInfoLeft}>
-              <Ionicons name="finger-print" size={16} color="#0284c7" />
+              <View style={[styles.fieldIconBox, { backgroundColor: '#e0f2fe' }]}>
+                <Ionicons name="finger-print" size={14} color="#0284c7" />
+              </View>
               <Text style={styles.regInfoLabel}>Aadhaar Number</Text>
             </View>
             <View style={styles.regInfoRight}>
@@ -328,11 +352,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* Customer ID & Referral */}
           <View style={[styles.regInfoRow, { borderBottomWidth: 0 }]}>
             <View style={styles.regInfoLeft}>
-              <Ionicons name="shield-checkmark" size={16} color="#d97706" />
+              <View style={[styles.fieldIconBox, { backgroundColor: '#fef3c7' }]}>
+                <Ionicons name="shield-checkmark" size={14} color="#d97706" />
+              </View>
               <Text style={styles.regInfoLabel}>Customer ID & Code</Text>
             </View>
             <View style={styles.regInfoRight}>
-              <Text style={[styles.regInfoValue, { color: '#2563eb', fontWeight: '800' }]}>
+              <Text style={[styles.regInfoValue, { color: colors.primary, fontWeight: '800' }]}>
                 {user?.referralCode || user?.id || 'LP-CUST-8102'}
               </Text>
             </View>
@@ -343,7 +369,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
       {/* 3. Account & Documents Navigation */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Account & Services</Text>
+        <View style={styles.sectionHeaderRow}>
+          <View style={[styles.sectionIconBox, { backgroundColor: colors.primaryLight }]}>
+            <Ionicons name="apps" size={15} color={colors.primary} />
+          </View>
+          <Text style={styles.sectionTitle}>Account & Services</Text>
+        </View>
+
         <View style={styles.menuCard}>
           <TouchableOpacity
             style={styles.menuRow}
@@ -351,8 +383,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             activeOpacity={0.7}
           >
             <View style={styles.menuLeft}>
-              <Ionicons name="folder-outline" size={18} color={colors.primary} />
-              <Text style={styles.menuLabel}>My KYC Documents</Text>
+              <View style={[styles.menuIconWrap, { backgroundColor: '#e0f2fe' }]}>
+                <Ionicons name="folder-outline" size={17} color="#0284c7" />
+              </View>
+              <Text style={styles.menuLabel}>My KYC Documents & Vault</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
           </TouchableOpacity>
@@ -363,7 +397,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             activeOpacity={0.7}
           >
             <View style={styles.menuLeft}>
-              <Ionicons name="gift-outline" size={18} color="#d97706" />
+              <View style={[styles.menuIconWrap, { backgroundColor: '#fef3c7' }]}>
+                <Ionicons name="gift-outline" size={17} color="#d97706" />
+              </View>
               <Text style={styles.menuLabel}>Offers & Referral Rewards</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
@@ -375,7 +411,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             activeOpacity={0.7}
           >
             <View style={styles.menuLeft}>
-              <Ionicons name="help-circle-outline" size={18} color="#059669" />
+              <View style={[styles.menuIconWrap, { backgroundColor: '#dcfce7' }]}>
+                <Ionicons name="help-circle-outline" size={17} color="#16a34a" />
+              </View>
               <Text style={styles.menuLabel}>Help & Support Desk</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
@@ -387,7 +425,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             activeOpacity={0.7}
           >
             <View style={styles.menuLeft}>
-              <Ionicons name="star-outline" size={18} color="#7c3aed" />
+              <View style={[styles.menuIconWrap, { backgroundColor: '#f3e8ff' }]}>
+                <Ionicons name="star-outline" size={17} color="#9333ea" />
+              </View>
               <Text style={styles.menuLabel}>Rate Us & Feedback</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
@@ -397,18 +437,31 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
       {/* 4. Notification Settings */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>WhatsApp Alerts & Reminders</Text>
+        <View style={styles.sectionHeaderRow}>
+          <View style={[styles.sectionIconBox, { backgroundColor: '#dcfce7' }]}>
+            <Ionicons name="logo-whatsapp" size={15} color="#16a34a" />
+          </View>
+          <Text style={styles.sectionTitle}>WhatsApp Alerts & Reminders</Text>
+        </View>
+
         <View style={styles.menuCard}>
           <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>WhatsApp Loan Updates</Text>
+            <View style={styles.switchLabelWrap}>
+              <Ionicons name="notifications-outline" size={16} color="#16a34a" />
+              <Text style={styles.switchLabel}>WhatsApp Loan Updates</Text>
+            </View>
             <Switch
               value={prefs.channels.whatsapp}
               onValueChange={() => toggleChannel('whatsapp')}
-              trackColor={{ false: colors.border, true: colors.primary }}
+              trackColor={{ false: colors.border, true: '#16a34a' }}
             />
           </View>
-          <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>WhatsApp Document Alerts</Text>
+
+          <View style={[styles.switchRow, { borderBottomWidth: 0 }]}>
+            <View style={styles.switchLabelWrap}>
+              <Ionicons name="document-text-outline" size={16} color="#0284c7" />
+              <Text style={styles.switchLabel}>WhatsApp Document Alerts</Text>
+            </View>
             <Switch
               value={prefs.reminders.pendingDocuments}
               onValueChange={() => toggleReminder('pendingDocuments')}
@@ -451,22 +504,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
       {/* Logout & Reset Buttons */}
       <View style={styles.actionSection}>
-        {/* Quick Admin Console access for staff / managers */}
-        <TouchableOpacity
-          style={styles.adminAccessBtn}
-          onPress={() => onNavigate('admin')}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="shield-checkmark" size={17} color="#2563eb" />
-          <Text style={styles.adminAccessText}>Loan Point Admin / Staff Console</Text>
-        </TouchableOpacity>
-
         <TouchableOpacity style={styles.logoutBtn} onPress={onLogout} activeOpacity={0.8}>
           <Ionicons name="log-out-outline" size={18} color={colors.danger} />
           <Text style={styles.logoutText}>Sign Out</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.resetBtn} onPress={onResetDemoData} activeOpacity={0.7}>
+          <Ionicons name="refresh-circle-outline" size={16} color={colors.textMuted} />
           <Text style={styles.resetText}>Reset Demo Customer State</Text>
         </TouchableOpacity>
       </View>
@@ -549,7 +593,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   <Ionicons
                     name="mail-outline"
                     size={16}
-                    color={isEmailEntered && !isEmailValid ? '#dc2626' : '#2563eb'}
+                    color={isEmailEntered && !isEmailValid ? '#dc2626' : 'colors.primary'}
                     style={{ marginRight: 8 }}
                   />
                   <TextInput
@@ -615,7 +659,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   <Ionicons
                     name="location-outline"
                     size={16}
-                    color={isCityWrong ? '#dc2626' : '#2563eb'}
+                    color={isCityWrong ? '#dc2626' : 'colors.primary'}
                     style={{ marginRight: 8 }}
                   />
                   <TextInput
@@ -648,7 +692,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     activeOpacity={0.7}
                   >
                     <Text style={styles.pickerTriggerBtnText}>{showCityPicker ? 'Close' : 'Select'}</Text>
-                    <Ionicons name={showCityPicker ? 'chevron-up' : 'chevron-down'} size={12} color="#2563eb" />
+                    <Ionicons name={showCityPicker ? 'chevron-up' : 'chevron-down'} size={12} color="colors.primary" />
                   </TouchableOpacity>
                 </View>
 
@@ -676,7 +720,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                         }}
                         activeOpacity={0.7}
                       >
-                        <Ionicons name="location-outline" size={14} color="#2563eb" style={{ marginRight: 6 }} />
+                        <Ionicons name="location-outline" size={14} color="colors.primary" style={{ marginRight: 6 }} />
                         <View style={{ flex: 1 }}>
                           <Text style={styles.autoSuggestCityName}>{item.city}</Text>
                           <Text style={styles.autoSuggestStateName}>{item.state}</Text>
@@ -734,11 +778,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                         : 'apps'
                     }
                     size={16}
-                    color="#2563eb"
+                    color="colors.primary"
                     style={{ marginRight: 8 }}
                   />
                   <Text style={styles.dropdownValueText}>{editEmploymentType}</Text>
-                  <Ionicons name={showEmploymentDropdown ? 'chevron-up' : 'chevron-down'} size={16} color="#2563eb" />
+                  <Ionicons name={showEmploymentDropdown ? 'chevron-up' : 'chevron-down'} size={16} color="colors.primary" />
                 </TouchableOpacity>
 
                 {showEmploymentDropdown && (
@@ -758,7 +802,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                           <Text style={[styles.empOptionText, isSelected && styles.empOptionTextActive]}>
                             {type}
                           </Text>
-                          {isSelected && <Ionicons name="checkmark-circle" size={16} color="#2563eb" />}
+                          {isSelected && <Ionicons name="checkmark-circle" size={16} color="colors.primary" />}
                         </TouchableOpacity>
                       );
                     })}
@@ -818,7 +862,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   <Ionicons
                     name="card-outline"
                     size={16}
-                    color={isPanEntered && !isPanValid ? '#dc2626' : '#2563eb'}
+                    color={isPanEntered && !isPanValid ? '#dc2626' : 'colors.primary'}
                     style={{ marginRight: 8 }}
                   />
                   <TextInput
@@ -865,7 +909,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   <Ionicons
                     name="finger-print-outline"
                     size={16}
-                    color={isAadhaarEntered && !isAadhaarValid ? '#dc2626' : '#2563eb'}
+                    color={isAadhaarEntered && !isAadhaarValid ? '#dc2626' : 'colors.primary'}
                     style={{ marginRight: 8 }}
                   />
                   <TextInput
@@ -970,7 +1014,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.white,
-    borderRadius: 16,
+    borderRadius: 0,
     padding: 16,
     borderWidth: 1,
     borderColor: colors.border,
@@ -981,60 +1025,124 @@ const styles = StyleSheet.create({
     elevation: 2,
     marginBottom: 16,
   },
+  /* 1. Profile Summary Spotlight Hero Card */
+  headerHeroCard: {
+    position: 'relative',
+    overflow: 'hidden',
+    backgroundColor: colors.cardNavyFrom,
+    borderRadius: 18,
+    padding: 20,
+    shadowColor: colors.cardNavyFrom,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 6,
+    marginBottom: 16,
+  },
+  heroGlowCircle: {
+    position: 'absolute',
+    top: -50,
+    right: -50,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(0, 142, 204, 0.2)',
+  },
   userHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 14,
+    gap: 14,
+    marginBottom: 16,
   },
   avatar: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
   },
   avatarText: {
     color: colors.white,
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 20,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
   userInfo: {
     flex: 1,
   },
-  userName: {
-    fontSize: 18,
+  customerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+  },
+  customerBadgeDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#38bdf8',
+  },
+  customerBadgeText: {
+    fontSize: 9,
     fontWeight: '800',
-    color: colors.text,
+    color: '#bae6fd',
+    letterSpacing: 0.5,
+  },
+  userName: {
+    fontSize: 19,
+    fontWeight: '900',
+    color: colors.white,
+    letterSpacing: -0.2,
   },
   userMobile: {
     fontSize: 13,
-    color: colors.textMuted,
+    color: '#e0f2fe',
     marginTop: 2,
     fontWeight: '600',
   },
   userCity: {
     fontSize: 12,
-    color: colors.primary,
+    color: '#93c5fd',
     marginTop: 2,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   editProfileBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#eff6ff',
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
     borderWidth: 1,
-    borderColor: '#bfdbfe',
+    borderColor: 'rgba(255, 255, 255, 0.25)',
     borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    gap: 8,
+  },
+  editIconCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   editProfileBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#2563eb',
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: colors.white,
+    flex: 1,
   },
   section: {
     marginBottom: 16,
@@ -1046,16 +1154,23 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     paddingHorizontal: 2,
   },
+  sectionIconBox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   sectionTitle: {
     fontSize: 14,
     fontWeight: '800',
-    color: colors.text,
+    color: colors.primaryDeep,
     letterSpacing: -0.2,
   },
   changeActionLink: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#2563eb',
+    color: colors.primary,
   },
   regInfoCard: {
     backgroundColor: colors.white,
@@ -1081,7 +1196,14 @@ const styles = StyleSheet.create({
   regInfoLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
+  },
+  fieldIconBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   regInfoLabel: {
     fontSize: 13,
@@ -1102,28 +1224,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: '#ecfdf5',
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
   },
   lockedBadgeText: {
     fontSize: 10,
-    fontWeight: '700',
-    color: '#64748b',
+    fontWeight: '800',
+    color: '#065f46',
   },
   menuCard: {
     backgroundColor: colors.white,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   menuRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 13,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
   },
@@ -1132,24 +1261,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
+  menuIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   menuLabel: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.text,
   },
   menuText: {
     fontSize: 13,
     color: colors.textMuted,
+    fontWeight: '500',
   },
   switchRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  switchLabelWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   switchLabel: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
     color: colors.text,
   },
   actionSection: {
@@ -1160,28 +1304,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primaryLight,
     borderWidth: 1,
-    borderColor: '#bfdbfe',
-    paddingVertical: 12,
-    borderRadius: 12,
+    borderColor: colors.primaryBorder,
+    paddingVertical: 13,
+    borderRadius: 14,
     gap: 8,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   adminAccessText: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#2563eb',
+    fontWeight: '800',
+    color: colors.primary,
   },
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.white,
-    borderRadius: 12,
+    backgroundColor: '#fef2f2',
+    borderRadius: 14,
     borderWidth: 1.5,
     borderColor: '#fca5a5',
     paddingVertical: 13,
     gap: 8,
+    shadowColor: colors.danger,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   logoutText: {
     fontSize: 14,
@@ -1189,12 +1343,22 @@ const styles = StyleSheet.create({
     color: colors.danger,
   },
   resetBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: colors.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    marginTop: 4,
   },
   resetText: {
     fontSize: 12,
-    color: colors.textLight,
+    fontWeight: '600',
+    color: colors.textMuted,
   },
   versionText: {
     fontSize: 11,
@@ -1343,7 +1507,7 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
   inputBoxActive: {
-    borderColor: '#2563eb',
+    borderColor: 'colors.primary',
   },
   inputBoxError: {
     borderColor: '#ef4444',
@@ -1370,17 +1534,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: '#eff6ff',
+    backgroundColor: 'colors.primaryLight',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#bfdbfe',
+    borderColor: 'colors.primaryBorder',
   },
   pickerTriggerBtnText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#2563eb',
+    color: 'colors.primary',
   },
   cityErrorAlert: {
     flexDirection: 'row',
@@ -1403,7 +1567,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#93c5fd',
+    borderColor: 'colors.primaryBorder',
     marginTop: 4,
     overflow: 'hidden',
     elevation: 2,
@@ -1458,7 +1622,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#bfdbfe',
+    borderColor: 'colors.primaryBorder',
     marginTop: 6,
     overflow: 'hidden',
     elevation: 3,
@@ -1473,7 +1637,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#f1f5f9',
   },
   empOptionRowActive: {
-    backgroundColor: '#eff6ff',
+    backgroundColor: 'colors.primaryLight',
   },
   empOptionText: {
     fontSize: 13,
@@ -1481,7 +1645,7 @@ const styles = StyleSheet.create({
     color: '#334155',
   },
   empOptionTextActive: {
-    color: '#1d4ed8',
+    color: 'colors.primaryDark',
     fontWeight: '800',
   },
   editErrorAlert: {
@@ -1522,13 +1686,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2563eb',
+    backgroundColor: 'colors.primary',
     borderRadius: 12,
     paddingVertical: 14,
     gap: 8,
     marginTop: 6,
     marginBottom: 20,
-    shadowColor: '#2563eb',
+    shadowColor: 'colors.primary',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -1556,23 +1720,23 @@ const styles = StyleSheet.create({
   domainChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#eff6ff',
+    backgroundColor: 'colors.primaryLight',
     paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#bfdbfe',
+    borderColor: 'colors.primaryBorder',
   },
   domainChipAt: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#2563eb',
+    color: 'colors.primary',
     marginRight: 2,
   },
   domainChipText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#1d4ed8',
+    color: 'colors.primaryDark',
   },
 });
 

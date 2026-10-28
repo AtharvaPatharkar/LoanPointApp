@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -35,7 +35,7 @@ export const ApplicationDetailScreen: React.FC<ApplicationDetailScreenProps> = (
     'Enquiry Received',
     'Documents Pending',
     'Application Submitted',
-    'Under Bank Processing',
+    'Processing',
     'Approved',
     'Disbursed',
   ];
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.white,
-    borderRadius: 16,
+    borderRadius: 0,
     borderWidth: 1,
     borderColor: colors.border,
     padding: 14,

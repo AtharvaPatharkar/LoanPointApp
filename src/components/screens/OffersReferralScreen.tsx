@@ -232,8 +232,8 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
                 const isApproved = ref.status === 'Approved';
                 const isRejected = ref.status === 'Rejected';
 
-                const badgeBg = isDisbursed ? '#ecfdf5' : isApproved ? '#eff6ff' : isRejected ? '#fef2f2' : '#fffbeb';
-                const badgeColor = isDisbursed ? '#065f46' : isApproved ? '#1d4ed8' : isRejected ? '#dc2626' : '#b45309';
+                const badgeBg = isDisbursed ? '#ecfdf5' : isApproved ? 'colors.primaryLight' : isRejected ? '#fef2f2' : '#fffbeb';
+                const badgeColor = isDisbursed ? '#065f46' : isApproved ? 'colors.primaryDark' : isRejected ? '#dc2626' : '#b45309';
 
                 return (
                   <View key={ref.id} style={styles.historyItem}>
@@ -410,7 +410,7 @@ const styles = StyleSheet.create({
   },
   heroCard: {
     backgroundColor: colors.white,
-    borderRadius: 14,
+    borderRadius: 0,
     borderWidth: 1,
     borderColor: colors.border,
     padding: 16,
@@ -543,7 +543,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.white,
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1,
     borderColor: colors.border,
     padding: 14,
@@ -641,7 +641,7 @@ const styles = StyleSheet.create({
   },
   walletLabel: {
     fontSize: 11,
-    color: '#dbeafe',
+    color: 'colors.primaryLight',
   },
   walletAmount: {
     fontSize: 30,
@@ -651,7 +651,7 @@ const styles = StyleSheet.create({
   },
   walletSub: {
     fontSize: 11,
-    color: '#dbeafe',
+    color: 'colors.primaryLight',
     marginTop: 2,
     marginBottom: 12,
   },

@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COMPANY_INFO } from '../../data/mockData';
 import { authService } from '../../services/authService';
 import { UserProfile } from '../../types';
+import { colors } from '../../theme/colors';
 import { SignUpScreen } from './SignUpScreen';
 
 interface AuthScreensProps {
@@ -145,7 +146,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
             <Ionicons
               name="person"
               size={15}
-              color={authMode === 'login' ? '#2563eb' : '#64748b'}
+              color={authMode === 'login' ? colors.primary : '#64748b'}
             />
             <Text
               style={[
@@ -187,7 +188,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
         <View style={styles.formCard}>
           <View style={styles.cardHeader}>
             <View style={styles.cardBadge}>
-              <Ionicons name="log-in" size={15} color="#2563eb" />
+              <Ionicons name="log-in" size={15} color={colors.primary} />
               <Text style={styles.cardBadgeText}>CUSTOMER LOGIN</Text>
             </View>
           </View>
@@ -266,7 +267,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
               onPress={() => setAuthMode('signup')}
               activeOpacity={0.8}
             >
-              <Ionicons name="person-add-outline" size={16} color="#2563eb" />
+              <Ionicons name="person-add-outline" size={16} color={colors.primary} />
               <Text style={styles.registerBtnText}>Register New Account</Text>
             </TouchableOpacity>
           </View>
@@ -277,16 +278,16 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
       {authMode === 'admin' && (
         <View style={styles.formCard}>
           <View style={styles.cardHeader}>
-            <View style={[styles.cardBadge, { backgroundColor: '#f1f5f9' }]}>
-              <Ionicons name="shield-checkmark" size={15} color="#0f172a" />
-              <Text style={[styles.cardBadgeText, { color: '#0f172a' }]}>
+            <View style={[styles.cardBadge, { backgroundColor: colors.surfaceSubtle }]}>
+              <Ionicons name="shield-checkmark" size={15} color={colors.indigoNavy} />
+              <Text style={[styles.cardBadgeText, { color: colors.indigoNavy }]}>
                 BRANCH ADMIN & STAFF
               </Text>
             </View>
           </View>
 
           <View style={styles.adminBanner}>
-            <Ionicons name="lock-closed" size={16} color="#2563eb" />
+            <Ionicons name="lock-closed" size={16} color={colors.primary} />
             <Text style={styles.adminBannerText}>
               Authorized Loan Point administrators only. Manage applications, sanction status & CRM pipeline.
             </Text>
@@ -340,7 +341,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
             }}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={14} color="#2563eb" />
+            <Ionicons name="arrow-back" size={14} color={colors.primary} />
             <Text style={styles.resendBtnText}>Back to Customer Login</Text>
           </TouchableOpacity>
         </View>
@@ -413,7 +414,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
             onPress={handleRequestOtp}
             activeOpacity={0.7}
           >
-            <Ionicons name="refresh" size={14} color="#2563eb" />
+            <Ionicons name="refresh" size={14} color={colors.primary} />
             <Text style={styles.resendBtnText}>Resend WhatsApp Code</Text>
           </TouchableOpacity>
         </View>
@@ -452,7 +453,7 @@ const styles = StyleSheet.create({
   brandSub: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#2563eb',
+    color: colors.primary,
     marginTop: 2,
   },
   brandTagline: {
@@ -464,7 +465,7 @@ const styles = StyleSheet.create({
   },
   formCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 20,
+    borderRadius: 0,
     borderWidth: 1.5,
     borderColor: '#e2e8f0',
     padding: 20,
@@ -481,7 +482,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 20,
@@ -490,7 +491,7 @@ const styles = StyleSheet.create({
   cardBadgeText: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#2563eb',
+    color: colors.primary,
     letterSpacing: 0.5,
   },
   channelBadge: {
@@ -555,7 +556,7 @@ const styles = StyleSheet.create({
     paddingVertical: Platform.OS === 'ios' ? 12 : 8,
   },
   inputWrapperActive: {
-    borderColor: '#2563eb',
+    borderColor: 'colors.primary',
     backgroundColor: '#ffffff',
   },
   countryCodeBadge: {
@@ -592,7 +593,7 @@ const styles = StyleSheet.create({
   referralToggleText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#2563eb',
+    color: 'colors.primary',
   },
   referralInputBox: {
     backgroundColor: '#f8fafc',
@@ -634,7 +635,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: 1,
-    color: '#2563eb',
+    color: 'colors.primary',
   },
   errorBox: {
     flexDirection: 'row',
@@ -657,12 +658,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
     borderRadius: 12,
     paddingVertical: 14,
     gap: 8,
     marginTop: 6,
-    shadowColor: '#2563eb',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -694,9 +695,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primaryLight,
     borderWidth: 1.5,
-    borderColor: '#bfdbfe',
+    borderColor: colors.primaryBorder,
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 20,
@@ -705,7 +706,7 @@ const styles = StyleSheet.create({
   registerBtnText: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#2563eb',
+    color: colors.primary,
   },
   switchRow: {
     flexDirection: 'row',
@@ -720,7 +721,7 @@ const styles = StyleSheet.create({
   switchLink: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#2563eb',
+    color: colors.primary,
   },
   backBtn: {
     flexDirection: 'row',
@@ -785,7 +786,7 @@ const styles = StyleSheet.create({
   resendBtnText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#2563eb',
+    color: colors.primary,
   },
   demoBtn: {
     alignItems: 'center',
@@ -837,28 +838,28 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
   authTabTextActive: {
-    color: '#2563eb',
+    color: colors.primary,
     fontWeight: '700',
   },
   authTabTextActiveAdmin: {
-    color: '#0f172a',
+    color: colors.indigoNavyDark,
     fontWeight: '800',
   },
   adminBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primaryLight,
     padding: 10,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#bfdbfe',
+    borderColor: colors.primaryBorder,
     marginBottom: 12,
     gap: 8,
   },
   adminBannerText: {
     flex: 1,
     fontSize: 11.5,
-    color: '#1e40af',
+    color: colors.primaryDeep,
     lineHeight: 16,
   },
 });

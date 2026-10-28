@@ -11,7 +11,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import { DocumentItem } from '../../types';
 import { documentService } from '../../services/documentService';
 import { COMPANY_INFO } from '../../data/mockData';
@@ -49,6 +49,19 @@ export const DocumentsScreen: React.FC<DocumentsScreenProps> = () => {
   const [viewingReceiptDoc, setViewingReceiptDoc] = useState<DocumentItem | null>(null);
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
   const [downloadCompleted, setDownloadCompleted] = useState<boolean>(false);
+
+  const categoryChips: {
+    category: DocumentItem['category'];
+    icon: string;
+    iconType: 'mci' | 'fa5' | 'ion';
+    activeColor: string;
+    lightColor: string;
+  }[] = [
+    { category: 'Identity Proof', icon: 'id-card', iconType: 'fa5', activeColor: '#008ecc', lightColor: '#e0f2fe' },
+    { category: 'Address Proof', icon: 'home-city-outline', iconType: 'mci', activeColor: '#16a34a', lightColor: '#dcfce7' },
+    { category: 'Income Proof', icon: 'wallet', iconType: 'fa5', activeColor: '#d97706', lightColor: '#fef3c7' },
+    { category: 'Property Document', icon: 'shield-home', iconType: 'mci', activeColor: '#2d3091', lightColor: '#e0e7ff' },
+  ];
 
   const categories: DocumentItem['category'][] = [
     'Identity Proof',
@@ -275,7 +288,7 @@ DIGITALLY RECORDED & VERIFIED BY LOAN POINT SYSTEM
       case 'Verified':
         return { bg: '#ecfdf5', text: '#065f46', border: '#a7f3d0' };
       case 'Under Review':
-        return { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' };
+        return { bg: 'colors.primaryLight', text: 'colors.primaryDark', border: 'colors.primaryBorder' };
       case 'Action Needed':
         return { bg: '#fef2f2', text: '#dc2626', border: '#fecaca' };
     }
@@ -284,28 +297,40 @@ DIGITALLY RECORDED & VERIFIED BY LOAN POINT SYSTEM
   return (
     <View style={styles.root}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.card}>
-          <Text style={styles.screenHeading}>My Documents & Vault</Text>
+        {/* 1. Header Card */}
+        <View style={styles.headerCard}>
+          <View style={styles.headerTopRow}>
+            <View style={styles.headerIconBadge}>
+              <MaterialCommunityIcons name="folder-lock" size={24} color="#ffffff" />
+            </View>
+            <View style={styles.headerTitleWrap}>
+              <View style={styles.tagBadge}>
+                <View style={styles.tagDot} />
+                <Text style={styles.tagText}>ENCRYPTED DIGITAL VAULT</Text>
+              </View>
+              <Text style={styles.screenHeading}>My Documents & Vault</Text>
+            </View>
+          </View>
           <Text style={styles.screenSub}>
-            Secure repository for KYC, income proofs, checklists and official service receipts
+            Secure repository for KYC, income proofs, checklists, and official loan submission receipts.
           </Text>
         </View>
 
-        {/* 1. Pending Document Checklist */}
+        {/* 2. Pending Document Checklist */}
         <View style={styles.card}>
-          <View style={styles.checklistHeader}>
-            <View style={styles.badgePending}>
-              <Ionicons name="alert-circle" size={13} color="#92400e" />
-              <Text style={styles.badgePendingText}>REQUIRED BY BANK</Text>
+          <View style={styles.sectionHeadingRow}>
+            <View style={[styles.sectionIconBox, { backgroundColor: '#fef3c7' }]}>
+              <Ionicons name="alert-circle" size={17} color="#d97706" />
             </View>
-            <Text style={styles.cardTitle}>Pending Document Checklist</Text>
+            <Text style={[styles.cardTitle, { color: '#92400e' }]}>Required Bank Checklist</Text>
           </View>
 
           <View style={styles.checklistItems}>
             {pendingChecklist.map((item, idx) => (
               <View key={idx} style={[styles.checkItemRow, idx === pendingChecklist.length - 1 && { borderBottomWidth: 0 }]}>
-                <Ionicons name="time-outline" size={16} color={colors.accentGold} />
+                <View style={styles.checkItemIconWrap}>
+                  <Ionicons name="time" size={15} color="#d97706" />
+                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.checkItemTitle}>{item.title}</Text>
                   <Text style={styles.checkItemSub}>{item.note}</Text>
@@ -315,6 +340,7 @@ DIGITALLY RECORDED & VERIFIED BY LOAN POINT SYSTEM
                   onPress={() => handlePickAndUploadFile(item.category)}
                   activeOpacity={0.7}
                 >
+                  <Ionicons name="cloud-upload" size={12} color="#ffffff" />
                   <Text style={styles.uploadMiniText}>Upload</Text>
                 </TouchableOpacity>
               </View>
@@ -322,23 +348,63 @@ DIGITALLY RECORDED & VERIFIED BY LOAN POINT SYSTEM
           </View>
         </View>
 
-        {/* 2. Upload Box */}
+        {/* 3. Upload Document Box */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Upload Document</Text>
+          <View style={styles.sectionHeadingRow}>
+            <View style={[styles.sectionIconBox, { backgroundColor: colors.primaryLight }]}>
+              <Ionicons name="cloud-upload" size={16} color={colors.primary} />
+            </View>
+            <Text style={styles.cardTitle}>Upload Document</Text>
+          </View>
 
-          <Text style={styles.inputLabel}>Choose Category</Text>
+          <Text style={styles.inputLabel}>Choose Proof Category</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryChipsRow}>
-            {categories.map((cat) => {
-              const isSelected = selectedCategory === cat;
+            {categoryChips.map((tab) => {
+              const isSelected = selectedCategory === tab.category;
               return (
                 <TouchableOpacity
-                  key={cat}
-                  style={[styles.catChip, isSelected && styles.catChipActive]}
-                  onPress={() => setSelectedCategory(cat)}
+                  key={tab.category}
+                  style={[
+                    styles.catChip,
+                    isSelected && {
+                      backgroundColor: tab.activeColor,
+                      borderColor: tab.activeColor,
+                      shadowColor: tab.activeColor,
+                    },
+                  ]}
+                  onPress={() => setSelectedCategory(tab.category)}
                   activeOpacity={0.7}
                 >
+                  <View
+                    style={[
+                      styles.catChipIconWrap,
+                      {
+                        backgroundColor: isSelected ? 'rgba(255, 255, 255, 0.22)' : tab.lightColor,
+                      },
+                    ]}
+                  >
+                    {tab.iconType === 'mci' ? (
+                      <MaterialCommunityIcons
+                        name={tab.icon as any}
+                        size={13}
+                        color={isSelected ? '#ffffff' : tab.activeColor}
+                      />
+                    ) : tab.iconType === 'fa5' ? (
+                      <FontAwesome5
+                        name={tab.icon as any}
+                        size={11}
+                        color={isSelected ? '#ffffff' : tab.activeColor}
+                      />
+                    ) : (
+                      <Ionicons
+                        name={tab.icon as any}
+                        size={13}
+                        color={isSelected ? '#ffffff' : tab.activeColor}
+                      />
+                    )}
+                  </View>
                   <Text style={[styles.catChipText, isSelected && styles.catChipTextActive]}>
-                    {cat}
+                    {tab.category}
                   </Text>
                 </TouchableOpacity>
               );
@@ -358,7 +424,9 @@ DIGITALLY RECORDED & VERIFIED BY LOAN POINT SYSTEM
               </View>
             ) : (
               <>
-                <Ionicons name="cloud-upload-outline" size={28} color={colors.primary} />
+                <View style={styles.uploadIconCircle}>
+                  <Ionicons name="cloud-upload" size={26} color={colors.primary} />
+                </View>
                 <Text style={styles.uploadTitle}>Tap to Browse & Upload</Text>
                 <Text style={styles.uploadSub}>Select PDF, JPG, PNG from device (max 5MB)</Text>
               </>
@@ -400,8 +468,38 @@ DIGITALLY RECORDED & VERIFIED BY LOAN POINT SYSTEM
                 return (
                   <View key={doc.id} style={styles.docCard}>
                     <View style={styles.docCardTop}>
-                      <View style={styles.docIconBox}>
-                        <Ionicons name="document-text" size={20} color={colors.primary} />
+                      <View
+                        style={[
+                          styles.docIconBox,
+                          {
+                            backgroundColor:
+                              doc.category === 'Identity Proof'
+                                ? '#e0f2fe'
+                                : doc.category === 'Address Proof'
+                                ? '#dcfce7'
+                                : doc.category === 'Income Proof'
+                                ? '#fef3c7'
+                                : '#e0e7ff',
+                          },
+                        ]}
+                      >
+                        <MaterialCommunityIcons
+                          name={
+                            doc.fileType === 'PDF'
+                              ? 'file-pdf-box'
+                              : 'file-image-outline'
+                          }
+                          size={22}
+                          color={
+                            doc.category === 'Identity Proof'
+                              ? '#0284c7'
+                              : doc.category === 'Address Proof'
+                              ? '#16a34a'
+                              : doc.category === 'Income Proof'
+                              ? '#d97706'
+                              : '#2d3091'
+                          }
+                        />
                       </View>
                       <View style={styles.docInfo}>
                         <Text style={styles.docName} numberOfLines={1}>{doc.name}</Text>
@@ -583,244 +681,362 @@ const styles = StyleSheet.create({
   },
   container: {
     padding: 16,
-    paddingBottom: 32,
-    gap: 12,
+    paddingBottom: 36,
+    gap: 16,
   },
-  card: {
+
+  /* 1. Header Card */
+  headerCard: {
     backgroundColor: colors.white,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 14,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  screenHeading: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  screenSub: {
-    fontSize: 11,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
-  cardTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 8,
-  },
-  checklistHeader: {
-    marginBottom: 6,
-  },
-  badgePending: {
+  headerTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#fef3c7',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    gap: 12,
+  },
+  headerIconBadge: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  headerTitleWrap: {
+    flex: 1,
+  },
+  tagBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
     alignSelf: 'flex-start',
     marginBottom: 4,
   },
-  badgePendingText: {
+  tagDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: colors.primary,
+  },
+  tagText: {
     fontSize: 9,
-    fontWeight: '700',
-    color: '#92400e',
+    fontWeight: '800',
+    color: colors.primaryDeep,
+    letterSpacing: 0.5,
+  },
+  screenHeading: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: colors.text,
+  },
+  screenSub: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 8,
+    lineHeight: 17,
+  },
+
+  /* 2. Structured Content Cards */
+  card: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  sectionHeadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 14,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.surfaceSubtle,
+  },
+  sectionIconBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.primaryDeep,
+    letterSpacing: 0.5,
   },
   checklistItems: {
-    gap: 8,
+    gap: 10,
   },
   checkItemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: colors.surfaceSubtle,
-    gap: 8,
+    gap: 10,
   },
-  checkItemTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  checkItemSub: {
-    fontSize: 10,
-    color: colors.textMuted,
-    marginTop: 1,
-  },
-  uploadMiniBtn: {
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-  },
-  uploadMiniText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.primary,
-  },
-  inputLabel: {
-    fontSize: 11,
-    color: colors.textMuted,
-    marginBottom: 6,
-  },
-  categoryChipsRow: {
-    gap: 6,
-    paddingBottom: 10,
-  },
-  catChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-    backgroundColor: colors.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  catChipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  catChipText: {
-    fontSize: 11,
-    color: colors.textMuted,
-  },
-  catChipTextActive: {
-    color: colors.white,
-    fontWeight: '600',
-  },
-  uploadDropzone: {
-    borderWidth: 1.5,
-    borderColor: colors.primaryBorder,
-    borderStyle: 'dashed',
-    borderRadius: 10,
-    backgroundColor: colors.primaryLight,
-    padding: 16,
+  checkItemIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: '#fef3c7',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  uploadTitle: {
+  checkItemTitle: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: colors.text,
+  },
+  checkItemSub: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  uploadMiniBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  uploadMiniText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.white,
+  },
+
+  /* Upload Box & Chips */
+  inputLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.primaryDark,
-    marginTop: 4,
+    color: colors.text,
+    marginBottom: 8,
+  },
+  categoryChipsRow: {
+    gap: 8,
+    paddingBottom: 12,
+  },
+  catChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    backgroundColor: colors.white,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  catChipIconWrap: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  catChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  catChipTextActive: {
+    color: colors.white,
+    fontWeight: '800',
+  },
+  uploadDropzone: {
+    borderWidth: 2,
+    borderColor: colors.primaryBorder,
+    borderStyle: 'dashed',
+    borderRadius: 14,
+    backgroundColor: colors.primaryLight,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  uploadIconCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 2,
+    marginBottom: 2,
+  },
+  uploadTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.primaryDeep,
   },
   uploadSub: {
-    fontSize: 10,
+    fontSize: 11,
     color: colors.textMuted,
   },
   successBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     backgroundColor: '#ecfdf5',
-    padding: 8,
-    borderRadius: 6,
-    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+    padding: 10,
+    borderRadius: 10,
+    marginTop: 10,
   },
   successBannerText: {
-    fontSize: 11,
+    fontSize: 11.5,
+    fontWeight: '600',
     color: '#065f46',
     flex: 1,
   },
+
+  /* 3. Submitted Documents */
   docListHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   docCountText: {
-    fontSize: 10,
-    color: colors.textMuted,
+    fontSize: 11,
+    color: colors.primary,
+    fontWeight: '700',
   },
   emptyDocState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 24,
+    paddingVertical: 28,
     paddingHorizontal: 16,
     gap: 6,
   },
   emptyDocTitle: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '800',
     color: colors.text,
     marginTop: 4,
   },
   emptyDocSub: {
-    fontSize: 11,
+    fontSize: 11.5,
     color: colors.textMuted,
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 17,
   },
   documentsList: {
-    gap: 8,
+    gap: 10,
   },
   docCard: {
     backgroundColor: colors.surfaceSubtle,
-    borderRadius: 10,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 10,
-    gap: 8,
+    padding: 12,
+    gap: 10,
   },
   docCardTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   docIconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 6,
-    backgroundColor: colors.white,
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
   },
   docInfo: {
     flex: 1,
   },
   docName: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '800',
     color: colors.text,
   },
   docMeta: {
-    fontSize: 10,
+    fontSize: 10.5,
     color: colors.textMuted,
-    marginTop: 1,
+    marginTop: 2,
+    fontWeight: '500',
   },
   statusBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
     borderWidth: 1,
   },
   statusBadgeText: {
-    fontSize: 9,
-    fontWeight: '700',
+    fontSize: 10,
+    fontWeight: '800',
   },
   docCardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    paddingTop: 8,
+    paddingTop: 10,
     gap: 8,
   },
   actionBtnPrimary: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
+    paddingVertical: 6,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#bfdbfe',
+    borderColor: colors.primaryBorder,
   },
   actionBtnPrimaryText: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 11.5,
+    fontWeight: '800',
     color: colors.primary,
   },
   actionBtnSecondary: {
@@ -829,24 +1045,24 @@ const styles = StyleSheet.create({
     gap: 4,
     backgroundColor: colors.white,
     paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
+    paddingVertical: 6,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: colors.border,
   },
   actionBtnSecondaryText: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 11.5,
+    fontWeight: '700',
     color: colors.text,
   },
   receiptSmallBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 4,
     backgroundColor: '#fffbeb',
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#fde68a',
   },

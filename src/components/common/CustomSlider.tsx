@@ -29,7 +29,7 @@ export const CustomSlider: React.FC<CustomSliderProps> = ({
   onValueChange,
   minLabel,
   maxLabel,
-  accentColor = '#2563eb',
+  accentColor = 'colors.primary',
 }) => {
   const [sliderWidth, setSliderWidth] = useState<number>(0);
 

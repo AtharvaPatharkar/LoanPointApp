@@ -228,7 +228,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
             </View>
             <View style={styles.successDetailRow}>
               <Text style={styles.successDetailLabel}>Customer ID</Text>
-              <Text style={[styles.successDetailValue, { color: '#2563eb', fontWeight: '800' }]}>
+              <Text style={[styles.successDetailValue, { color: 'colors.primary', fontWeight: '800' }]}>
                 {registrationSuccessUser.id}
               </Text>
             </View>
@@ -256,7 +256,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
         <View style={styles.formCard}>
           <View style={styles.cardHeader}>
             <View style={styles.cardBadge}>
-              <Ionicons name="person-add" size={15} color="#2563eb" />
+              <Ionicons name="person-add" size={15} color="colors.primary" />
               <Text style={styles.cardBadgeText}>NEW CUSTOMER REGISTRATION</Text>
             </View>
           </View>
@@ -268,7 +268,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
               <Text style={styles.requiredTag}>Required</Text>
             </View>
             <View style={[styles.inputWrapper, isNameValid && styles.inputWrapperActive]}>
-              <Ionicons name="person-outline" size={18} color={isNameValid ? '#2563eb' : '#94a3b8'} style={styles.inputIcon} />
+              <Ionicons name="person-outline" size={18} color={isNameValid ? 'colors.primary' : '#94a3b8'} style={styles.inputIcon} />
               <TextInput
                 style={styles.textInput}
                 placeholder="e.g. Rahul V. Sharma"
@@ -321,7 +321,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
               <Ionicons
                 name="mail-outline"
                 size={18}
-                color={isEmailEntered && !isEmailValid ? '#dc2626' : isEmailValid && isEmailEntered ? '#2563eb' : '#94a3b8'}
+                color={isEmailEntered && !isEmailValid ? '#dc2626' : isEmailValid && isEmailEntered ? 'colors.primary' : '#94a3b8'}
                 style={styles.inputIcon}
               />
               <TextInput
@@ -393,7 +393,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
               <Ionicons
                 name="location-outline"
                 size={18}
-                color={isCityWrong ? '#dc2626' : city.length > 0 ? '#2563eb' : '#94a3b8'}
+                color={isCityWrong ? '#dc2626' : city.length > 0 ? 'colors.primary' : '#94a3b8'}
                 style={styles.inputIcon}
               />
               <TextInput
@@ -435,7 +435,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                 <Ionicons
                   name={showCityPicker ? 'chevron-up' : 'chevron-down'}
                   size={14}
-                  color={isCityWrong ? '#dc2626' : '#2563eb'}
+                  color={isCityWrong ? '#dc2626' : 'colors.primary'}
                 />
               </TouchableOpacity>
             </View>
@@ -465,7 +465,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                     }}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="location-outline" size={15} color="#2563eb" style={{ marginRight: 8 }} />
+                    <Ionicons name="location-outline" size={15} color="colors.primary" style={{ marginRight: 8 }} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.autoSuggestCityName}>
                         {item.city}
@@ -488,7 +488,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                   <Text style={styles.cityDropdownTitle}>
                     All India Cities & Districts ({allIndiaCities.length})
                   </Text>
-                  {isCitiesLoading && <ActivityIndicator size="small" color="#2563eb" />}
+                  {isCitiesLoading && <ActivityIndicator size="small" color="colors.primary" />}
                 </View>
 
                 {/* Quick Search */}
@@ -533,7 +533,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                             <Text style={styles.cityOptionState}>{item.state}</Text>
                           </View>
                           {isPicked && (
-                            <Ionicons name="checkmark-circle" size={16} color="#2563eb" />
+                            <Ionicons name="checkmark-circle" size={16} color="colors.primary" />
                           )}
                         </TouchableOpacity>
                       );
@@ -576,7 +576,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                       : 'leaf-outline'
                   }
                   size={18}
-                  color="#2563eb"
+                  color="colors.primary"
                   style={styles.inputIcon}
                 />
                 <Text style={styles.dropdownSelectedText}>{employmentType}</Text>
@@ -584,7 +584,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
               <Ionicons
                 name={showEmploymentDropdown ? 'chevron-up' : 'chevron-down'}
                 size={18}
-                color="#2563eb"
+                color="colors.primary"
               />
             </TouchableOpacity>
 
@@ -632,7 +632,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                       <Ionicons
                         name={item.icon as any}
                         size={18}
-                        color={isSelected ? '#2563eb' : '#64748b'}
+                        color={isSelected ? 'colors.primary' : '#64748b'}
                         style={{ marginRight: 10 }}
                       />
                       <View style={{ flex: 1 }}>
@@ -642,7 +642,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                         <Text style={styles.dropdownOptionDesc}>{item.desc}</Text>
                       </View>
                       {isSelected && (
-                        <Ionicons name="checkmark-circle" size={18} color="#2563eb" />
+                        <Ionicons name="checkmark-circle" size={18} color="colors.primary" />
                       )}
                     </TouchableOpacity>
                   );
@@ -867,7 +867,7 @@ const styles = StyleSheet.create({
   brandSub: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#2563eb',
+    color: 'colors.primary',
     marginTop: 2,
   },
   brandTagline: {
@@ -879,7 +879,7 @@ const styles = StyleSheet.create({
   },
   formCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 20,
+    borderRadius: 0,
     borderWidth: 1.5,
     borderColor: '#e2e8f0',
     padding: 20,
@@ -974,7 +974,7 @@ const styles = StyleSheet.create({
   cardBadgeText: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#2563eb',
+    color: 'colors.primary',
     letterSpacing: 0.5,
   },
   inputGroup: {
@@ -1016,7 +1016,7 @@ const styles = StyleSheet.create({
     paddingVertical: Platform.OS === 'ios' ? 12 : 8,
   },
   inputWrapperActive: {
-    borderColor: '#2563eb',
+    borderColor: 'colors.primary',
     backgroundColor: '#ffffff',
   },
   inputIcon: {
@@ -1067,7 +1067,7 @@ const styles = StyleSheet.create({
   selectCityBtnText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#2563eb',
+    color: 'colors.primary',
   },
   cityErrorAlert: {
     flexDirection: 'row',
@@ -1150,7 +1150,7 @@ const styles = StyleSheet.create({
     borderColor: '#bfdbfe',
     marginTop: 8,
     overflow: 'hidden',
-    shadowColor: '#2563eb',
+    shadowColor: 'colors.primary',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -1245,7 +1245,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   dropdownSelectBoxActive: {
-    borderColor: '#2563eb',
+    borderColor: 'colors.primary',
     backgroundColor: '#f8faff',
   },
   dropdownLeftWrap: {
@@ -1266,7 +1266,7 @@ const styles = StyleSheet.create({
     borderColor: '#bfdbfe',
     marginTop: 8,
     overflow: 'hidden',
-    shadowColor: '#2563eb',
+    shadowColor: 'colors.primary',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
@@ -1324,8 +1324,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   checkboxActive: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
+    backgroundColor: 'colors.primary',
+    borderColor: 'colors.primary',
   },
   termsText: {
     flex: 1,
@@ -1334,7 +1334,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   termsLink: {
-    color: '#2563eb',
+    color: 'colors.primary',
     fontWeight: '700',
   },
   errorBox: {
@@ -1358,12 +1358,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2563eb',
+    backgroundColor: 'colors.primary',
     borderRadius: 12,
     paddingVertical: 14,
     gap: 8,
     marginTop: 6,
-    shadowColor: '#2563eb',
+    shadowColor: 'colors.primary',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -1390,7 +1390,7 @@ const styles = StyleSheet.create({
   switchLink: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#2563eb',
+    color: 'colors.primary',
   },
   backBtn: {
     flexDirection: 'row',
@@ -1474,7 +1474,7 @@ const styles = StyleSheet.create({
   currencySymbolText: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#2563eb',
+    color: 'colors.primary',
     marginRight: 8,
   },
   domainSuggestContainer: {
@@ -1508,7 +1508,7 @@ const styles = StyleSheet.create({
   domainChipAt: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#2563eb',
+    color: 'colors.primary',
     marginRight: 2,
   },
   domainChipText: {

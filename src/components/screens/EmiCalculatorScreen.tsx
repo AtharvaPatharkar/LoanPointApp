@@ -8,7 +8,7 @@ import {
   TextInput,
   Platform,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { calculateEMI, calculateTotalInterest, calculateTotalPayment, formatINR } from '../../utils/calculator';
 import { LoanType } from '../../types';
 import { colors } from '../../theme/colors';
@@ -201,7 +201,9 @@ export const EmiCalculatorScreen: React.FC<EmiCalculatorScreenProps> = ({
               <Text style={styles.resultLabel}>ESTIMATED MONTHLY INSTALLMENT</Text>
             </View>
             <TouchableOpacity onPress={handleReset} activeOpacity={0.7} style={styles.resetBtn}>
-              <Ionicons name="refresh" size={13} color="#bfdbfe" />
+              <View style={styles.resetIconWrap}>
+                <Ionicons name="refresh" size={12} color="#ffffff" />
+              </View>
               <Text style={styles.resetText}>Reset</Text>
             </TouchableOpacity>
           </View>
@@ -268,8 +270,8 @@ export const EmiCalculatorScreen: React.FC<EmiCalculatorScreenProps> = ({
         {/* 1. Loan Amount Section */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <View style={styles.cardIconBox}>
-              <Ionicons name="wallet-outline" size={18} color={colors.primary} />
+            <View style={[styles.cardIconBox, styles.cardIconBoxAmount]}>
+              <FontAwesome5 name="wallet" size={17} color="#ffffff" />
             </View>
             <View style={styles.cardTitleBox}>
               <Text style={styles.cardLabel}>Loan Amount</Text>
@@ -299,12 +301,16 @@ export const EmiCalculatorScreen: React.FC<EmiCalculatorScreenProps> = ({
               onValueChange={handleAmountSlider}
               minLabel="₹10K"
               maxLabel="₹50L+"
-              accentColor={colors.primary}
+              accentColor="#008ecc"
             />
           </View>
 
-          {/* Quick Select Quick Chips */}
-          <View style={styles.chipRow}>
+          {/* Quick Select Quick Chips - Single Line Horizontal Scroll */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipRow}
+          >
             {[100000, 300000, 500000, 1000000, 2000000].map((amt) => {
               const isSelected = loanAmount === amt;
               return (
@@ -323,14 +329,14 @@ export const EmiCalculatorScreen: React.FC<EmiCalculatorScreenProps> = ({
                 </TouchableOpacity>
               );
             })}
-          </View>
+          </ScrollView>
         </View>
 
         {/* 2. Interest Rate Section */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <View style={[styles.cardIconBox, { backgroundColor: '#fef3c7' }]}>
-              <Ionicons name="trending-up-outline" size={18} color="#d97706" />
+            <View style={[styles.cardIconBox, styles.cardIconBoxRate]}>
+              <MaterialCommunityIcons name="percent" size={19} color="#ffffff" />
             </View>
             <View style={styles.cardTitleBox}>
               <Text style={styles.cardLabel}>Interest Rate (% p.a.)</Text>
@@ -364,14 +370,18 @@ export const EmiCalculatorScreen: React.FC<EmiCalculatorScreenProps> = ({
             />
           </View>
 
-          {/* Quick Select Quick Chips */}
-          <View style={styles.chipRow}>
+          {/* Quick Select Quick Chips - Single Line Horizontal Scroll */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipRow}
+          >
             {[8.5, 9.5, 10.5, 12.0, 14.5].map((rate) => {
               const isSelected = Math.abs(interestRate - rate) < 0.05;
               return (
                 <TouchableOpacity
                   key={rate}
-                  style={[styles.chip, isSelected && styles.chipActiveGold]}
+                  style={[styles.chip, isSelected && styles.chipActiveRed]}
                   onPress={() => {
                     setInterestRate(rate);
                     setRateInput(rate.toString());
@@ -384,14 +394,14 @@ export const EmiCalculatorScreen: React.FC<EmiCalculatorScreenProps> = ({
                 </TouchableOpacity>
               );
             })}
-          </View>
+          </ScrollView>
         </View>
 
         {/* 3. Tenure Section with Years & Months Toggle */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <View style={[styles.cardIconBox, { backgroundColor: '#dcfce7' }]}>
-              <Ionicons name="calendar-outline" size={18} color="#16a34a" />
+            <View style={[styles.cardIconBox, styles.cardIconBoxTenure]}>
+              <MaterialCommunityIcons name="calendar-clock" size={19} color="#ffffff" />
             </View>
             <View style={styles.cardTitleBox}>
               <Text style={styles.cardLabel}>Loan Tenure</Text>
@@ -476,15 +486,19 @@ export const EmiCalculatorScreen: React.FC<EmiCalculatorScreenProps> = ({
             )}
           </View>
 
-          {/* Quick Select Quick Chips based on Mode */}
-          <View style={styles.chipRow}>
+          {/* Quick Select Quick Chips based on Mode - Single Line Horizontal Scroll */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipRow}
+          >
             {tenureType === 'years'
               ? [1, 2, 3, 5, 7, 10].map((yr) => {
                   const isSelected = tenureYears === yr;
                   return (
                     <TouchableOpacity
                       key={yr}
-                      style={[styles.chip, isSelected && styles.chipActiveGreen]}
+                      style={[styles.chip, isSelected && styles.chipActiveNavy]}
                       onPress={() => {
                         setTenureYears(yr);
                         setTenureInput(yr.toString());
@@ -502,7 +516,7 @@ export const EmiCalculatorScreen: React.FC<EmiCalculatorScreenProps> = ({
                   return (
                     <TouchableOpacity
                       key={mo}
-                      style={[styles.chip, isSelected && styles.chipActiveGreen]}
+                      style={[styles.chip, isSelected && styles.chipActiveNavy]}
                       onPress={() => {
                         setTenureMonths(mo);
                         setTenureInput(mo.toString());
@@ -515,7 +529,7 @@ export const EmiCalculatorScreen: React.FC<EmiCalculatorScreenProps> = ({
                     </TouchableOpacity>
                   );
                 })}
-          </View>
+          </ScrollView>
         </View>
       </ScrollView>
 
@@ -535,7 +549,7 @@ export const EmiCalculatorScreen: React.FC<EmiCalculatorScreenProps> = ({
             </View>
             <View style={styles.applyBtnAction}>
               <Text style={styles.applyBtnActionText}>Proceed</Text>
-              <Ionicons name="arrow-forward" size={16} color={colors.white} />
+              <Ionicons name="arrow-forward" size={15} color={colors.primary} />
             </View>
           </TouchableOpacity>
         </View>
@@ -554,13 +568,13 @@ const styles = StyleSheet.create({
     paddingBottom: 96,
   },
   resultCard: {
-    backgroundColor: '#1e3a8a',
-    borderRadius: 18,
+    backgroundColor: colors.cardNavyFrom,
+    borderRadius: 0,
     padding: 18,
     marginBottom: 16,
     position: 'relative',
     overflow: 'hidden',
-    shadowColor: '#1e3a8a',
+    shadowColor: colors.cardNavyFrom,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
     shadowRadius: 10,
@@ -601,16 +615,27 @@ const styles = StyleSheet.create({
   resetBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    gap: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.28)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    gap: 6,
+  },
+  resetIconWrap: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   resetText: {
     fontSize: 11,
-    color: '#dbeafe',
-    fontWeight: '600',
+    color: '#ffffff',
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   emiHighlightRow: {
     flexDirection: 'row',
@@ -704,7 +729,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.white,
-    borderRadius: 16,
+    borderRadius: 0,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     padding: 16,
@@ -721,13 +746,28 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   cardIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: colors.primaryLight,
+    width: 38,
+    height: 38,
+    borderRadius: 11,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  cardIconBoxAmount: {
+    backgroundColor: '#008ecc', // Vivid Logo Cyan Blue
+    shadowColor: '#008ecc',
+  },
+  cardIconBoxRate: {
+    backgroundColor: '#d97706', // Vivid Amber Gold
+    shadowColor: '#d97706',
+  },
+  cardIconBoxTenure: {
+    backgroundColor: '#16a34a', // Emerald Green
+    shadowColor: '#16a34a',
   },
   cardTitleBox: {
     flex: 1,
@@ -818,21 +858,47 @@ const styles = StyleSheet.create({
   },
   chipRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
+    alignItems: 'center',
     gap: 8,
     marginTop: 8,
+    paddingVertical: 2,
+    paddingRight: 12,
   },
   chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 13,
+    paddingVertical: 7,
     borderRadius: 8,
-    backgroundColor: colors.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
   },
   chipActive: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  chipActiveRed: {
+    backgroundColor: colors.secondaryRed,
+    borderColor: colors.secondaryRed,
+    shadowColor: colors.secondaryRed,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  chipActiveNavy: {
+    backgroundColor: colors.indigoNavy,
+    borderColor: colors.indigoNavy,
+    shadowColor: colors.indigoNavy,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
   },
   chipActiveGold: {
     backgroundColor: '#d97706',
@@ -844,8 +910,8 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: colors.textMuted,
+    fontWeight: '700',
+    color: colors.text,
   },
   chipTextActive: {
     color: colors.white,
@@ -859,48 +925,61 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    padding: 12,
+    paddingVertical: 12,
     paddingHorizontal: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 8,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 10,
   },
   applyBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: 12,
+    borderRadius: 14,
+    paddingVertical: 13,
     paddingHorizontal: 16,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.28,
+    shadowRadius: 8,
+    elevation: 4,
   },
   applyBtnInfo: {
     flex: 1,
+    paddingRight: 8,
   },
   applyBtnTitle: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '800',
     color: colors.white,
+    letterSpacing: 0.2,
   },
   applyBtnSubtitle: {
     fontSize: 11,
-    color: '#bfdbfe',
-    marginTop: 1,
+    color: '#e0f2fe',
+    fontWeight: '500',
+    marginTop: 2,
   },
   applyBtnAction: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
+    gap: 6,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   applyBtnActionText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: colors.white,
+    fontWeight: '800',
+    color: colors.primary,
   },
 });

@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { UserProfile, LoanApplication, LoanCategory, LoanType } from '../../types';
 import { COMPANY_INFO } from '../../data/mockData';
 import { LoanIcon } from '../common/LoanIcon';
@@ -37,88 +37,121 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <View style={styles.welcomeTop}>
           <View>
             <Text style={styles.welcomeGreeting}>
-              Hello, {user?.name?.split(' ')[0] || 'Customer'} 👋
+              Hello, {user?.name?.split(' ')[0] || 'Customer'}
             </Text>
             <Text style={styles.welcomeSubtitle}>Welcome back to Loan Point</Text>
           </View>
-          <View style={styles.cibilPill}>
-            <Text style={styles.cibilText}>CIBIL {user?.cibilEstimateScore || 750}</Text>
-          </View>
+          <TouchableOpacity
+            style={styles.cibilPill}
+            onPress={() => onNavigate('cibil_services')}
+            activeOpacity={0.75}
+          >
+            <View style={styles.cibilIconDot}>
+              <Ionicons name="shield-checkmark" size={13} color="#15803d" />
+            </View>
+            <View>
+              <Text style={styles.cibilScoreText}>
+                CIBIL <Text style={styles.cibilScoreNum}>{user?.cibilEstimateScore || 768}</Text>
+              </Text>
+              <Text style={styles.cibilRatingText}>Excellent</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={12} color="#15803d" style={{ marginLeft: 2 }} />
+          </TouchableOpacity>
         </View>
 
-        {/* Primary Banner Action */}
+        {/* Primary Banner Action - High Impact Gradient-Style Card */}
         <TouchableOpacity
           style={styles.applyNowBanner}
           onPress={() => onNavigate('loan_apply', { loanType: 'personal' })}
-          activeOpacity={0.8}
+          activeOpacity={0.88}
         >
-          <View style={{ flex: 1 }}>
+          {/* Subtle Ambient Decorative Circles */}
+          <View style={styles.bannerOrbTop} />
+          <View style={styles.bannerOrbBottom} />
+
+          <View style={styles.bannerLeftContent}>
+            <View style={styles.bannerBadge}>
+              <Ionicons name="flash" size={11} color="#ffffff" />
+              <Text style={styles.bannerBadgeText}>INSTANT DISBURSEMENT</Text>
+            </View>
             <Text style={styles.bannerTitle}>Need a Fast Loan?</Text>
-            <Text style={styles.bannerSub}>Quick approval with direct bank tie-ups</Text>
+            <Text style={styles.bannerSub}>
+              Paperless approval up to ₹25 Lakhs with 0% advance fees
+            </Text>
           </View>
+
           <View style={styles.bannerBtn}>
-            <Text style={styles.bannerBtnText}>Apply</Text>
-            <Ionicons name="arrow-forward" size={14} color={colors.white} />
+            <Text style={styles.bannerBtnText}>Apply Now</Text>
+            <View style={styles.bannerBtnArrowCircle}>
+              <Ionicons name="arrow-forward" size={12} color="#075665" />
+            </View>
           </View>
         </TouchableOpacity>
       </View>
 
-      {/* 2. Clean 4-Grid Quick Actions */}
+      {/* 2. Clean 4-Grid Quick Actions with Solid Color Fill Icons */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={styles.actionsGrid}>
+          {/* Apply Loan: Vivid Logo Cyan Fill */}
           <TouchableOpacity
             style={styles.actionItem}
             onPress={() => onNavigate('loan_apply', { loanType: 'personal' })}
             activeOpacity={0.7}
           >
-            <View style={[styles.actionIcon, { backgroundColor: '#eff6ff' }]}>
-              <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
+            <View style={[styles.actionIcon, styles.actionIconApply]}>
+              <MaterialCommunityIcons name="file-document-edit" size={24} color="#ffffff" />
             </View>
             <Text style={styles.actionLabel}>Apply Loan</Text>
           </TouchableOpacity>
 
+          {/* EMI Calculator: Deep Indigo Navy Fill */}
           <TouchableOpacity
             style={styles.actionItem}
             onPress={() => onNavigate('emi_calculator')}
             activeOpacity={0.7}
           >
-            <View style={[styles.actionIcon, { backgroundColor: '#eef2ff' }]}>
-              <Ionicons name="calculator-outline" size={22} color="#4f46e5" />
+            <View style={[styles.actionIcon, styles.actionIconEmi]}>
+              <MaterialCommunityIcons name="calculator-variant" size={24} color="#ffffff" />
             </View>
             <Text style={styles.actionLabel}>EMI Calc</Text>
           </TouchableOpacity>
 
+          {/* Eligibility: Vibrant Emerald Green Fill */}
           <TouchableOpacity
             style={styles.actionItem}
             onPress={() => onNavigate('eligibility_checker')}
             activeOpacity={0.7}
           >
-            <View style={[styles.actionIcon, { backgroundColor: '#ecfdf5' }]}>
-              <Ionicons name="speedometer-outline" size={22} color="#059669" />
+            <View style={[styles.actionIcon, styles.actionIconElig]}>
+              <MaterialCommunityIcons name="speedometer" size={24} color="#ffffff" />
             </View>
             <Text style={styles.actionLabel}>Eligibility</Text>
           </TouchableOpacity>
 
+          {/* Track Loan: Logo Crimson Scarlet Red Fill */}
           <TouchableOpacity
             style={styles.actionItem}
             onPress={() => onNavigate('applications')}
             activeOpacity={0.7}
           >
-            <View style={[styles.actionIcon, { backgroundColor: '#fffbeb' }]}>
-              <Ionicons name="time-outline" size={22} color="#d97706" />
+            <View style={[styles.actionIcon, styles.actionIconTrack]}>
+              <Ionicons name="compass" size={24} color="#ffffff" />
             </View>
             <Text style={styles.actionLabel}>Track Loan</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* 3. Clean Active Application Spotlight */}
+      {/* 3. Attractive High-Contrast Active Application Spotlight */}
       {activeApp && (
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>Active Application</Text>
-            <TouchableOpacity onPress={() => onNavigate('applications')}>
+            <View style={styles.sectionTitleWithDot}>
+              <View style={styles.liveIndicatorDot} />
+              <Text style={styles.sectionTitle}>Active Application</Text>
+            </View>
+            <TouchableOpacity onPress={() => onNavigate('applications')} activeOpacity={0.7}>
               <Text style={styles.seeAllText}>View All</Text>
             </TouchableOpacity>
           </View>
@@ -126,32 +159,53 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <TouchableOpacity
             style={styles.appCard}
             onPress={() => onNavigate('application_detail', { applicationId: activeApp.id })}
-            activeOpacity={0.7}
+            activeOpacity={0.88}
           >
+            {/* Top Accent Gradient-Style Bar */}
+            <View style={styles.appCardAccentBar} />
+
+            {/* Header with Loan Icon & Live Badge */}
             <View style={styles.appCardHeader}>
-              <View>
-                <Text style={styles.appName}>{activeApp.loanTypeName}</Text>
-                <Text style={styles.appId}>{activeApp.id}</Text>
+              <View style={styles.appTitleLeft}>
+                <View style={styles.appLoanIconTile}>
+                  <MaterialCommunityIcons name="file-document-check" size={20} color="#ffffff" />
+                </View>
+                <View>
+                  <Text style={styles.appName}>{activeApp.loanTypeName}</Text>
+                  <View style={styles.appIdBadge}>
+                    <Text style={styles.appIdText}>{activeApp.id}</Text>
+                  </View>
+                </View>
               </View>
+
               <View style={styles.statusBadge}>
+                <View style={styles.statusBlinkDot} />
                 <Text style={styles.statusBadgeText}>{activeApp.status}</Text>
               </View>
             </View>
 
-            <View style={styles.appDivider} />
-
+            {/* Middle Stats Card Tile */}
             <View style={styles.appDetailsRow}>
-              <View>
-                <Text style={styles.appDetailLabel}>Amount</Text>
+              <View style={styles.appMetricCol}>
+                <Text style={styles.appDetailLabel}>SANCTION AMOUNT</Text>
                 <Text style={styles.appDetailValue}>{formatINR(activeApp.requestedAmount)}</Text>
               </View>
-              <View>
-                <Text style={styles.appDetailLabel}>Tenure</Text>
+              <View style={styles.appMetricDivider} />
+              <View style={styles.appMetricCol}>
+                <Text style={styles.appDetailLabel}>LOAN TENURE</Text>
                 <Text style={styles.appDetailValue}>{activeApp.tenureMonths} Months</Text>
               </View>
-              <View style={styles.appDetailAction}>
-                <Text style={styles.trackText}>Details</Text>
-                <Ionicons name="chevron-forward" size={14} color={colors.primary} />
+            </View>
+
+            {/* Next Action Box */}
+            <View style={styles.appNextActionBox}>
+              <MaterialCommunityIcons name="clock-fast" size={15} color="#008ecc" />
+              <Text style={styles.appNextActionText} numberOfLines={1}>
+                {activeApp.nextAction || 'Under bank credit evaluation'}
+              </Text>
+              <View style={styles.appDetailActionPill}>
+                <Text style={styles.trackText}>Track</Text>
+                <Ionicons name="arrow-forward" size={11} color="#ffffff" />
               </View>
             </View>
           </TouchableOpacity>
@@ -165,15 +219,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         activeOpacity={0.8}
       >
         <View style={styles.referralIconBox}>
-          <Ionicons name="gift" size={20} color="#b45309" />
+          <FontAwesome5 name="gift" size={19} color="#ffffff" />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.referralBannerTitle}>Refer Friends & Earn Cash</Text>
           <Text style={styles.referralBannerSub}>Get up to ₹2,000 per successful disbursement</Text>
         </View>
         <View style={styles.referralPill}>
+          <MaterialCommunityIcons name="send-circle" size={17} color="#ffffff" />
           <Text style={styles.referralPillText}>Invite</Text>
-          <Ionicons name="chevron-forward" size={12} color="#b45309" />
         </View>
       </TouchableOpacity>
 
@@ -218,18 +272,22 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <TouchableOpacity
             style={styles.supportCallBtn}
             onPress={onOpenCall}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
           >
-            <Ionicons name="call" size={15} color={colors.white} />
+            <View style={styles.supportIconCircle}>
+              <Ionicons name="call" size={15} color="#008ecc" />
+            </View>
             <Text style={styles.supportBtnText}>Call Branch</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.supportWaBtn}
             onPress={onOpenWhatsApp}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
           >
-            <Ionicons name="logo-whatsapp" size={15} color={colors.white} />
+            <View style={styles.supportIconCircle}>
+              <Ionicons name="logo-whatsapp" size={16} color="#16a34a" />
+            </View>
             <Text style={styles.supportBtnText}>WhatsApp</Text>
           </TouchableOpacity>
         </View>
@@ -269,50 +327,151 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   cibilPill: {
-    backgroundColor: colors.primaryLight,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ecfdf5', // Soft Healthy Green Tint
     paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.primaryBorder,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#a7f3d0',
+    gap: 7,
+    shadowColor: '#16a34a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  cibilText: {
-    fontSize: 11,
+  cibilIconDot: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#059669',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  cibilScoreText: {
+    fontSize: 10.5,
     fontWeight: '700',
-    color: colors.primaryDark,
+    color: '#065f46',
+    letterSpacing: 0.3,
+  },
+  cibilScoreNum: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#15803d',
+  },
+  cibilRatingText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#16a34a',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
   },
   applyNowBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.primary,
-    borderRadius: 10,
-    padding: 12,
-    marginTop: 4,
+    backgroundColor: '#075665', // Deep Logo Petrol / Banking Teal
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginTop: 6,
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#075665',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  bannerOrbTop: {
+    position: 'absolute',
+    top: -30,
+    right: -20,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#008ecc', // Vivid Logo Cyan Glow
+    opacity: 0.35,
+  },
+  bannerOrbBottom: {
+    position: 'absolute',
+    bottom: -40,
+    left: '25%',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#2d3091', // Royal Navy Glow
+    opacity: 0.28,
+  },
+  bannerLeftContent: {
+    flex: 1,
+    marginRight: 10,
+    zIndex: 2,
+  },
+  bannerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginBottom: 6,
+    gap: 4,
+  },
+  bannerBadgeText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#ffffff',
+    letterSpacing: 0.6,
   },
   bannerTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.white,
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#ffffff',
+    letterSpacing: -0.3,
   },
   bannerSub: {
     fontSize: 11,
-    color: '#dbeafe',
-    marginTop: 1,
+    color: '#e6f6fc',
+    marginTop: 3,
+    lineHeight: 15,
   },
   bannerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
-    gap: 4,
+    backgroundColor: '#ffffff',
+    paddingLeft: 12,
+    paddingRight: 6,
+    paddingVertical: 8,
+    borderRadius: 22,
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 2,
   },
   bannerBtnText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: colors.white,
+    fontWeight: '800',
+    color: '#075665', // Deep Petrol text
+  },
+  bannerBtnArrowCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#e6f6fc',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   section: {
     marginBottom: 16,
@@ -349,88 +508,214 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   actionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  actionIconApply: {
+    backgroundColor: '#008ecc', // Vivid Logo Sky Cyan
+    shadowColor: '#008ecc',
+  },
+  actionIconEmi: {
+    backgroundColor: '#2d3091', // Rich Logo Indigo Navy
+    shadowColor: '#2d3091',
+  },
+  actionIconElig: {
+    backgroundColor: '#16a34a', // Vivid Green
+    shadowColor: '#16a34a',
+  },
+  actionIconTrack: {
+    backgroundColor: '#ee1c25', // Vivid Logo Crimson Red
+    shadowColor: '#ee1c25',
   },
   actionLabel: {
     fontSize: 11,
     fontWeight: '600',
     color: colors.text,
   },
+  sectionTitleWithDot: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  liveIndicatorDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#16a34a',
+  },
   appCard: {
     backgroundColor: colors.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    padding: 16,
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#2d3091',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  appCardAccentBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 4,
+    backgroundColor: '#008ecc', // Vivid Brand Sky Cyan Accent Bar
   },
   appCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 12,
+  },
+  appTitleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  appLoanIconTile: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#2d3091', // Solid Logo Royal Indigo
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#2d3091',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 2,
   },
   appName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.text,
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0f172a',
+    letterSpacing: -0.2,
   },
-  appId: {
-    fontSize: 11,
-    color: colors.textMuted,
-    marginTop: 1,
+  appIdBadge: {
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+    marginTop: 2,
+  },
+  appIdText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748b',
+    letterSpacing: 0.3,
   },
   statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#ecfdf5',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 5,
+  },
+  statusBlinkDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#16a34a',
   },
   statusBadgeText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#065f46',
-  },
-  appDivider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: 10,
   },
   appDetailsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     alignItems: 'center',
+    justifyContent: 'space-around',
+    marginBottom: 10,
+  },
+  appMetricCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  appMetricDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: '#cbd5e1',
   },
   appDetailLabel: {
-    fontSize: 10,
-    color: colors.textMuted,
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: '#64748b',
+    letterSpacing: 0.6,
   },
   appDetailValue: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.text,
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#0f172a',
     marginTop: 2,
   },
-  appDetailAction: {
+  appNextActionBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    backgroundColor: '#e6f6fc', // Soft Logo Sky Cyan Tint
+    borderRadius: 10,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    gap: 7,
+  },
+  appNextActionText: {
+    flex: 1,
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#016f9f',
+  },
+  appDetailActionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#008ecc', // Vivid Logo Cyan Blue
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 3,
+    shadowColor: '#008ecc',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
   trackText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.primary,
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#ffffff',
   },
   productsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    justifyContent: 'space-between',
+    rowGap: 12,
   },
   productCard: {
-    width: '48.3%',
+    width: '48.2%',
     backgroundColor: colors.white,
     borderRadius: 12,
     borderWidth: 1,
@@ -468,47 +753,60 @@ const styles = StyleSheet.create({
   referralBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fffbeb',
-    borderWidth: 1,
+    backgroundColor: '#fffdf5',
+    borderWidth: 1.5,
     borderColor: '#fde68a',
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 12,
     marginBottom: 16,
-    gap: 10,
+    gap: 12,
+    shadowColor: '#d97706',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 2,
   },
   referralIconBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 8,
-    backgroundColor: '#fef3c7',
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#d97706', // Solid Prosperity Amber Gold
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#d97706',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
   },
   referralBannerTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#92400e',
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: '#78350f',
   },
   referralBannerSub: {
     fontSize: 11,
-    color: '#b45309',
+    color: '#92400e',
     marginTop: 2,
   },
   referralPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
-    backgroundColor: colors.white,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#fde68a',
+    gap: 4,
+    backgroundColor: '#008ecc', // Vivid Logo Cyan Blue Fill
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
+    shadowColor: '#008ecc',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.22,
+    shadowRadius: 3,
+    elevation: 2,
   },
   referralPillText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#92400e',
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: '#ffffff',
   },
   supportBox: {
     backgroundColor: colors.white,
@@ -538,24 +836,42 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primary,
-    paddingVertical: 9,
-    borderRadius: 8,
-    gap: 6,
+    backgroundColor: '#008ecc', // Logo Vivid Sky Cyan
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 8,
+    shadowColor: '#008ecc',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
   },
   supportWaBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#059669',
-    paddingVertical: 9,
-    borderRadius: 8,
-    gap: 6,
+    backgroundColor: '#16a34a', // Official WhatsApp Green
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 8,
+    shadowColor: '#16a34a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  supportIconCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   supportBtnText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.white,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#ffffff',
   },
 });

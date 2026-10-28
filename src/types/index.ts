@@ -17,7 +17,7 @@ export type ApplicationStatus =
   | 'Enquiry Received'
   | 'Documents Pending'
   | 'Application Submitted'
-  | 'Under Bank Processing'
+  | 'Processing'
   | 'Approved'
   | 'Disbursed'
   | 'Rejected';

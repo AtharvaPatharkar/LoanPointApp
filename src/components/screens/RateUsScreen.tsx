@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.white,
-    borderRadius: 16,
+    borderRadius: 0,
     borderWidth: 1,
     borderColor: colors.border,
     padding: 14,
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
   },
   reviewHeroDesc: {
     fontSize: 11,
-    color: '#dbeafe',
+    color: 'colors.primaryLight',
     lineHeight: 16,
   },
   googleReviewBtn: {

@@ -296,7 +296,7 @@ export const INITIAL_APPLICATIONS: LoanApplication[] = [
     requestedAmount: 3500000,
     tenureMonths: 240,
     submissionDate: '12 Oct 2026',
-    status: 'Under Bank Processing',
+    status: 'Processing',
     statusUpdatedDate: '21 Oct 2026',
     assignedManager: {
       name: 'Arvind Patil',

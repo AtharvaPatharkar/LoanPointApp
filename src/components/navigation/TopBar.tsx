@@ -38,11 +38,13 @@ export const TopBar: React.FC<TopBarProps> = ({
             <Ionicons name="arrow-back" size={22} color={colors.text} />
           </TouchableOpacity>
         ) : (
-          <Image
-            source={require('../../../assets/loan-point-logo.png')}
-            style={styles.simpleLogo}
-            resizeMode="contain"
-          />
+          <View style={styles.logoBadgeContainer}>
+            <Image
+              source={require('../../../assets/loan-point-logo.png')}
+              style={styles.simpleLogo}
+              resizeMode="contain"
+            />
+          </View>
         )}
 
         <View style={styles.titleContainer}>
@@ -62,23 +64,27 @@ export const TopBar: React.FC<TopBarProps> = ({
         {onOpenNotifications && (
           <TouchableOpacity
             onPress={onOpenNotifications}
-            style={styles.iconBtn}
+            style={[styles.iconBtn, styles.notifBtn]}
             accessibilityLabel="Notifications"
-            activeOpacity={0.7}
+            activeOpacity={0.75}
           >
-            <Ionicons name="notifications-outline" size={22} color={colors.text} />
-            {unreadCount > 0 && <View style={styles.badgeDot} />}
+            <Ionicons name="notifications" size={20} color="#d97706" />
+            {unreadCount > 0 && (
+              <View style={styles.badgeCountPill}>
+                <Text style={styles.badgeCountText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         )}
 
         {onOpenSupport && (
           <TouchableOpacity
             onPress={onOpenSupport}
-            style={styles.iconBtn}
+            style={[styles.iconBtn, styles.callBtn]}
             accessibilityLabel="Call Support"
-            activeOpacity={0.7}
+            activeOpacity={0.75}
           >
-            <Ionicons name="call-outline" size={20} color={colors.primary} />
+            <Ionicons name="call" size={18} color="#008ecc" />
           </TouchableOpacity>
         )}
       </View>
@@ -117,10 +123,26 @@ const styles = StyleSheet.create({
     marginRight: 8,
     marginLeft: -4,
   },
-  simpleLogo: {
-    width: 38,
-    height: 38,
+  logoBadgeContainer: {
+    width: 48,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  simpleLogo: {
+    width: '100%',
+    height: '100%',
   },
   titleContainer: {
     flex: 1,
@@ -146,18 +168,34 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surfaceSubtle,
     position: 'relative',
+    borderWidth: 1,
   },
-  badgeDot: {
+  notifBtn: {
+    backgroundColor: '#fef3c7', // Warm Amber Gold Tint
+    borderColor: '#fde68a',
+  },
+  callBtn: {
+    backgroundColor: '#e6f6fc', // Logo Sky Cyan Tint
+    borderColor: '#bae6f7',
+  },
+  badgeCountPill: {
     position: 'absolute',
-    top: 7,
-    right: 7,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.danger,
+    top: -3,
+    right: -3,
+    minWidth: 17,
+    height: 17,
+    borderRadius: 8.5,
+    backgroundColor: '#ee1c25', // Logo Crimson Red
     borderWidth: 1.5,
-    borderColor: colors.white,
+    borderColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 2,
+  },
+  badgeCountText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#ffffff',
   },
 });

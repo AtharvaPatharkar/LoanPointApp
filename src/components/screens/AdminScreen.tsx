@@ -26,7 +26,7 @@ const ALL_STATUSES: ApplicationStatus[] = [
   'Enquiry Received',
   'Documents Pending',
   'Application Submitted',
-  'Under Bank Processing',
+  'Processing',
   'Approved',
   'Disbursed',
   'Rejected',
@@ -126,11 +126,17 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
   const getStatusBadgeStyle = (status: ApplicationStatus) => {
     switch (status) {
       case 'Approved':
+        // Green: Approved
+        return { bg: '#ecfdf5', text: '#15803d', border: '#86efac' };
       case 'Disbursed':
-        return { bg: '#dcfce7', text: '#15803d', border: '#86efac' };
+        // Red: Disbursed
+        return { bg: '#fee2e2', text: '#dc2626', border: '#fca5a5' };
+      case 'Processing':
+        // Distinct Indigo/Navy: Processing (without bank name)
+        return { bg: '#eef0fa', text: '#2d3091', border: '#c7d2fe' };
       case 'Rejected':
-        return { bg: '#fee2e2', text: '#b91c1c', border: '#fca5a5' };
-      case 'Under Bank Processing':
+        return { bg: '#fef2f2', text: '#991b1b', border: '#fecaca' };
+      case 'Application Submitted':
         return { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' };
       case 'Documents Pending':
         return { bg: '#fef3c7', text: '#b45309', border: '#fde68a' };
@@ -155,7 +161,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                 onPress={onSwitchToCustomerView}
                 activeOpacity={0.7}
               >
-                <Ionicons name="person-outline" size={14} color="#2563eb" />
+                <Ionicons name="person-outline" size={14} color={colors.primary} />
                 <Text style={styles.switchModeText}>Customer View</Text>
               </TouchableOpacity>
             )}
@@ -175,19 +181,19 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* KPI / Analytics Cards */}
         <View style={styles.statsRow}>
-          <View style={[styles.statCard, { borderLeftColor: '#2563eb' }]}>
+          <View style={[styles.statCard, { borderLeftColor: colors.primary }]}>
             <Text style={styles.statLabel}>Total Apps</Text>
             <Text style={styles.statValue}>{applications.length}</Text>
             <Text style={styles.statSub}>₹{(totalVolume / 100000).toFixed(1)}L Requested</Text>
           </View>
-          <View style={[styles.statCard, { borderLeftColor: '#059669' }]}>
+          <View style={[styles.statCard, { borderLeftColor: colors.success }]}>
             <Text style={styles.statLabel}>Sanctioned</Text>
-            <Text style={[styles.statValue, { color: '#059669' }]}>{approvedCount}</Text>
+            <Text style={[styles.statValue, { color: colors.success }]}>{approvedCount}</Text>
             <Text style={styles.statSub}>Approved / Disbursed</Text>
           </View>
-          <View style={[styles.statCard, { borderLeftColor: '#d97706' }]}>
+          <View style={[styles.statCard, { borderLeftColor: colors.secondaryRed }]}>
             <Text style={styles.statLabel}>Action Req.</Text>
-            <Text style={[styles.statValue, { color: '#d97706' }]}>{pendingCount}</Text>
+            <Text style={[styles.statValue, { color: colors.secondaryRed }]}>{pendingCount}</Text>
             <Text style={styles.statSub}>Pending / Review</Text>
           </View>
         </View>
@@ -243,7 +249,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
             Loan Applications ({filteredApps.length})
           </Text>
           <TouchableOpacity onPress={refreshList} style={styles.refreshBtn}>
-            <Ionicons name="reload" size={13} color="#2563eb" />
+            <Ionicons name="reload" size={13} color={colors.primary} />
             <Text style={styles.refreshBtnText}>Refresh</Text>
           </TouchableOpacity>
         </View>
@@ -486,7 +492,7 @@ const styles = StyleSheet.create({
   adminBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.indigoNavy,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
@@ -506,14 +512,14 @@ const styles = StyleSheet.create({
   switchModeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 8,
     gap: 4,
   },
   switchModeText: {
-    color: '#2563eb',
+    color: colors.primary,
     fontSize: 11.5,
     fontWeight: '700',
   },
@@ -553,7 +559,7 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     backgroundColor: '#ffffff',
-    borderRadius: 12,
+    borderRadius: 0,
     padding: 12,
     borderWidth: 1,
     borderColor: '#e2e8f0',
@@ -606,8 +612,8 @@ const styles = StyleSheet.create({
     borderColor: '#cbd5e1',
   },
   filterChipActive: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   filterChipText: {
     fontSize: 12,
@@ -637,7 +643,7 @@ const styles = StyleSheet.create({
   },
   refreshBtnText: {
     fontSize: 12,
-    color: '#2563eb',
+    color: colors.primary,
     fontWeight: '600',
   },
   emptyState: {
@@ -662,7 +668,7 @@ const styles = StyleSheet.create({
   },
   appCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 14,
+    borderRadius: 0,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     padding: 14,
@@ -736,7 +742,7 @@ const styles = StyleSheet.create({
   detailAmount: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#2563eb',
+    color: colors.primaryDeep,
     marginTop: 2,
   },
   detailValue: {
@@ -793,7 +799,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
     paddingVertical: 8,
     borderRadius: 8,
     gap: 6,
@@ -875,8 +881,8 @@ const styles = StyleSheet.create({
     borderColor: '#cbd5e1',
   },
   statusOptionPillActive: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   statusOptionText: {
     fontSize: 11,

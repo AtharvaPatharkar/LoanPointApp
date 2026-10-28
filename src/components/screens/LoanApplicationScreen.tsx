@@ -527,7 +527,7 @@ export const LoanApplicationScreen: React.FC<LoanApplicationScreenProps> = ({
                 onValueChange={handleAmountSlider}
                 minLabel={formatINR(selectedCat.minAmount)}
                 maxLabel={formatINR(selectedCat.maxAmount)}
-                accentColor="#2563eb"
+                accentColor="colors.primary"
               />
             </View>
 
@@ -775,7 +775,7 @@ export const LoanApplicationScreen: React.FC<LoanApplicationScreenProps> = ({
 
                 <View style={[styles.modernInputGroup, isStep1Valid && styles.modernInputGroupValid]}>
                   <View style={styles.modernInputIconWrap}>
-                    <Ionicons name="person-outline" size={20} color={isStep1Valid ? '#2563eb' : '#94a3b8'} />
+                    <Ionicons name="person-outline" size={20} color={isStep1Valid ? 'colors.primary' : '#94a3b8'} />
                   </View>
                   <TextInput
                     style={styles.modernTextInput}
@@ -975,7 +975,7 @@ export const LoanApplicationScreen: React.FC<LoanApplicationScreenProps> = ({
                           : 'apps'
                       }
                       size={20}
-                      color="#2563eb"
+                      color="colors.primary"
                       style={{ marginRight: 10 }}
                     />
                     <View>
@@ -996,7 +996,7 @@ export const LoanApplicationScreen: React.FC<LoanApplicationScreenProps> = ({
                   <Ionicons
                     name={showEmploymentDropdown ? 'chevron-up' : 'chevron-down'}
                     size={20}
-                    color="#2563eb"
+                    color="colors.primary"
                   />
                 </TouchableOpacity>
 
@@ -1087,7 +1087,7 @@ export const LoanApplicationScreen: React.FC<LoanApplicationScreenProps> = ({
                     <Ionicons
                       name="location"
                       size={20}
-                      color={isCityWrong ? '#dc2626' : isStep5Valid ? '#2563eb' : '#94a3b8'}
+                      color={isCityWrong ? '#dc2626' : isStep5Valid ? 'colors.primary' : '#94a3b8'}
                     />
                   </View>
                   <TextInput
@@ -1130,7 +1130,7 @@ export const LoanApplicationScreen: React.FC<LoanApplicationScreenProps> = ({
                     <Ionicons
                       name={showCityPicker ? 'chevron-up' : 'chevron-down'}
                       size={14}
-                      color={isCityWrong ? '#dc2626' : '#2563eb'}
+                      color={isCityWrong ? '#dc2626' : 'colors.primary'}
                     />
                   </TouchableOpacity>
                 </View>
@@ -1160,7 +1160,7 @@ export const LoanApplicationScreen: React.FC<LoanApplicationScreenProps> = ({
                         }}
                         activeOpacity={0.7}
                       >
-                        <Ionicons name="location-outline" size={15} color="#2563eb" style={{ marginRight: 8 }} />
+                        <Ionicons name="location-outline" size={15} color="colors.primary" style={{ marginRight: 8 }} />
                         <View style={{ flex: 1 }}>
                           <Text style={styles.autoSuggestCityName}>
                             {item.city}
@@ -1183,7 +1183,7 @@ export const LoanApplicationScreen: React.FC<LoanApplicationScreenProps> = ({
                       <Text style={styles.cityDropdownTitle}>
                         All India Cities & Districts ({allIndiaCities.length} available)
                       </Text>
-                      {isCitiesLoading && <ActivityIndicator size="small" color="#2563eb" />}
+                      {isCitiesLoading && <ActivityIndicator size="small" color="colors.primary" />}
                     </View>
 
                     {/* Quick Search inside picker */}
@@ -1228,7 +1228,7 @@ export const LoanApplicationScreen: React.FC<LoanApplicationScreenProps> = ({
                                 <Text style={styles.cityOptionState}>{item.state}</Text>
                               </View>
                               {isPicked && (
-                                <Ionicons name="checkmark-circle" size={16} color="#2563eb" />
+                                <Ionicons name="checkmark-circle" size={16} color="colors.primary" />
                               )}
                             </TouchableOpacity>
                           );
@@ -1409,7 +1409,7 @@ export const LoanApplicationScreen: React.FC<LoanApplicationScreenProps> = ({
                       onPress={() => setShowReviewModal(true)}
                       activeOpacity={0.85}
                     >
-                      <Ionicons name="eye-outline" size={18} color="#1e3a8a" />
+                      <Ionicons name="eye-outline" size={18} color="colors.cardNavyFrom" />
                       <Text style={styles.reviewStepBtnText}>Review Application</Text>
                     </TouchableOpacity>
                   )}
@@ -1420,7 +1420,7 @@ export const LoanApplicationScreen: React.FC<LoanApplicationScreenProps> = ({
                   <View style={styles.reviewCardContainer}>
                     <View style={styles.reviewCardHeader}>
                       <View style={styles.reviewHeaderIcon}>
-                        <Ionicons name="document-text" size={18} color="#2563eb" />
+                        <Ionicons name="document-text" size={18} color="colors.primary" />
                       </View>
                       <View style={styles.reviewHeaderTextWrap}>
                         <Text style={styles.reviewCardTitle}>Review Details (Read-Only)</Text>
@@ -1441,7 +1441,7 @@ export const LoanApplicationScreen: React.FC<LoanApplicationScreenProps> = ({
                       </View>
                       <View style={styles.reviewItem}>
                         <Text style={styles.reviewItemLabel}>Requested Amount</Text>
-                        <Text style={[styles.reviewItemValue, { color: '#2563eb' }]}>{formatINR(amount)}</Text>
+                        <Text style={[styles.reviewItemValue, { color: 'colors.primary' }]}>{formatINR(amount)}</Text>
                       </View>
                       <View style={styles.reviewItem}>
                         <Text style={styles.reviewItemLabel}>Tenure Period</Text>
@@ -1554,13 +1554,13 @@ const styles = StyleSheet.create({
   },
   // HERO CARD
   heroCard: {
-    backgroundColor: '#1e3a8a',
-    borderRadius: 20,
+    backgroundColor: 'colors.cardNavyFrom',
+    borderRadius: 0,
     padding: 20,
     marginBottom: 16,
     position: 'relative',
     overflow: 'hidden',
-    shadowColor: '#1e3a8a',
+    shadowColor: 'colors.cardNavyFrom',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 14,
@@ -1628,7 +1628,7 @@ const styles = StyleSheet.create({
   heroEmiUnit: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#93c5fd',
+    color: 'colors.primaryBorder',
   },
   heroDetailsPill: {
     flexDirection: 'row',
@@ -1669,7 +1669,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 12,
-    backgroundColor: '#eff6ff',
+    backgroundColor: 'colors.primaryLight',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1704,9 +1704,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   catCardActive: {
-    backgroundColor: '#eff6ff',
-    borderColor: '#2563eb',
-    shadowColor: '#2563eb',
+    backgroundColor: 'colors.primaryLight',
+    borderColor: 'colors.primary',
+    shadowColor: 'colors.primary',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.15,
     shadowRadius: 6,
@@ -1724,8 +1724,8 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
   },
   catIconCircleActive: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
+    backgroundColor: 'colors.primary',
+    borderColor: 'colors.primary',
   },
   catTitle: {
     fontSize: 12,
@@ -1735,7 +1735,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   catTitleActive: {
-    color: '#1d4ed8',
+    color: 'colors.primaryDark',
   },
   catLimitPill: {
     backgroundColor: '#e2e8f0',
@@ -1744,7 +1744,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   catLimitPillActive: {
-    backgroundColor: '#bfdbfe',
+    backgroundColor: 'colors.primaryBorder',
   },
   catLimitText: {
     fontSize: 10,
@@ -1752,7 +1752,7 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
   catLimitTextActive: {
-    color: '#1e40af',
+    color: 'colors.indigoNavy',
   },
 
   // CONTROLS & STYLISH INPUT BOX
@@ -1793,7 +1793,7 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   currencyBadge: {
-    backgroundColor: '#eff6ff',
+    backgroundColor: 'colors.primaryLight',
     paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: 6,
@@ -1802,7 +1802,7 @@ const styles = StyleSheet.create({
   currencyBadgeText: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#2563eb',
+    color: 'colors.primary',
   },
   stylishTextInput: {
     fontSize: 16,
@@ -1834,8 +1834,8 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
   },
   pillChipActiveBlue: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
+    backgroundColor: 'colors.primary',
+    borderColor: 'colors.primary',
   },
   pillChipActiveGreen: {
     backgroundColor: '#16a34a',
@@ -1910,9 +1910,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   stepperCircleCurrent: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
-    shadowColor: '#2563eb',
+    backgroundColor: 'colors.primary',
+    borderColor: 'colors.primary',
+    shadowColor: 'colors.primary',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -2005,7 +2005,7 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   modernInputGroupValid: {
-    borderColor: '#2563eb',
+    borderColor: 'colors.primary',
     backgroundColor: '#ffffff',
   },
   modernInputIconWrap: {
@@ -2049,7 +2049,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   dropdownSelectBoxActive: {
-    borderColor: '#2563eb',
+    borderColor: 'colors.primary',
     backgroundColor: '#f8faff',
   },
   dropdownLeftWrap: {
@@ -2071,10 +2071,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: '#bfdbfe',
+    borderColor: 'colors.primaryBorder',
     marginBottom: 14,
     overflow: 'hidden',
-    shadowColor: '#2563eb',
+    shadowColor: 'colors.primary',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
@@ -2089,25 +2089,25 @@ const styles = StyleSheet.create({
     borderBottomColor: '#f1f5f9',
   },
   dropdownOptionItemActive: {
-    backgroundColor: '#eff6ff',
+    backgroundColor: 'colors.primaryLight',
   },
 
   // CITY DROPDOWN STYLES
   cityDropdownTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#eff6ff',
+    backgroundColor: 'colors.primaryLight',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
     gap: 4,
     borderWidth: 1,
-    borderColor: '#bfdbfe',
+    borderColor: 'colors.primaryBorder',
   },
   cityDropdownTriggerText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#2563eb',
+    color: 'colors.primary',
   },
   modernInputGroupError: {
     borderColor: '#ef4444',
@@ -2141,11 +2141,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: '#93c5fd',
+    borderColor: 'colors.primaryBorder',
     marginTop: 8,
     marginBottom: 10,
     overflow: 'hidden',
-    shadowColor: '#1d4ed8',
+    shadowColor: 'colors.primaryDark',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.12,
     shadowRadius: 6,
@@ -2155,16 +2155,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#eff6ff',
+    backgroundColor: 'colors.primaryLight',
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderBottomWidth: 1,
-    borderBottomColor: '#dbeafe',
+    borderBottomColor: 'colors.primaryLight',
   },
   autoSuggestHeaderText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#1d4ed8',
+    color: 'colors.primaryDark',
   },
   autoSuggestItem: {
     flexDirection: 'row',
@@ -2197,10 +2197,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: '#bfdbfe',
+    borderColor: 'colors.primaryBorder',
     marginBottom: 14,
     overflow: 'hidden',
-    shadowColor: '#2563eb',
+    shadowColor: 'colors.primary',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
@@ -2255,7 +2255,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#f1f5f9',
   },
   cityOptionRowActive: {
-    backgroundColor: '#eff6ff',
+    backgroundColor: 'colors.primaryLight',
   },
   cityOptionTextWrap: {
     flex: 1,
@@ -2266,7 +2266,7 @@ const styles = StyleSheet.create({
     color: '#334155',
   },
   cityOptionTextActive: {
-    color: '#1d4ed8',
+    color: 'colors.primaryDark',
     fontWeight: '800',
   },
   cityOptionState: {
@@ -2295,12 +2295,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2563eb',
+    backgroundColor: 'colors.primary',
     borderRadius: 14,
     paddingVertical: 14,
     gap: 8,
     marginTop: 6,
-    shadowColor: '#2563eb',
+    shadowColor: 'colors.primary',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.28,
     shadowRadius: 8,
@@ -2311,11 +2311,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2563eb',
+    backgroundColor: 'colors.primary',
     borderRadius: 14,
     paddingVertical: 14,
     gap: 8,
-    shadowColor: '#2563eb',
+    shadowColor: 'colors.primary',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.28,
     shadowRadius: 8,
@@ -2355,7 +2355,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#eff6ff',
+    backgroundColor: 'colors.primaryLight',
     borderWidth: 1.5,
     borderColor: '#3b82f6',
     borderRadius: 14,
@@ -2370,7 +2370,7 @@ const styles = StyleSheet.create({
   reviewStepBtnText: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#1d4ed8',
+    color: 'colors.primaryDark',
   },
 
   // READ-ONLY REVIEW SUMMARY CARD
@@ -2378,10 +2378,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: '#bfdbfe',
+    borderColor: 'colors.primaryBorder',
     marginTop: 16,
     padding: 16,
-    shadowColor: '#2563eb',
+    shadowColor: 'colors.primary',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -2399,7 +2399,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: '#dbeafe',
+    backgroundColor: 'colors.primaryLight',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
@@ -2464,8 +2464,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   employmentCardActive: {
-    backgroundColor: '#eff6ff',
-    borderColor: '#2563eb',
+    backgroundColor: 'colors.primaryLight',
+    borderColor: 'colors.primary',
   },
   empIconWrap: {
     width: 36,
@@ -2476,7 +2476,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   empIconWrapActive: {
-    backgroundColor: '#2563eb',
+    backgroundColor: 'colors.primary',
   },
   empTextGroup: {
     flex: 1,
@@ -2487,7 +2487,7 @@ const styles = StyleSheet.create({
     color: '#0f172a',
   },
   empTitleActive: {
-    color: '#1d4ed8',
+    color: 'colors.primaryDark',
   },
   empDesc: {
     fontSize: 11,
@@ -2504,8 +2504,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   empCheckActive: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
+    backgroundColor: 'colors.primary',
+    borderColor: 'colors.primary',
   },
 
   // OPTIONAL FIELDS

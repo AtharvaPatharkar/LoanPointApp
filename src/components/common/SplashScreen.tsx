@@ -383,15 +383,15 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
           ]}
         >
           <View style={styles.featurePill}>
-            <Ionicons name="flash" size={13} color="#2563eb" />
+            <Ionicons name="flash" size={13} color={colors.secondaryRed} />
             <Text style={styles.featurePillText}>Instant Approval</Text>
           </View>
           <View style={styles.featurePill}>
-            <Ionicons name="trending-down" size={13} color="#059669" />
+            <Ionicons name="trending-down" size={13} color={colors.primary} />
             <Text style={styles.featurePillText}>Lowest Rates</Text>
           </View>
           <View style={styles.featurePill}>
-            <Ionicons name="shield-checkmark" size={13} color="#d97706" />
+            <Ionicons name="shield-checkmark" size={13} color={colors.indigoNavy} />
             <Text style={styles.featurePillText}>100% Safe</Text>
           </View>
         </Animated.View>
@@ -439,8 +439,8 @@ const styles = StyleSheet.create({
     width: 320,
     height: 320,
     borderRadius: 160,
-    backgroundColor: '#dbeafe', // soft blue
-    opacity: 0.7,
+    backgroundColor: '#e6f6fc', // soft brand cyan
+    opacity: 0.8,
   },
   glowOrb2: {
     position: 'absolute',
@@ -449,7 +449,7 @@ const styles = StyleSheet.create({
     width: 290,
     height: 290,
     borderRadius: 145,
-    backgroundColor: '#e0e7ff', // soft indigo
+    backgroundColor: '#fef2f2', // soft logo crimson
     opacity: 0.6,
   },
   glowOrb3: {
@@ -459,8 +459,8 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: '#fef3c7', // gentle warm amber tint
-    opacity: 0.45,
+    backgroundColor: '#eef0fa', // gentle logo indigo navy
+    opacity: 0.5,
   },
   centerContent: {
     alignItems: 'center',
@@ -476,10 +476,10 @@ const styles = StyleSheet.create({
   logoRingWrapper: {
     padding: 6,
     borderRadius: 26,
-    backgroundColor: 'rgba(239, 246, 255, 0.7)',
-    shadowColor: '#2563eb',
+    backgroundColor: 'rgba(230, 246, 252, 0.8)',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.14,
     shadowRadius: 20,
     elevation: 8,
   },
@@ -511,12 +511,12 @@ const styles = StyleSheet.create({
   cityBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: 14,
     paddingVertical: 5,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#bfdbfe',
+    borderColor: colors.primaryBorder,
     marginBottom: 12,
     gap: 6,
   },
@@ -524,12 +524,12 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.secondaryRed,
   },
   cityBadgeText: {
     fontSize: 10.5,
     fontWeight: '800',
-    color: '#1d4ed8',
+    color: colors.primaryDeep,
     letterSpacing: 1.2,
   },
   textBlock: {
@@ -539,12 +539,12 @@ const styles = StyleSheet.create({
   brandTitle: {
     fontSize: 32,
     fontWeight: '900',
-    color: '#0f172a',
+    color: colors.indigoNavyDark,
     letterSpacing: 0.5,
     textAlign: 'center',
   },
   brandTitleHighlight: {
-    color: '#2563eb',
+    color: colors.secondaryRed,
   },
   subtextBlock: {
     alignItems: 'center',
@@ -604,7 +604,7 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
     borderRadius: 3,
   },
   footerRow: {

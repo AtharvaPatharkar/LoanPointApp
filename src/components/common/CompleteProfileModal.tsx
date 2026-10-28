@@ -55,7 +55,7 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
 
           {/* Celebration / Prompt Icon */}
           <View style={styles.iconCircle}>
-            <Ionicons name="person-circle" size={54} color="#2563eb" />
+            <Ionicons name="person-circle" size={54} color="colors.primary" />
           </View>
 
           <Text style={styles.modalTitle}>Complete Your Profile</Text>
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: '#eff6ff',
+    backgroundColor: 'colors.primaryLight',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 4,
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
   progressValueText: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#2563eb',
+    color: 'colors.primary',
   },
   progressBarBg: {
     height: 8,
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#2563eb',
+    backgroundColor: 'colors.primary',
     borderRadius: 4,
   },
   checklistCard: {
@@ -270,11 +270,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2563eb',
+    backgroundColor: 'colors.primary',
     borderRadius: 14,
     paddingVertical: 14,
     gap: 8,
-    shadowColor: '#2563eb',
+    shadowColor: 'colors.primary',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
