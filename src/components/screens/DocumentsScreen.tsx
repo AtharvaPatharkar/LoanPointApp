@@ -26,7 +26,7 @@ export const DocumentsScreen: React.FC<DocumentsScreenProps> = () => {
   const [selectedCategory, setSelectedCategory] = useState<DocumentItem['category']>('Identity Proof');
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const successTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Auto-remove success message after 3.5 seconds
   useEffect(() => {

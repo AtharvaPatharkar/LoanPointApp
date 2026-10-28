@@ -451,6 +451,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
       {/* Logout & Reset Buttons */}
       <View style={styles.actionSection}>
+        {/* Quick Admin Console access for staff / managers */}
+        <TouchableOpacity
+          style={styles.adminAccessBtn}
+          onPress={() => onNavigate('admin')}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="shield-checkmark" size={17} color="#2563eb" />
+          <Text style={styles.adminAccessText}>Loan Point Admin / Staff Console</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.logoutBtn} onPress={onLogout} activeOpacity={0.8}>
           <Ionicons name="log-out-outline" size={18} color={colors.danger} />
           <Text style={styles.logoutText}>Sign Out</Text>
@@ -1145,6 +1155,22 @@ const styles = StyleSheet.create({
   actionSection: {
     marginTop: 8,
     gap: 10,
+  },
+  adminAccessBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  adminAccessText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2563eb',
   },
   logoutBtn: {
     flexDirection: 'row',

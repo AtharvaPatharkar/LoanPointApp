@@ -58,6 +58,8 @@ class LoanService {
       nextAction: 'Loan Point advisor will review and call you within 2-4 business hours for preliminary document verification.',
       remarks: `Online portal enquiry for ${categoryTitle}. Stated monthly income: ₹${params.monthlyIncome.toLocaleString('en-IN')}.`,
       isDemoRecord: true,
+      applicantName: params.applicantName,
+      applicantMobile: params.mobile,
     };
 
     this.applications.unshift(newApp);
@@ -88,6 +90,32 @@ class LoanService {
       status: updatedStatus,
       nextAction: updatedNext,
       statusUpdatedDate: 'Just now',
+    };
+
+    this.applications[index] = updatedApp;
+    return updatedApp;
+  }
+
+  public updateApplicationStatus(
+    appId: string,
+    newStatus: LoanApplication['status'],
+    remarks?: string,
+    nextAction?: string
+  ): LoanApplication {
+    const index = this.applications.findIndex((a) => a.id === appId);
+    if (index === -1) throw new Error('Application not found');
+
+    const app = this.applications[index];
+    const updatedApp: LoanApplication = {
+      ...app,
+      status: newStatus,
+      statusUpdatedDate: new Date().toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      }),
+      remarks: remarks !== undefined ? remarks : app.remarks,
+      nextAction: nextAction !== undefined ? nextAction : app.nextAction,
     };
 
     this.applications[index] = updatedApp;

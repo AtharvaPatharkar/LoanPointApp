@@ -58,6 +58,8 @@ export interface LoanApplication {
   nextAction: string;
   remarks?: string;
   isDemoRecord: boolean;
+  applicantName?: string;
+  applicantMobile?: string;
 }
 
 export interface UserProfile {
@@ -76,6 +78,7 @@ export interface UserProfile {
   memberSince: string;
   referralCode: string;
   referredBy?: string;
+  role?: 'customer' | 'admin';
 }
 
 export interface DocumentItem {

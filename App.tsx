@@ -53,6 +53,7 @@ import { SupportScreen } from './src/components/screens/SupportScreen';
 import { OffersReferralScreen } from './src/components/screens/OffersReferralScreen';
 import { RateUsScreen } from './src/components/screens/RateUsScreen';
 import { ProfileScreen } from './src/components/screens/ProfileScreen';
+import { AdminScreen } from './src/components/screens/AdminScreen';
 import { NotificationCenterModal } from './src/components/screens/NotificationCenterModal';
 import { AuthScreens } from './src/components/auth/AuthScreens';
 import { SplashScreen } from './src/components/common/SplashScreen';
@@ -206,6 +207,8 @@ function MainApp() {
         return 'Offers & Rewards';
       case 'rate_us':
         return 'Rate Us & Feedback';
+      case 'admin':
+        return 'Admin Console';
       default:
         return undefined;
     }
@@ -216,6 +219,14 @@ function MainApp() {
     0
   );
 
+  const handleLogout = () => {
+    authService.logout();
+    setIsAuthenticated(false);
+    setUser(null);
+    setActiveSubScreen(null);
+    setCurrentTab('home');
+  };
+
   return (
     <View style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <StatusBar style="dark" />
@@ -225,12 +236,27 @@ function MainApp() {
           onAuthSuccess={(authedUser) => {
             setUser(authedUser);
             setIsAuthenticated(true);
-            // First time login after OTP verify -> display popup for "Complete Your Profile"
-            setShowCompleteProfileModal(true);
+            // If logged in as admin, navigate directly to admin view
+            if (authedUser.role === 'admin') {
+              setActiveSubScreen('admin');
+              setShowCompleteProfileModal(false);
+            } else {
+              // First time login after OTP verify -> display popup for "Complete Your Profile"
+              setShowCompleteProfileModal(true);
+            }
           }}
           onSkipToDemo={() => {
             setUser(authService.loginDemoUser());
             setIsAuthenticated(true);
+          }}
+        />
+      ) : user?.role === 'admin' && activeSubScreen === 'admin' ? (
+        <AdminScreen
+          currentUser={user}
+          onLogout={handleLogout}
+          onSwitchToCustomerView={() => {
+            setActiveSubScreen(null);
+            setCurrentTab('home');
           }}
         />
       ) : (
@@ -355,6 +381,17 @@ function MainApp() {
             )}
 
             {activeSubScreen === 'rate_us' && <RateUsScreen />}
+
+            {activeSubScreen === 'admin' && (
+              <AdminScreen
+                currentUser={user}
+                onLogout={handleLogout}
+                onSwitchToCustomerView={() => {
+                  setActiveSubScreen(null);
+                  setCurrentTab('home');
+                }}
+              />
+            )}
 
             {/* If no sub-screen is active, render bottom tab destinations */}
             {!activeSubScreen && (

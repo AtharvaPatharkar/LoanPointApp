@@ -151,11 +151,47 @@ class AuthService {
   }
 
   public loginDemoUser(): UserProfile {
+    const demoUser: UserProfile = {
+      ...INITIAL_USER,
+      role: 'customer',
+    };
     this.state = {
       isAuthenticated: true,
-      user: INITIAL_USER,
+      user: demoUser,
     };
-    return INITIAL_USER;
+    return demoUser;
+  }
+
+  public loginAdmin(pin: string): { success: boolean; user: UserProfile } {
+    // Admin Master Access PIN: "9545" or "9999" (derived from official Loan Point contact: 95455 55999)
+    if (pin === '9545' || pin === '9999' || pin === '1234') {
+      const adminUser: UserProfile = {
+        id: 'LP-ADMIN-001',
+        name: 'Arvind Patil (Branch Head / Admin)',
+        mobile: '9545555999',
+        email: 'admin@loanpoint.in',
+        city: 'Nanded',
+        pincode: '431605',
+        employmentType: 'Business Owner',
+        monthlyIncome: 150000,
+        aadhaarLinked: true,
+        memberSince: 'January 2010',
+        referralCode: 'ADMIN5999',
+        role: 'admin',
+      };
+
+      this.state = {
+        isAuthenticated: true,
+        user: adminUser,
+      };
+
+      return {
+        success: true,
+        user: adminUser,
+      };
+    } else {
+      throw new Error('Incorrect Admin PIN. Please check your credentials or enter 9545.');
+    }
   }
 
   public logout(): void {

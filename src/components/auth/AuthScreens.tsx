@@ -22,7 +22,7 @@ interface AuthScreensProps {
   initialReferralCode?: string;
 }
 
-export type AuthMode = 'signup' | 'login' | 'otp';
+export type AuthMode = 'signup' | 'login' | 'otp' | 'admin';
 
 export const AuthScreens: React.FC<AuthScreensProps> = ({
   onAuthSuccess,
@@ -33,12 +33,28 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
   const [authMode, setAuthMode] = useState<AuthMode>('login');
   const [mobileNumber, setMobileNumber] = useState<string>('9545555999');
   const [otpCode, setOtpCode] = useState<string>('123456');
+  const [adminPin, setAdminPin] = useState<string>('9545');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
 
   // Quick mobile validation
   const isMobileValid = mobileNumber.replace(/\D/g, '').length === 10;
+
+  const handleAdminLogin = () => {
+    setErrorMessage(null);
+    if (!adminPin.trim()) {
+      setErrorMessage('Please enter Admin Security PIN');
+      return;
+    }
+
+    try {
+      const res = authService.loginAdmin(adminPin.trim());
+      onAuthSuccess(res.user);
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : 'Invalid Admin PIN');
+    }
+  };
 
   const handleRequestOtp = async () => {
     setErrorMessage(null);
@@ -104,12 +120,67 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
         />
         <Text style={styles.brandTitle}>{COMPANY_INFO.name}</Text>
         <Text style={styles.brandSub}>
-          {authMode === 'login' ? 'Customer Login' : 'Verify OTP'}
+          {authMode === 'login'
+            ? 'Customer Login'
+            : authMode === 'admin'
+            ? 'Admin Portal'
+            : 'Verify OTP'}
         </Text>
         <Text style={styles.brandTagline}>
           Fast, easy & transparent loans in Nanded & Marathwada
         </Text>
       </View>
+
+      {/* Mode Switcher Tabs (Customer Login vs Admin Access) */}
+      {(authMode === 'login' || authMode === 'admin') && (
+        <View style={styles.authTabRow}>
+          <TouchableOpacity
+            style={[styles.authTab, authMode === 'login' && styles.authTabActive]}
+            onPress={() => {
+              setErrorMessage(null);
+              setAuthMode('login');
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name="person"
+              size={15}
+              color={authMode === 'login' ? '#2563eb' : '#64748b'}
+            />
+            <Text
+              style={[
+                styles.authTabText,
+                authMode === 'login' && styles.authTabTextActive,
+              ]}
+            >
+              Customer
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.authTab, authMode === 'admin' && styles.authTabActiveAdmin]}
+            onPress={() => {
+              setErrorMessage(null);
+              setAuthMode('admin');
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name="shield-checkmark"
+              size={15}
+              color={authMode === 'admin' ? '#0f172a' : '#64748b'}
+            />
+            <Text
+              style={[
+                styles.authTabText,
+                authMode === 'admin' && styles.authTabTextActiveAdmin,
+              ]}
+            >
+              Admin / Staff
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* 2. LOGIN SCREEN (NO Referral Code section here - referral is only on Registration) */}
       {authMode === 'login' && (
@@ -199,6 +270,79 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
               <Text style={styles.registerBtnText}>Register New Account</Text>
             </TouchableOpacity>
           </View>
+        </View>
+      )}
+
+      {/* 2B. ADMIN LOGIN SCREEN */}
+      {authMode === 'admin' && (
+        <View style={styles.formCard}>
+          <View style={styles.cardHeader}>
+            <View style={[styles.cardBadge, { backgroundColor: '#f1f5f9' }]}>
+              <Ionicons name="shield-checkmark" size={15} color="#0f172a" />
+              <Text style={[styles.cardBadgeText, { color: '#0f172a' }]}>
+                BRANCH ADMIN & STAFF
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.adminBanner}>
+            <Ionicons name="lock-closed" size={16} color="#2563eb" />
+            <Text style={styles.adminBannerText}>
+              Authorized Loan Point administrators only. Manage applications, sanction status & CRM pipeline.
+            </Text>
+          </View>
+
+          <View style={styles.demoOtpBox}>
+            <Ionicons name="key-outline" size={16} color="#059669" />
+            <Text style={styles.demoOtpText}>
+              Master Admin Access PIN: <Text style={{ fontWeight: '800' }}>9545</Text>
+            </Text>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Admin Access Security PIN</Text>
+            <View style={[styles.inputWrapper, adminPin.length >= 4 && styles.inputWrapperActive]}>
+              <Ionicons name="key" size={18} color="#64748b" style={{ marginRight: 8 }} />
+              <TextInput
+                style={styles.textInput}
+                keyboardType="numeric"
+                secureTextEntry
+                value={adminPin}
+                onChangeText={setAdminPin}
+                maxLength={6}
+                placeholder="Enter 4-digit Admin PIN"
+                placeholderTextColor="#94a3b8"
+              />
+            </View>
+          </View>
+
+          {errorMessage && (
+            <View style={styles.errorBox}>
+              <Ionicons name="alert-circle" size={16} color="#dc2626" />
+              <Text style={styles.errorText}>{errorMessage}</Text>
+            </View>
+          )}
+
+          <TouchableOpacity
+            style={[styles.primaryBtn, { backgroundColor: '#0f172a' }]}
+            onPress={handleAdminLogin}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="shield-checkmark-outline" size={18} color="#ffffff" />
+            <Text style={styles.primaryBtnText}>Access Admin Console</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.resendBtn}
+            onPress={() => {
+              setErrorMessage(null);
+              setAuthMode('login');
+            }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={14} color="#2563eb" />
+            <Text style={styles.resendBtnText}>Back to Customer Login</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -653,5 +797,68 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#64748b',
+  },
+  authTabRow: {
+    flexDirection: 'row',
+    backgroundColor: '#e2e8f0',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+    gap: 4,
+  },
+  authTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 9,
+    borderRadius: 9,
+    gap: 6,
+  },
+  authTabActive: {
+    backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  authTabActiveAdmin: {
+    backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  authTabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  authTabTextActive: {
+    color: '#2563eb',
+    fontWeight: '700',
+  },
+  authTabTextActiveAdmin: {
+    color: '#0f172a',
+    fontWeight: '800',
+  },
+  adminBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#eff6ff',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    marginBottom: 12,
+    gap: 8,
+  },
+  adminBannerText: {
+    flex: 1,
+    fontSize: 11.5,
+    color: '#1e40af',
+    lineHeight: 16,
   },
 });
