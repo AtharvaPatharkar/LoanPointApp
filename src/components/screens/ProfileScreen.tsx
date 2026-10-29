@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   View,
@@ -11,6 +11,8 @@ import {
   ActivityIndicator,
   Keyboard,
   Platform,
+  Animated,
+  Easing,
 } from 'react-native';
 import { Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import { UserProfile, NotificationPreferences } from '../../types';
@@ -170,6 +172,36 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     setPrefs(updated);
   };
 
+  // Micro-animations for Profile:
+  // Interactive Chevron micro-slide on touchable rows
+  const chevronSlideAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Chevron Arrow forward micro bounce
+    const chevronLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(chevronSlideAnim, {
+          toValue: 3.5,
+          duration: 850,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(chevronSlideAnim, {
+          toValue: 0,
+          duration: 850,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    chevronLoop.start();
+
+    return () => {
+      chevronLoop.stop();
+    };
+  }, [chevronSlideAnim]);
+
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
       {/* 1. Profile Summary Spotlight Hero Card */}
@@ -177,16 +209,20 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         <View style={styles.heroGlowCircle} />
 
         <View style={styles.userHeader}>
+          {/* Static Clean Avatar */}
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
               {user?.name ? user.name.slice(0, 2).toUpperCase() : 'CU'}
             </Text>
           </View>
+
           <View style={styles.userInfo}>
+            {/* Verified Borrower Shield Badge */}
             <View style={styles.customerBadge}>
               <View style={styles.customerBadgeDot} />
               <Text style={styles.customerBadgeText}>VERIFIED BORROWER</Text>
             </View>
+
             <Text style={styles.userName}>{user?.name || 'Customer'}</Text>
             <Text style={styles.userMobile}>+91 {user?.mobile || '9545555999'}</Text>
             <Text style={styles.userCity}>
@@ -199,20 +235,26 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         <TouchableOpacity
           style={styles.editProfileBtn}
           onPress={openEditModal}
-          activeOpacity={0.8}
+          activeOpacity={0.82}
         >
           <View style={styles.editIconCircle}>
-            <Ionicons name="create" size={14} color={colors.primary} />
+            <Ionicons name="create" size={14} color="#008ecc" />
           </View>
           <Text style={styles.editProfileBtnText}>Edit Profile & Income Details</Text>
-          <Ionicons name="chevron-forward" size={15} color={colors.primary} />
+          <Ionicons name="chevron-forward" size={15} color="#008ecc" />
         </TouchableOpacity>
       </View>
 
       {/* 2. Registration & Account Information Card */}
       <View style={styles.section}>
         <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>Registration Information</Text>
+          <View style={styles.sectionHeaderLeft}>
+            <View style={styles.tileIcon3D}>
+              <View style={styles.tileSheenHighlight} />
+              <Ionicons name="card" size={14} color="#008ecc" />
+            </View>
+            <Text style={styles.sectionTitle}>Registration Information</Text>
+          </View>
           <TouchableOpacity onPress={openEditModal} activeOpacity={0.7}>
             <Text style={styles.changeActionLink}>Change Details</Text>
           </TouchableOpacity>
@@ -222,8 +264,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* Full Legal Name (Locked / Read-Only) */}
           <View style={styles.regInfoRow}>
             <View style={styles.regInfoLeft}>
-              <View style={[styles.fieldIconBox, { backgroundColor: '#e0f2fe' }]}>
-                <Ionicons name="person" size={14} color="#0284c7" />
+              <View style={[styles.fieldIcon3D, { backgroundColor: '#e0f2fe', borderColor: '#bae6fd' }]}>
+                <View style={styles.fieldSheen} />
+                <Ionicons name="person" size={13} color="#0284c7" />
               </View>
               <Text style={styles.regInfoLabel}>Full Legal Name</Text>
             </View>
@@ -239,7 +282,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* Registered Mobile Number (Locked / Read-Only) */}
           <View style={styles.regInfoRow}>
             <View style={styles.regInfoLeft}>
-              <View style={[styles.fieldIconBox, { backgroundColor: '#dcfce7' }]}>
+              <View style={[styles.fieldIcon3D, { backgroundColor: '#dcfce7', borderColor: '#bbf7d0' }]}>
+                <View style={styles.fieldSheen} />
                 <Ionicons name="logo-whatsapp" size={14} color="#16a34a" />
               </View>
               <Text style={styles.regInfoLabel}>WhatsApp Mobile</Text>
@@ -256,8 +300,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* Email Address (Editable) */}
           <View style={styles.regInfoRow}>
             <View style={styles.regInfoLeft}>
-              <View style={[styles.fieldIconBox, { backgroundColor: '#fee2e2' }]}>
-                <Ionicons name="mail" size={14} color="#ee1c25" />
+              <View style={[styles.fieldIcon3D, { backgroundColor: '#fee2e2', borderColor: '#fecaca' }]}>
+                <View style={styles.fieldSheen} />
+                <Ionicons name="mail" size={13} color="#ee1c25" />
               </View>
               <Text style={styles.regInfoLabel}>Email Address</Text>
             </View>
@@ -272,8 +317,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* City & District (Editable) */}
           <View style={styles.regInfoRow}>
             <View style={styles.regInfoLeft}>
-              <View style={[styles.fieldIconBox, { backgroundColor: '#fef3c7' }]}>
-                <Ionicons name="location" size={14} color="#d97706" />
+              <View style={[styles.fieldIcon3D, { backgroundColor: '#fef3c7', borderColor: '#fde68a' }]}>
+                <View style={styles.fieldSheen} />
+                <Ionicons name="location" size={13} color="#d97706" />
               </View>
               <Text style={styles.regInfoLabel}>City / District</Text>
             </View>
@@ -288,8 +334,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* Employment Type (Editable) */}
           <View style={styles.regInfoRow}>
             <View style={styles.regInfoLeft}>
-              <View style={[styles.fieldIconBox, { backgroundColor: '#e0e7ff' }]}>
-                <Ionicons name="briefcase" size={14} color="#2d3091" />
+              <View style={[styles.fieldIcon3D, { backgroundColor: '#e0e7ff', borderColor: '#c7d2fe' }]}>
+                <View style={styles.fieldSheen} />
+                <Ionicons name="briefcase" size={13} color="#2d3091" />
               </View>
               <Text style={styles.regInfoLabel}>Employment Type</Text>
             </View>
@@ -304,8 +351,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* Monthly Income (Editable) */}
           <View style={styles.regInfoRow}>
             <View style={styles.regInfoLeft}>
-              <View style={[styles.fieldIconBox, { backgroundColor: '#dcfce7' }]}>
-                <Ionicons name="cash" size={14} color="#16a34a" />
+              <View style={[styles.fieldIcon3D, { backgroundColor: '#dcfce7', borderColor: '#bbf7d0' }]}>
+                <View style={styles.fieldSheen} />
+                <Ionicons name="cash" size={13} color="#16a34a" />
               </View>
               <Text style={styles.regInfoLabel}>Monthly Net Income</Text>
             </View>
@@ -320,8 +368,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* PAN Card */}
           <View style={styles.regInfoRow}>
             <View style={styles.regInfoLeft}>
-              <View style={[styles.fieldIconBox, { backgroundColor: '#e0e7ff' }]}>
-                <FontAwesome5 name="id-card" size={12} color="#4f46e5" />
+              <View style={[styles.fieldIcon3D, { backgroundColor: '#e0e7ff', borderColor: '#c7d2fe' }]}>
+                <View style={styles.fieldSheen} />
+                <FontAwesome5 name="id-card" size={11} color="#4f46e5" />
               </View>
               <Text style={styles.regInfoLabel}>PAN Card Number</Text>
             </View>
@@ -336,8 +385,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* Aadhaar Number (Optional) */}
           <View style={styles.regInfoRow}>
             <View style={styles.regInfoLeft}>
-              <View style={[styles.fieldIconBox, { backgroundColor: '#e0f2fe' }]}>
-                <Ionicons name="finger-print" size={14} color="#0284c7" />
+              <View style={[styles.fieldIcon3D, { backgroundColor: '#e0f2fe', borderColor: '#bae6fd' }]}>
+                <View style={styles.fieldSheen} />
+                <Ionicons name="finger-print" size={13} color="#0284c7" />
               </View>
               <Text style={styles.regInfoLabel}>Aadhaar Number</Text>
             </View>
@@ -352,8 +402,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* Customer ID & Referral */}
           <View style={[styles.regInfoRow, { borderBottomWidth: 0 }]}>
             <View style={styles.regInfoLeft}>
-              <View style={[styles.fieldIconBox, { backgroundColor: '#fef3c7' }]}>
-                <Ionicons name="shield-checkmark" size={14} color="#d97706" />
+              <View style={[styles.fieldIcon3D, { backgroundColor: '#fef3c7', borderColor: '#fde68a' }]}>
+                <View style={styles.fieldSheen} />
+                <Ionicons name="shield-checkmark" size={13} color="#d97706" />
               </View>
               <Text style={styles.regInfoLabel}>Customer ID & Code</Text>
             </View>
@@ -370,10 +421,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       {/* 3. Account & Documents Navigation */}
       <View style={styles.section}>
         <View style={styles.sectionHeaderRow}>
-          <View style={[styles.sectionIconBox, { backgroundColor: colors.primaryLight }]}>
-            <Ionicons name="apps" size={15} color={colors.primary} />
+          <View style={styles.sectionHeaderLeft}>
+            <View style={[styles.tileIcon3D, { backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }]}>
+              <View style={styles.tileSheenHighlight} />
+              <Ionicons name="apps" size={14} color="#0284c7" />
+            </View>
+            <Text style={styles.sectionTitle}>Account & Services</Text>
           </View>
-          <Text style={styles.sectionTitle}>Account & Services</Text>
         </View>
 
         <View style={styles.menuCard}>
@@ -388,7 +442,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </View>
               <Text style={styles.menuLabel}>My KYC Documents & Vault</Text>
             </View>
-            <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
+            <Animated.View style={{ transform: [{ translateX: chevronSlideAnim }] }}>
+              <Ionicons name="chevron-forward" size={16} color="#0284c7" />
+            </Animated.View>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -402,7 +458,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </View>
               <Text style={styles.menuLabel}>Offers & Referral Rewards</Text>
             </View>
-            <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
+            <Animated.View style={{ transform: [{ translateX: chevronSlideAnim }] }}>
+              <Ionicons name="chevron-forward" size={16} color="#d97706" />
+            </Animated.View>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -416,7 +474,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </View>
               <Text style={styles.menuLabel}>Help & Support Desk</Text>
             </View>
-            <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
+            <Animated.View style={{ transform: [{ translateX: chevronSlideAnim }] }}>
+              <Ionicons name="chevron-forward" size={16} color="#16a34a" />
+            </Animated.View>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -430,7 +490,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </View>
               <Text style={styles.menuLabel}>Rate Us & Feedback</Text>
             </View>
-            <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
+            <Animated.View style={{ transform: [{ translateX: chevronSlideAnim }] }}>
+              <Ionicons name="chevron-forward" size={16} color="#9333ea" />
+            </Animated.View>
           </TouchableOpacity>
         </View>
       </View>
@@ -438,16 +500,22 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       {/* 4. Notification Settings */}
       <View style={styles.section}>
         <View style={styles.sectionHeaderRow}>
-          <View style={[styles.sectionIconBox, { backgroundColor: '#dcfce7' }]}>
-            <Ionicons name="logo-whatsapp" size={15} color="#16a34a" />
+          <View style={styles.sectionHeaderLeft}>
+            <View style={[styles.tileIcon3D, { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }]}>
+              <View style={styles.tileSheenHighlight} />
+              <Ionicons name="logo-whatsapp" size={15} color="#16a34a" />
+            </View>
+            <Text style={styles.sectionTitle}>WhatsApp Alerts & Reminders</Text>
           </View>
-          <Text style={styles.sectionTitle}>WhatsApp Alerts & Reminders</Text>
         </View>
 
         <View style={styles.menuCard}>
           <View style={styles.switchRow}>
             <View style={styles.switchLabelWrap}>
-              <Ionicons name="notifications-outline" size={16} color="#16a34a" />
+              <View style={[styles.fieldIcon3D, { backgroundColor: '#dcfce7', borderColor: '#bbf7d0' }]}>
+                <View style={styles.fieldSheen} />
+                <Ionicons name="logo-whatsapp" size={13} color="#16a34a" />
+              </View>
               <Text style={styles.switchLabel}>WhatsApp Loan Updates</Text>
             </View>
             <Switch
@@ -459,7 +527,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
           <View style={[styles.switchRow, { borderBottomWidth: 0 }]}>
             <View style={styles.switchLabelWrap}>
-              <Ionicons name="document-text-outline" size={16} color="#0284c7" />
+              <View style={[styles.fieldIcon3D, { backgroundColor: '#e0f2fe', borderColor: '#bae6fd' }]}>
+                <View style={styles.fieldSheen} />
+                <Ionicons name="document-text" size={13} color="#0284c7" />
+              </View>
               <Text style={styles.switchLabel}>WhatsApp Document Alerts</Text>
             </View>
             <Switch
@@ -473,31 +544,66 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
       {/* 5. Legal & Policies */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Legal & Privacy</Text>
+        <View style={styles.sectionHeaderRow}>
+          <View style={styles.sectionHeaderLeft}>
+            <View style={[styles.tileIcon3D, { backgroundColor: '#f8fafc', borderColor: '#cbd5e1' }]}>
+              <View style={styles.tileSheenHighlight} />
+              <Ionicons name="shield-checkmark" size={14} color="#475569" />
+            </View>
+            <Text style={styles.sectionTitle}>Legal & Privacy</Text>
+          </View>
+        </View>
+
         <View style={styles.menuCard}>
           <TouchableOpacity
             style={styles.menuRow}
             onPress={() => setActiveModal('privacy')}
             activeOpacity={0.7}
           >
-            <Text style={styles.menuText}>Privacy Policy</Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
+            <View style={styles.menuLeft}>
+              <View style={[styles.fieldIcon3D, { backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }]}>
+                <View style={styles.fieldSheen} />
+                <Ionicons name="lock-closed" size={13} color="#0284c7" />
+              </View>
+              <Text style={styles.menuLabel}>Privacy Policy</Text>
+            </View>
+            <Animated.View style={{ transform: [{ translateX: chevronSlideAnim }] }}>
+              <Ionicons name="chevron-forward" size={16} color="#0284c7" />
+            </Animated.View>
           </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.menuRow}
             onPress={() => setActiveModal('terms')}
             activeOpacity={0.7}
           >
-            <Text style={styles.menuText}>Terms of Service</Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
+            <View style={styles.menuLeft}>
+              <View style={[styles.fieldIcon3D, { backgroundColor: '#fef3c7', borderColor: '#fde68a' }]}>
+                <View style={styles.fieldSheen} />
+                <Ionicons name="document-text" size={13} color="#d97706" />
+              </View>
+              <Text style={styles.menuLabel}>Terms of Service</Text>
+            </View>
+            <Animated.View style={{ transform: [{ translateX: chevronSlideAnim }] }}>
+              <Ionicons name="chevron-forward" size={16} color="#d97706" />
+            </Animated.View>
           </TouchableOpacity>
+
           <TouchableOpacity
             style={[styles.menuRow, { borderBottomWidth: 0 }]}
             onPress={() => setActiveModal('consent')}
             activeOpacity={0.7}
           >
-            <Text style={styles.menuText}>Credit Bureau Consent & Disclosures</Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
+            <View style={styles.menuLeft}>
+              <View style={[styles.fieldIcon3D, { backgroundColor: '#f3e8ff', borderColor: '#e9d5ff' }]}>
+                <View style={styles.fieldSheen} />
+                <Ionicons name="shield" size={13} color="#9333ea" />
+              </View>
+              <Text style={styles.menuLabel}>Credit Bureau Consent & Disclosures</Text>
+            </View>
+            <Animated.View style={{ transform: [{ translateX: chevronSlideAnim }] }}>
+              <Ionicons name="chevron-forward" size={16} color="#9333ea" />
+            </Animated.View>
           </TouchableOpacity>
         </View>
       </View>
@@ -1054,6 +1160,14 @@ const styles = StyleSheet.create({
     gap: 14,
     marginBottom: 16,
   },
+  avatarHaloWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 3,
+    borderRadius: 36,
+    borderWidth: 2,
+    borderColor: 'rgba(0, 142, 204, 0.4)',
+  },
   avatar: {
     width: 58,
     height: 58,
@@ -1153,6 +1267,61 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
     paddingHorizontal: 2,
+  },
+  sectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  tileIcon3D: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: '#f0f9ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#bae6fd',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2.5,
+    elevation: 2,
+  },
+  tileSheenHighlight: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '50%',
+    backgroundColor: 'rgba(255, 255, 255, 0.55)',
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+  },
+  fieldIcon3D: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  fieldSheen: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '50%',
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
   },
   sectionIconBox: {
     width: 24,

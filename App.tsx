@@ -294,6 +294,11 @@ function MainApp() {
               <LoanApplicationScreen
                 category={selectedCategory}
                 user={user}
+                onCategoryChange={(cat) => setSelectedCategory(cat)}
+                onNavigateToProfile={() => {
+                  setCurrentTab('profile');
+                  setActiveSubScreen(null);
+                }}
                 onSuccess={(newApp) => {
                   setApplications(loanService.getApplications());
                   setSelectedApplication(newApp);

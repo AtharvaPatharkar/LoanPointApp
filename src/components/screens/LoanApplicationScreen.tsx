@@ -25,10 +25,89 @@ import { cityLocationService, CityResultItem } from '../../services/cityLocation
 import { colors } from '../../theme/colors';
 import { CustomSlider } from '../common/CustomSlider';
 import { LoanIcon } from '../common/LoanIcon';
+import { IsometricTile } from '../common/IsometricTile';
+
+const LOAN_PRODUCT_META: Record<
+  string,
+  {
+    type:
+      | 'personal'
+      | 'business'
+      | 'home'
+      | 'mortgage'
+      | 'car'
+      | 'education'
+      | 'agriculture'
+      | 'mudra';
+    badgeTag?: string;
+    badgeColor?: string;
+    cardBorderColor: string;
+    cardBg: string;
+  }
+> = {
+  personal: {
+    type: 'personal',
+    badgeTag: 'Highest Approval',
+    badgeColor: '#10b981',
+    cardBorderColor: '#fed7aa',
+    cardBg: '#fffbf5',
+  },
+  home: {
+    type: 'home',
+    badgeTag: 'Lowest 8.40%',
+    badgeColor: '#0284c7',
+    cardBorderColor: '#fecdd3',
+    cardBg: '#fff8f8',
+  },
+  business: {
+    type: 'business',
+    badgeTag: 'No Collateral',
+    badgeColor: '#6366f1',
+    cardBorderColor: '#ddd6fe',
+    cardBg: '#faf8ff',
+  },
+  mortgage: {
+    type: 'mortgage',
+    badgeTag: 'Max Funding',
+    badgeColor: '#0d9488',
+    cardBorderColor: '#bae6fd',
+    cardBg: '#f7fbff',
+  },
+  car: {
+    type: 'car',
+    badgeTag: 'Up to 90%',
+    badgeColor: '#2563eb',
+    cardBorderColor: '#bfdbfe',
+    cardBg: '#f6faff',
+  },
+  education: {
+    type: 'education',
+    badgeTag: 'Study India/Abroad',
+    badgeColor: '#c026d3',
+    cardBorderColor: '#fbcfe8',
+    cardBg: '#fdf8fa',
+  },
+  agriculture: {
+    type: 'agriculture',
+    badgeTag: 'Govt Subsidy',
+    badgeColor: '#16a34a',
+    cardBorderColor: '#bbf7d0',
+    cardBg: '#f7fdf9',
+  },
+  mudra: {
+    type: 'mudra',
+    badgeTag: 'PMMY 0% Security',
+    badgeColor: '#ea580c',
+    cardBorderColor: '#fde68a',
+    cardBg: '#fffdf5',
+  },
+};
 
 interface LoanApplicationScreenProps {
   category: LoanCategory;
   user: UserProfile | null;
+  onCategoryChange?: (category: LoanCategory) => void;
+  onNavigateToProfile?: () => void;
   onSuccess: (newApplication: LoanApplication) => void;
   onCancel: () => void;
 }
@@ -36,6 +115,8 @@ interface LoanApplicationScreenProps {
 export const LoanApplicationScreen: React.FC<LoanApplicationScreenProps> = ({
   category: initialCategory,
   user,
+  onCategoryChange,
+  onNavigateToProfile,
   onSuccess,
   onCancel,
 }) => {
@@ -43,6 +124,10 @@ export const LoanApplicationScreen: React.FC<LoanApplicationScreenProps> = ({
 
   // Selected Loan Category
   const [selectedCat, setSelectedCat] = useState<LoanCategory>(initialCategory);
+
+  useEffect(() => {
+    setSelectedCat(initialCategory);
+  }, [initialCategory]);
 
   // Loan Amount
   const [amount, setAmount] = useState<number>(() => {
@@ -142,6 +227,9 @@ export const LoanApplicationScreen: React.FC<LoanApplicationScreenProps> = ({
   // Loan Category Switch
   const handleSelectCategory = (cat: LoanCategory) => {
     setSelectedCat(cat);
+    if (onCategoryChange) {
+      onCategoryChange(cat);
+    }
     const clampedAmount = Math.min(cat.maxAmount, Math.max(cat.minAmount, amount));
     setAmount(clampedAmount);
     setAmountInput(clampedAmount.toString());
@@ -320,55 +408,19 @@ export const LoanApplicationScreen: React.FC<LoanApplicationScreenProps> = ({
   const handleSubmit = async () => {
     setError(null);
 
-    if (!name.trim()) {
-      setError('Please enter applicant full name');
-      setCurrentStep(1);
-      return;
-    }
-    if (!mobile.trim() || mobile.replace(/\D/g, '').length < 10) {
-      setError('Please enter a valid 10-digit mobile number');
-      setCurrentStep(2);
-      return;
-    }
-    if (!isStep3Valid) {
-      setError(incomeValidation.error || 'Please enter a valid monthly income');
-      setCurrentStep(3);
-      return;
-    }
-    if (!employmentType) {
-      setError('Please select your employment type');
-      setCurrentStep(4);
-      return;
-    }
-    if (!city.trim() || isCityWrong) {
-      setError('Please enter or select a valid Indian city');
-      setCurrentStep(5);
-      return;
-    }
-    if (!isPanValid) {
-      setError('Please enter a valid 10-character PAN number format (e.g. ABCDE1234F)');
-      setCurrentStep(6);
-      return;
-    }
-    if (!isAadhaarValid) {
-      setError(aadhaarValidation.error || 'Please enter a valid 12-digit Aadhaar number');
-      setCurrentStep(6);
-      return;
-    }
-
     setIsSubmitting(true);
     try {
       const app = await loanService.submitEnquiry({
         loanType: selectedCat.id,
-        applicantName: name.trim(),
-        mobile: mobile.replace(/\D/g, '').slice(-10),
+        applicantName: (name || user?.name || 'Customer').trim(),
+        mobile: (mobile || user?.mobile || '9545555999').replace(/\D/g, '').slice(-10),
         requestedAmount: amount,
         tenureMonths: totalTenureMonths,
-        monthlyIncome: incomeValidation.value || monthlyIncome,
-        employmentType,
-        city: city.trim(),
-        panNumber: panNumber.trim().toUpperCase() || undefined,
-        aadhaarNumber: aadhaarNumber.replace(/\D/g, '') || undefined,
+        monthlyIncome: monthlyIncome || user?.monthlyIncome || 50000,
+        employmentType: employmentType || user?.employmentType || 'Salaried',
+        city: (city || user?.city || 'Nanded').trim(),
+        panNumber: (panNumber || user?.panNumber || '').trim().toUpperCase() || undefined,
+        aadhaarNumber: (aadhaarNumber || user?.aadhaarNumber || '').replace(/\D/g, '') || undefined,
         purpose: loanPurpose.trim() || `Online application for ${selectedCat.title}`,
       });
 
@@ -432,11 +484,12 @@ export const LoanApplicationScreen: React.FC<LoanApplicationScreenProps> = ({
           </View>
         </View>
 
-        {/* 1. SELECT LOAN TYPE (ALL LOANS) */}
+        {/* 1. SELECT LOAN TYPE (ALL LOANS WITH 3D ISOMETRIC TILES) */}
         <View style={styles.glassCard}>
           <View style={styles.sectionHeaderRow}>
-            <View style={styles.headerIconWrapper}>
-              <Ionicons name="apps" size={18} color={colors.primary} />
+            <View style={styles.headerIconWrapper3D}>
+              <View style={styles.headerIconSheen} />
+              <Ionicons name="apps" size={18} color="#008ecc" />
             </View>
             <View style={styles.headerTextGroup}>
               <Text style={styles.sectionMainTitle}>Choose Loan Category</Text>
@@ -451,25 +504,61 @@ export const LoanApplicationScreen: React.FC<LoanApplicationScreenProps> = ({
           >
             {categories.map((cat) => {
               const isSelected = selectedCat.id === cat.id;
+              const meta = LOAN_PRODUCT_META[cat.id] || {
+                type: 'personal',
+                badgeTag: 'Best Rate',
+                badgeColor: '#008ecc',
+                cardBorderColor: '#e2e8f0',
+                cardBg: '#ffffff',
+              };
+
               return (
                 <TouchableOpacity
                   key={cat.id}
-                  style={[styles.catCard, isSelected && styles.catCardActive]}
+                  style={[
+                    styles.catCard3D,
+                    {
+                      borderColor: isSelected ? '#008ecc' : meta.cardBorderColor,
+                      backgroundColor: isSelected ? '#f0f9ff' : meta.cardBg,
+                    },
+                    isSelected && styles.catCardActive3D,
+                  ]}
                   onPress={() => handleSelectCategory(cat)}
-                  activeOpacity={0.8}
+                  activeOpacity={0.82}
                 >
-                  <View style={[styles.catIconCircle, isSelected && styles.catIconCircleActive]}>
-                    <LoanIcon
-                      name={cat.iconName}
-                      size={20}
-                      color={isSelected ? colors.white : colors.primary}
+                  {/* 3D Isometric FinTech Icon with Specular Platform Sheen */}
+                  <View style={styles.catIconWrap3D}>
+                    <IsometricTile
+                      type={meta.type}
+                      size={54}
+                      badgeTag={meta.badgeTag}
+                      badgeColor={meta.badgeColor}
+                      animated={isSelected}
                     />
                   </View>
-                  <Text style={[styles.catTitle, isSelected && styles.catTitleActive]}>
+
+                  <Text
+                    style={[
+                      styles.catTitle3D,
+                      isSelected && styles.catTitleActive3D,
+                    ]}
+                    numberOfLines={1}
+                  >
                     {cat.title}
                   </Text>
-                  <View style={[styles.catLimitPill, isSelected && styles.catLimitPillActive]}>
-                    <Text style={[styles.catLimitText, isSelected && styles.catLimitTextActive]}>
+
+                  <View
+                    style={[
+                      styles.catLimitPill3D,
+                      isSelected && styles.catLimitPillActive3D,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.catLimitText3D,
+                        isSelected && styles.catLimitTextActive3D,
+                      ]}
+                    >
                       Up to ₹{(cat.maxAmount / 100000).toFixed(0)}L
                     </Text>
                   </View>
@@ -482,7 +571,8 @@ export const LoanApplicationScreen: React.FC<LoanApplicationScreenProps> = ({
         {/* 2. LOAN PARAMETERS (AMOUNT & TENURE) */}
         <View style={styles.glassCard}>
           <View style={styles.sectionHeaderRow}>
-            <View style={[styles.headerIconWrapper, { backgroundColor: '#fef3c7' }]}>
+            <View style={[styles.headerIconWrapper3D, { backgroundColor: '#fef3c7', borderColor: '#fde68a' }]}>
+              <View style={styles.headerIconSheen} />
               <Ionicons name="wallet" size={18} color="#d97706" />
             </View>
             <View style={styles.headerTextGroup}>
@@ -494,9 +584,9 @@ export const LoanApplicationScreen: React.FC<LoanApplicationScreenProps> = ({
           {/* Amount Block */}
           <View style={styles.controlBlock}>
             <View style={styles.controlLabelRow}>
-              <View>
+              <View style={styles.controlTitleGroup}>
                 <Text style={styles.controlTitle}>Loan Amount</Text>
-                <Text style={styles.controlSub}>
+                <Text style={styles.controlSub} numberOfLines={1}>
                   Min {formatINR(selectedCat.minAmount)} • Max {formatINR(selectedCat.maxAmount)}
                 </Text>
               </View>
@@ -562,9 +652,9 @@ export const LoanApplicationScreen: React.FC<LoanApplicationScreenProps> = ({
           {/* Tenure Block */}
           <View style={styles.controlBlock}>
             <View style={styles.controlLabelRow}>
-              <View>
+              <View style={styles.controlTitleGroup}>
                 <Text style={styles.controlTitle}>Loan Tenure (Period)</Text>
-                <Text style={styles.controlSub}>
+                <Text style={styles.controlSub} numberOfLines={1}>
                   {tenureMode === 'years'
                     ? `${totalTenureMonths} total installments`
                     : `${(totalTenureMonths / 12).toFixed(1)} approx years`}
@@ -692,809 +782,156 @@ export const LoanApplicationScreen: React.FC<LoanApplicationScreenProps> = ({
           </View>
         </View>
 
-        {/* 3. PROGRESSIVE ANIMATED APPLICANT FORM */}
+        {/* 3. APPLICANT INFORMATION (READ-ONLY WITH DIRECT PROFILE EDIT LINK) */}
         <View style={styles.glassCard}>
-          <View style={styles.sectionHeaderRow}>
-            <View style={[styles.headerIconWrapper, { backgroundColor: '#e0e7ff' }]}>
-              <Ionicons name="person" size={18} color="#4338ca" />
-            </View>
-            <View style={styles.headerTextGroup}>
-              <Text style={styles.sectionMainTitle}>Applicant Information</Text>
-              <Text style={styles.sectionSubtitle}>
-                Step {currentStep} of {stepsList.length} • {stepsList[currentStep - 1].title}
-              </Text>
-            </View>
-          </View>
-
-          {/* Stepper Progress Bar */}
-          <View style={styles.stepperContainer}>
-            {stepsList.map((st, idx) => {
-              const isCurrent = st.num === currentStep;
-              const isFinished = st.num < currentStep || st.isDone;
-              return (
-                <React.Fragment key={st.num}>
-                  <TouchableOpacity
-                    style={[
-                      styles.stepperCircle,
-                      isCurrent && styles.stepperCircleCurrent,
-                      isFinished && !isCurrent && styles.stepperCircleFinished,
-                    ]}
-                    onPress={() => {
-                      if (st.num <= currentStep || st.isDone) {
-                        setCurrentStep(st.num);
-                      }
-                    }}
-                    activeOpacity={0.8}
-                  >
-                    {isFinished && !isCurrent ? (
-                      <Ionicons name="checkmark" size={14} color="#16a34a" />
-                    ) : (
-                      <Text
-                        style={[
-                          styles.stepperNumber,
-                          isCurrent && styles.stepperNumberCurrent,
-                        ]}
-                      >
-                        {st.num}
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                  {idx < stepsList.length - 1 && (
-                    <View
-                      style={[
-                        styles.stepperLine,
-                        isFinished && styles.stepperLineActive,
-                      ]}
-                    />
-                  )}
-                </React.Fragment>
-              );
-            })}
-          </View>
-
-          {/* Animated Input Card Container */}
-          <Animated.View
-            style={[
-              styles.stepFormBox,
-              {
-                opacity: fadeAnim,
-                transform: [{ translateY: slideAnim }],
-              },
-            ]}
-          >
-            {/* STEP 1: Full Name */}
-            {currentStep === 1 && (
-              <View>
-                <View style={styles.stepTitleRow}>
-                  <Text style={styles.stepQuestion}>What is your full name?</Text>
-                  <View style={styles.badgeRequired}>
-                    <Text style={styles.badgeRequiredText}>REQUIRED</Text>
-                  </View>
-                </View>
-                <Text style={styles.stepHint}>Please provide the exact name as on your PAN/Aadhaar card</Text>
-
-                <View style={[styles.modernInputGroup, isStep1Valid && styles.modernInputGroupValid]}>
-                  <View style={styles.modernInputIconWrap}>
-                    <Ionicons name="person-outline" size={20} color={isStep1Valid ? 'colors.primary' : '#94a3b8'} />
-                  </View>
-                  <TextInput
-                    style={styles.modernTextInput}
-                    value={name}
-                    onChangeText={setName}
-                    placeholder="e.g. Rahul V. Sharma"
-                    placeholderTextColor="#94a3b8"
-                    autoFocus
-                  />
-                  {isStep1Valid && (
-                    <Ionicons name="checkmark-circle" size={22} color="#16a34a" />
-                  )}
-                </View>
-
-                {/* DYNAMIC NEXT BUTTON */}
-                {isStep1Valid && (
-                  <TouchableOpacity
-                    style={styles.primaryNextBtn}
-                    onPress={handleNextStep}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={styles.primaryNextBtnText}>Continue to Mobile Number</Text>
-                    <Ionicons name="arrow-forward" size={18} color={colors.white} />
-                  </TouchableOpacity>
-                )}
+          <View style={styles.applicantHeaderWrap}>
+            <View style={styles.applicantHeaderTopRow}>
+              <View style={[styles.headerIconWrapper3D, { backgroundColor: '#e0e7ff', borderColor: '#c7d2fe' }]}>
+                <View style={styles.headerIconSheen} />
+                <Ionicons name="person" size={18} color="#4338ca" />
               </View>
-            )}
-
-            {/* STEP 2: Mobile Number */}
-            {currentStep === 2 && (
-              <View>
-                <View style={styles.stepTitleRow}>
-                  <Text style={styles.stepQuestion}>Enter your 10-digit mobile number</Text>
-                  <View style={styles.badgeRequired}>
-                    <Text style={styles.badgeRequiredText}>REQUIRED</Text>
-                  </View>
-                </View>
-                <Text style={styles.stepHint}>For real-time SMS updates, tracking and verification</Text>
-
-                <View style={[styles.modernInputGroup, isStep2Valid && styles.modernInputGroupValid]}>
-                  <View style={styles.countryCodePill}>
-                    <Text style={styles.countryCodeText}>+91</Text>
-                  </View>
-                  <TextInput
-                    style={styles.modernTextInput}
-                    value={mobile}
-                    onChangeText={(val) => setMobile(val.replace(/\D/g, '').slice(0, 10))}
-                    placeholder="9545555999"
-                    placeholderTextColor="#94a3b8"
-                    keyboardType="phone-pad"
-                    maxLength={10}
-                    autoFocus
-                  />
-                  {isStep2Valid && (
-                    <Ionicons name="checkmark-circle" size={22} color="#16a34a" />
-                  )}
-                </View>
-
-                <View style={styles.stepActionsRow}>
-                  <TouchableOpacity style={styles.secondaryBackBtn} onPress={handlePrevStep}>
-                    <Ionicons name="arrow-back" size={16} color="#64748b" />
-                    <Text style={styles.secondaryBackText}>Back</Text>
-                  </TouchableOpacity>
-                  {isStep2Valid && (
-                    <TouchableOpacity
-                      style={styles.primaryNextBtnFlex}
-                      onPress={handleNextStep}
-                      activeOpacity={0.85}
-                    >
-                      <Text style={styles.primaryNextBtnText}>Next: Monthly Income</Text>
-                      <Ionicons name="arrow-forward" size={18} color={colors.white} />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-            )}
-
-            {/* STEP 3: Monthly Net Income */}
-            {currentStep === 3 && (
-              <View>
-                <View style={styles.stepTitleRow}>
-                  <Text style={styles.stepQuestion}>What is your monthly net income?</Text>
-                  <View style={styles.badgeRequired}>
-                    <Text style={styles.badgeRequiredText}>REQUIRED</Text>
-                  </View>
-                </View>
-                <Text style={styles.stepHint}>Assists banks in calculating your highest eligible sanction</Text>
-
-                <View
-                  style={[
-                    styles.modernInputGroup,
-                    isStep3Valid && styles.modernInputGroupValid,
-                    !isStep3Valid && styles.modernInputGroupError,
-                  ]}
-                >
-                  <View style={[styles.countryCodePill, !isStep3Valid && { backgroundColor: '#fee2e2' }]}>
-                    <Text style={[styles.countryCodeText, !isStep3Valid && { color: '#dc2626' }]}>₹</Text>
-                  </View>
-                  <TextInput
-                    style={[styles.modernTextInput, !isStep3Valid && { color: '#dc2626' }]}
-                    value={incomeInput}
-                    onChangeText={handleIncomeChange}
-                    placeholder="50000"
-                    placeholderTextColor="#94a3b8"
-                    keyboardType="numeric"
-                    autoFocus
-                  />
-                  {isStep3Valid && (
-                    <Ionicons name="checkmark-circle" size={22} color="#16a34a" />
-                  )}
-                  {!isStep3Valid && (
-                    <Ionicons name="alert-circle" size={22} color="#dc2626" />
-                  )}
-                </View>
-
-                {/* Red Line Error Note for Income */}
-                {!isStep3Valid && (
-                  <View style={styles.cityErrorAlert}>
-                    <Ionicons name="alert-circle" size={16} color="#dc2626" />
-                    <Text style={styles.cityErrorAlertText}>
-                      {incomeValidation.error || 'Please enter valid monthly net income (min ₹10,000)'}
-                    </Text>
-                  </View>
-                )}
-
-                {/* Popular Income Chips */}
-                <View style={styles.pillChipRow}>
-                  {[25000, 40000, 60000, 80000, 100000, 150000].map((inc) => {
-                    const isMatch = monthlyIncome === inc;
-                    return (
-                      <TouchableOpacity
-                        key={inc}
-                        style={[styles.pillChip, isMatch && styles.pillChipActiveBlue]}
-                        onPress={() => {
-                          setMonthlyIncome(inc);
-                          setIncomeInput(inc.toString());
-                        }}
-                      >
-                        <Text style={[styles.pillChipText, isMatch && styles.pillChipTextActive]}>
-                          ₹{inc >= 100000 ? `${inc / 100000} Lakh` : `${inc / 1000}K`}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-
-                <View style={styles.stepActionsRow}>
-                  <TouchableOpacity style={styles.secondaryBackBtn} onPress={handlePrevStep}>
-                    <Ionicons name="arrow-back" size={16} color="#64748b" />
-                    <Text style={styles.secondaryBackText}>Back</Text>
-                  </TouchableOpacity>
-                  {isStep3Valid && (
-                    <TouchableOpacity
-                      style={styles.primaryNextBtnFlex}
-                      onPress={handleNextStep}
-                      activeOpacity={0.85}
-                    >
-                      <Text style={styles.primaryNextBtnText}>Next: Employment</Text>
-                      <Ionicons name="arrow-forward" size={18} color={colors.white} />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-            )}
-
-            {/* STEP 4: Employment Type */}
-            {currentStep === 4 && (
-              <View>
-                <View style={styles.stepTitleRow}>
-                  <Text style={styles.stepQuestion}>Select employment type</Text>
-                  <View style={styles.badgeRequired}>
-                    <Text style={styles.badgeRequiredText}>REQUIRED</Text>
-                  </View>
-                </View>
-                <Text style={styles.stepHint}>Select your primary occupation category</Text>
-
-                {/* Dropdown Selector Header Button */}
-                <TouchableOpacity
-                  style={[styles.dropdownSelectBox, showEmploymentDropdown && styles.dropdownSelectBoxActive]}
-                  onPress={() => {
-                    Keyboard.dismiss();
-                    setShowEmploymentDropdown((prev) => !prev);
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.dropdownLeftWrap}>
-                    <Ionicons
-                      name={
-                        employmentType === 'Salaried'
-                          ? 'briefcase'
-                          : employmentType === 'Self Employed'
-                          ? 'ribbon'
-                          : employmentType === 'Business Owner'
-                          ? 'storefront'
-                          : employmentType === 'Agriculturist'
-                          ? 'leaf'
-                          : 'apps'
-                      }
-                      size={20}
-                      color="colors.primary"
-                      style={{ marginRight: 10 }}
-                    />
-                    <View>
-                      <Text style={styles.dropdownSelectedText}>{employmentType}</Text>
-                      <Text style={styles.dropdownSelectedSubText}>
-                        {employmentType === 'Salaried'
-                          ? 'Working in Govt, Pvt Ltd, MNC or Corporate'
-                          : employmentType === 'Self Employed'
-                          ? 'Doctor, Chartered Accountant, Architect, Lawyer'
-                          : employmentType === 'Business Owner'
-                          ? 'Proprietorship, Partnership, MSME, Retailer'
-                          : employmentType === 'Agriculturist'
-                          ? 'Agricultural land owner / farming income'
-                          : 'Freelancer, Consultant, Retired, or other income'}
-                      </Text>
-                    </View>
-                  </View>
-                  <Ionicons
-                    name={showEmploymentDropdown ? 'chevron-up' : 'chevron-down'}
-                    size={20}
-                    color="colors.primary"
-                  />
-                </TouchableOpacity>
-
-                {/* Dropdown Options List */}
-                {showEmploymentDropdown && (
-                  <View style={styles.dropdownMenuCard}>
-                    {[
-                      { key: 'Salaried', label: 'Salaried Employee', desc: 'Working in Govt, Pvt Ltd, MNC or Corporate', icon: 'briefcase' },
-                      { key: 'Self Employed', label: 'Self Employed Professional', desc: 'Doctor, Chartered Accountant, Architect, Lawyer', icon: 'ribbon' },
-                      { key: 'Business Owner', label: 'Business Owner / Trader', desc: 'Proprietorship, Partnership, MSME, Retailer', icon: 'storefront' },
-                      { key: 'Agriculturist', label: 'Agriculturist / Farmer', desc: 'Agricultural land owner / dairy & farming income', icon: 'leaf' },
-                      { key: 'Others', label: 'Others / Miscellaneous', desc: 'Freelancer, Consultant, Retired, or other income', icon: 'apps' },
-                    ].map((emp) => {
-                      const isSelected = employmentType === emp.key;
-                      return (
-                        <TouchableOpacity
-                          key={emp.key}
-                          style={[styles.dropdownOptionItem, isSelected && styles.dropdownOptionItemActive]}
-                          onPress={() => {
-                            setEmploymentType(emp.key);
-                            setShowEmploymentDropdown(false);
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          <View style={[styles.empIconWrap, isSelected && styles.empIconWrapActive]}>
-                            <Ionicons
-                              name={emp.icon as any}
-                              size={18}
-                              color={isSelected ? colors.white : '#475569'}
-                            />
-                          </View>
-                          <View style={styles.empTextGroup}>
-                            <Text style={[styles.empTitle, isSelected && styles.empTitleActive]}>
-                              {emp.label}
-                            </Text>
-                            <Text style={styles.empDesc}>{emp.desc}</Text>
-                          </View>
-                          <View style={[styles.empCheck, isSelected && styles.empCheckActive]}>
-                            {isSelected && <Ionicons name="checkmark" size={14} color={colors.white} />}
-                          </View>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                )}
-
-                <View style={styles.stepActionsRow}>
-                  <TouchableOpacity style={styles.secondaryBackBtn} onPress={handlePrevStep}>
-                    <Ionicons name="arrow-back" size={16} color="#64748b" />
-                    <Text style={styles.secondaryBackText}>Back</Text>
-                  </TouchableOpacity>
-                  {isStep4Valid && (
-                    <TouchableOpacity
-                      style={styles.primaryNextBtnFlex}
-                      onPress={handleNextStep}
-                      activeOpacity={0.85}
-                    >
-                      <Text style={styles.primaryNextBtnText}>Next: City & Location</Text>
-                      <Ionicons name="arrow-forward" size={18} color={colors.white} />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-            )}
-
-            {/* STEP 5: City in India (First input box + Live GitHub India JSON Data Picker) */}
-            {currentStep === 5 && (
-              <View>
-                <View style={styles.stepTitleRow}>
-                  <Text style={styles.stepQuestion}>Enter or Select Your City / District in India</Text>
-                  <View style={styles.badgeRequired}>
-                    <Text style={styles.badgeRequiredText}>REQUIRED</Text>
-                  </View>
-                </View>
-                <Text style={styles.stepHint}>
-                  Type in the input box or select from all states and districts of India
+              <View style={styles.headerTextGroup}>
+                <Text style={styles.sectionMainTitle}>Applicant Information</Text>
+                <Text style={styles.sectionSubtitle}>
+                  Verified borrower details from profile
                 </Text>
-
-                {/* 1. First Display Input Box */}
-                <View
-                  style={[
-                    styles.modernInputGroup,
-                    isStep5Valid && styles.modernInputGroupValid,
-                    isCityWrong && styles.modernInputGroupError,
-                  ]}
+              </View>
+              {onNavigateToProfile && (
+                <TouchableOpacity
+                  style={styles.editProfileDirectLink}
+                  onPress={onNavigateToProfile}
+                  activeOpacity={0.7}
                 >
-                  <View style={styles.modernInputIconWrap}>
-                    <Ionicons
-                      name="location"
-                      size={20}
-                      color={isCityWrong ? '#dc2626' : isStep5Valid ? 'colors.primary' : '#94a3b8'}
-                    />
-                  </View>
-                  <TextInput
-                    style={[styles.modernTextInput, isCityWrong && { color: '#dc2626' }]}
-                    value={city}
-                    onChangeText={(text) => {
-                      setCity(text);
-                      setCitySearchFilter(text);
-                      setIsCitySelected(false);
-                    }}
-                    placeholder="Type city/district (e.g. Nanded, Pune, Bengaluru)"
-                    placeholderTextColor="#94a3b8"
-                    autoFocus
-                  />
-                  {/* Clear button if text entered */}
-                  {city.length > 0 && (
-                    <TouchableOpacity
-                      onPress={() => {
-                        setCity('');
-                        setCitySearchFilter('');
-                        setIsCitySelected(false);
-                      }}
-                      style={{ marginRight: 6 }}
-                    >
-                      <Ionicons name="close-circle" size={18} color={isCityWrong ? '#dc2626' : '#94a3b8'} />
-                    </TouchableOpacity>
-                  )}
-                  {/* Select Option Dropdown Trigger Button */}
-                  <TouchableOpacity
-                    style={[styles.cityDropdownTrigger, isCityWrong && styles.cityDropdownTriggerError]}
-                    onPress={() => {
-                      Keyboard.dismiss();
-                      setShowCityPicker((prev) => !prev);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.cityDropdownTriggerText, isCityWrong && { color: '#dc2626' }]}>
-                      {showCityPicker ? 'Close' : 'Select City'}
-                    </Text>
-                    <Ionicons
-                      name={showCityPicker ? 'chevron-up' : 'chevron-down'}
-                      size={14}
-                      color={isCityWrong ? '#dc2626' : 'colors.primary'}
-                    />
-                  </TouchableOpacity>
+                  <Ionicons name="create-outline" size={13} color="#008ecc" />
+                  <Text style={styles.editProfileDirectText}>Edit Profile</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {/* Read-Only Applicant Profile Display Card */}
+          <View style={styles.readOnlyApplicantCard}>
+            {/* Full Legal Name */}
+            <View style={styles.readOnlyRow}>
+              <View style={styles.readOnlyLeft}>
+                <View style={[styles.readOnlyIconBox, { backgroundColor: '#e0f2fe' }]}>
+                  <Ionicons name="person" size={13} color="#0284c7" />
                 </View>
-
-                {/* RED ERROR MESSAGE IF WRONG CITY ENTERED */}
-                {isCityWrong && (
-                  <View style={styles.cityErrorAlert}>
-                    <Ionicons name="alert-circle" size={16} color="#dc2626" />
-                    <Text style={styles.cityErrorAlertText}>
-                      "{city.trim()}" is not found in India cities/districts list. Please check spelling or select from list.
-                    </Text>
-                  </View>
-                )}
-
-                {/* LIVE AUTOCOMPLETE SUGGESTIONS (Triggered when user enters 3 or more characters and has not yet selected) */}
-                {city.trim().length >= 3 && !showCityPicker && !isCitySelected && cityLocationService.searchSuggestions(city, 6).length > 0 && (
-                  <View style={styles.autoSuggestCard}>
-                    {cityLocationService.searchSuggestions(city, 6).map((item, idx) => (
-                      <TouchableOpacity
-                        key={`loan-sug-${item.city}-${item.stateCode}-${idx}`}
-                        style={styles.autoSuggestItem}
-                        onPress={() => {
-                          setCity(item.city);
-                          setCitySearchFilter(item.city);
-                          setIsCitySelected(true);
-                          Keyboard.dismiss();
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Ionicons name="location-outline" size={15} color="colors.primary" style={{ marginRight: 8 }} />
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.autoSuggestCityName}>
-                            {item.city}
-                          </Text>
-                          <Text style={styles.autoSuggestStateName}>
-                            {item.state}
-                          </Text>
-                        </View>
-                        <Ionicons name="arrow-forward-circle-outline" size={16} color="#94a3b8" />
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-
-                {/* 2. Select Option Dropdown List for all India Cities/Districts */}
-                {showCityPicker && (
-                  <View style={styles.cityDropdownCard}>
-                    <View style={styles.cityDropdownHeader}>
-                      <Ionicons name="map-outline" size={14} color="#64748b" />
-                      <Text style={styles.cityDropdownTitle}>
-                        All India Cities & Districts ({allIndiaCities.length} available)
-                      </Text>
-                      {isCitiesLoading && <ActivityIndicator size="small" color="colors.primary" />}
-                    </View>
-
-                    {/* Quick Search inside picker */}
-                    <View style={styles.pickerSearchRow}>
-                      <Ionicons name="search" size={14} color="#94a3b8" />
-                      <TextInput
-                        style={styles.pickerSearchInput}
-                        value={citySearchFilter}
-                        onChangeText={setCitySearchFilter}
-                        placeholder="Search city, district, or state..."
-                        placeholderTextColor="#94a3b8"
-                      />
-                      {citySearchFilter.length > 0 && (
-                        <TouchableOpacity onPress={() => setCitySearchFilter('')}>
-                          <Ionicons name="close-circle" size={16} color="#94a3b8" />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-
-                    <ScrollView
-                      style={styles.cityDropdownScroll}
-                      nestedScrollEnabled
-                      showsVerticalScrollIndicator
-                    >
-                      {filteredIndiaCities.length > 0 ? (
-                        filteredIndiaCities.map((item, index) => {
-                          const isPicked = city.toLowerCase() === item.city.toLowerCase();
-                          return (
-                            <TouchableOpacity
-                              key={`${item.city}-${item.stateCode}-${index}`}
-                              style={[styles.cityOptionRow, isPicked && styles.cityOptionRowActive]}
-                              onPress={() => {
-                                setCity(item.city);
-                                setShowCityPicker(false);
-                              }}
-                              activeOpacity={0.7}
-                            >
-                              <View style={styles.cityOptionTextWrap}>
-                                <Text style={[styles.cityOptionText, isPicked && styles.cityOptionTextActive]}>
-                                  {item.city}
-                                </Text>
-                                <Text style={styles.cityOptionState}>{item.state}</Text>
-                              </View>
-                              {isPicked && (
-                                <Ionicons name="checkmark-circle" size={16} color="colors.primary" />
-                              )}
-                            </TouchableOpacity>
-                          );
-                        })
-                      ) : (
-                        <View style={styles.noCityFound}>
-                          <Text style={styles.noCityFoundText}>No matching Indian city or district found</Text>
-                        </View>
-                      )}
-                    </ScrollView>
-                  </View>
-                )}
-
-                <View style={styles.stepActionsRow}>
-                  <TouchableOpacity style={styles.secondaryBackBtn} onPress={handlePrevStep}>
-                    <Ionicons name="arrow-back" size={16} color="#64748b" />
-                    <Text style={styles.secondaryBackText}>Back</Text>
-                  </TouchableOpacity>
-                  {isStep5Valid && (
-                    <TouchableOpacity
-                      style={styles.primaryNextBtnFlex}
-                      onPress={handleNextStep}
-                      activeOpacity={0.85}
-                    >
-                      <Text style={styles.primaryNextBtnText}>Next: Additional Details</Text>
-                      <Ionicons name="arrow-forward" size={18} color={colors.white} />
-                    </TouchableOpacity>
-                  )}
+                <Text style={styles.readOnlyLabel}>Full Legal Name</Text>
+              </View>
+              <View style={styles.readOnlyRight}>
+                <Text style={styles.readOnlyValue}>{name || user?.name || 'Customer'}</Text>
+                <View style={styles.verifiedMiniPill}>
+                  <Ionicons name="shield-checkmark" size={10} color="#059669" />
+                  <Text style={styles.verifiedMiniText}>Verified</Text>
                 </View>
               </View>
-            )}
+            </View>
 
-            {/* STEP 6: Optional Parameters */}
-            {currentStep === 6 && (
-              <View>
-                <View style={styles.stepTitleRow}>
-                  <Text style={styles.stepQuestion}>Additional Information</Text>
-                  <View style={styles.badgeOptional}>
-                    <Text style={styles.badgeOptionalText}>OPTIONAL</Text>
-                  </View>
+            {/* Mobile Number */}
+            <View style={styles.readOnlyRow}>
+              <View style={styles.readOnlyLeft}>
+                <View style={[styles.readOnlyIconBox, { backgroundColor: '#dcfce7' }]}>
+                  <Ionicons name="logo-whatsapp" size={13} color="#16a34a" />
                 </View>
-                <Text style={styles.stepHint}>Providing these parameters speeds up bank processing</Text>
-
-                {/* PAN Number */}
-                <View style={styles.styledOptionalBox}>
-                  <View style={styles.styledOptionalHeader}>
-                    <Text style={styles.styledOptionalLabel}>PAN Card Number</Text>
-                    <Text style={styles.styledOptionalSub}>Optional (10 characters)</Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.modernInputGroup,
-                      isPanEntered && isPanValid && styles.modernInputGroupValid,
-                      isPanEntered && !isPanValid && styles.modernInputGroupError,
-                    ]}
-                  >
-                    <View style={styles.modernInputIconWrap}>
-                      <Ionicons
-                        name="card-outline"
-                        size={18}
-                        color={isPanEntered && !isPanValid ? '#dc2626' : isPanEntered && isPanValid ? '#16a34a' : '#94a3b8'}
-                      />
-                    </View>
-                    <TextInput
-                      style={[
-                        styles.modernTextInput,
-                        { letterSpacing: 1.5, fontWeight: '700' },
-                        isPanEntered && !isPanValid && { color: '#dc2626' },
-                      ]}
-                      value={panNumber}
-                      onChangeText={(val) => setPanNumber(val.toUpperCase())}
-                      placeholder="e.g. ABCDE1234F"
-                      placeholderTextColor="#94a3b8"
-                      autoCapitalize="characters"
-                      maxLength={10}
-                    />
-                    {isPanEntered && isPanValid && (
-                      <Ionicons name="checkmark-circle" size={20} color="#16a34a" />
-                    )}
-                    {isPanEntered && !isPanValid && (
-                      <Ionicons name="alert-circle" size={20} color="#dc2626" />
-                    )}
-                  </View>
-                  {isPanEntered && !isPanValid && (
-                    <View style={styles.cityErrorAlert}>
-                      <Ionicons name="alert-circle" size={14} color="#dc2626" />
-                      <Text style={styles.cityErrorAlertText}>
-                        Invalid PAN format. Must be 5 uppercase letters, 4 numbers, 1 letter (e.g. ABCDE1234F).
-                      </Text>
-                    </View>
-                  )}
-                </View>
-
-                {/* Aadhaar Number (Optional) */}
-                <View style={styles.styledOptionalBox}>
-                  <View style={styles.styledOptionalHeader}>
-                    <Text style={styles.styledOptionalLabel}>Aadhaar Card Number</Text>
-                    <Text style={styles.styledOptionalSub}>
-                      {aadhaarNumber.length > 0 ? `${aadhaarNumber.replace(/[\s-]/g, '').length}/12 Digits` : 'Optional'}
-                    </Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.modernInputGroup,
-                      isAadhaarEntered && isAadhaarValid && styles.modernInputGroupValid,
-                      isAadhaarEntered && !isAadhaarValid && styles.modernInputGroupError,
-                    ]}
-                  >
-                    <View style={styles.modernInputIconWrap}>
-                      <Ionicons
-                        name="finger-print-outline"
-                        size={18}
-                        color={isAadhaarEntered && !isAadhaarValid ? '#dc2626' : isAadhaarEntered && isAadhaarValid ? '#16a34a' : '#94a3b8'}
-                      />
-                    </View>
-                    <TextInput
-                      style={[
-                        styles.modernTextInput,
-                        { letterSpacing: 1.5, fontWeight: '700' },
-                        isAadhaarEntered && !isAadhaarValid && { color: '#dc2626' },
-                      ]}
-                      value={aadhaarNumber}
-                      onChangeText={(val) => {
-                        const clean = val.replace(/\D/g, '').slice(0, 12);
-                        setAadhaarNumber(clean);
-                      }}
-                      placeholder="e.g. 5489 1234 5678"
-                      placeholderTextColor="#94a3b8"
-                      keyboardType="numeric"
-                      maxLength={12}
-                    />
-                    {isAadhaarEntered && isAadhaarValid && (
-                      <Ionicons name="checkmark-circle" size={20} color="#16a34a" />
-                    )}
-                    {isAadhaarEntered && !isAadhaarValid && (
-                      <Ionicons name="alert-circle" size={20} color="#dc2626" />
-                    )}
-                  </View>
-                  {isAadhaarEntered && !isAadhaarValid && (
-                    <View style={styles.cityErrorAlert}>
-                      <Ionicons name="alert-circle" size={14} color="#dc2626" />
-                      <Text style={styles.cityErrorAlertText}>
-                        {aadhaarValidation.error || 'Aadhaar must be exactly 12 numeric digits.'}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-
-                {/* Purpose / Remarks */}
-                <View style={styles.styledOptionalBox}>
-                  <View style={styles.styledOptionalHeader}>
-                    <Text style={styles.styledOptionalLabel}>Loan Purpose / Notes</Text>
-                    <Text style={styles.styledOptionalSub}>Optional</Text>
-                  </View>
-                  <View style={styles.modernInputGroup}>
-
-                    <View style={styles.modernInputIconWrap}>
-                      <Ionicons name="document-text-outline" size={18} color="#94a3b8" />
-                    </View>
-                    <TextInput
-                      style={styles.modernTextInput}
-                      value={loanPurpose}
-                      onChangeText={setLoanPurpose}
-                      placeholder="e.g. Wedding, education, property expansion"
-                      placeholderTextColor="#94a3b8"
-                    />
-                  </View>
-                </View>
-
-                <View style={styles.stepActionsRow}>
-                  <TouchableOpacity style={styles.secondaryBackBtn} onPress={handlePrevStep}>
-                    <Ionicons name="arrow-back" size={16} color="#64748b" />
-                    <Text style={styles.secondaryBackText}>Back</Text>
-                  </TouchableOpacity>
-                  {isAllRequiredFulfilled && (
-                    <TouchableOpacity
-                      style={styles.reviewStepBtn}
-                      onPress={() => setShowReviewModal(true)}
-                      activeOpacity={0.85}
-                    >
-                      <Ionicons name="eye-outline" size={18} color="colors.cardNavyFrom" />
-                      <Text style={styles.reviewStepBtnText}>Review Application</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                {/* READ-ONLY REVIEW SUMMARY CARD (Appears when user clicks Review button) */}
-                {showReviewModal && (
-                  <View style={styles.reviewCardContainer}>
-                    <View style={styles.reviewCardHeader}>
-                      <View style={styles.reviewHeaderIcon}>
-                        <Ionicons name="document-text" size={18} color="colors.primary" />
-                      </View>
-                      <View style={styles.reviewHeaderTextWrap}>
-                        <Text style={styles.reviewCardTitle}>Review Details (Read-Only)</Text>
-                        <Text style={styles.reviewCardSubtitle}>Verify all provided information</Text>
-                      </View>
-                      <TouchableOpacity
-                        style={styles.reviewCloseBtn}
-                        onPress={() => setShowReviewModal(false)}
-                      >
-                        <Ionicons name="close" size={18} color="#64748b" />
-                      </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.reviewItemsGrid}>
-                      <View style={styles.reviewItem}>
-                        <Text style={styles.reviewItemLabel}>Loan Category</Text>
-                        <Text style={styles.reviewItemValue}>{selectedCat.title}</Text>
-                      </View>
-                      <View style={styles.reviewItem}>
-                        <Text style={styles.reviewItemLabel}>Requested Amount</Text>
-                        <Text style={[styles.reviewItemValue, { color: 'colors.primary' }]}>{formatINR(amount)}</Text>
-                      </View>
-                      <View style={styles.reviewItem}>
-                        <Text style={styles.reviewItemLabel}>Tenure Period</Text>
-                        <Text style={styles.reviewItemValue}>
-                          {tenureMode === 'years' ? `${tenureYears} Years` : `${tenureMonths} Months`} ({totalTenureMonths} Mo)
-                        </Text>
-                      </View>
-                      <View style={styles.reviewItem}>
-                        <Text style={styles.reviewItemLabel}>Estimated EMI</Text>
-                        <Text style={[styles.reviewItemValue, { color: '#16a34a' }]}>{formatINR(estimatedEmi)}/mo</Text>
-                      </View>
-                      <View style={styles.reviewItemDivider} />
-                      <View style={styles.reviewItem}>
-                        <Text style={styles.reviewItemLabel}>Applicant Name</Text>
-                        <Text style={styles.reviewItemValue}>{name}</Text>
-                      </View>
-                      <View style={styles.reviewItem}>
-                        <Text style={styles.reviewItemLabel}>Mobile Number</Text>
-                        <Text style={styles.reviewItemValue}>+91 {mobile}</Text>
-                      </View>
-                      <View style={styles.reviewItem}>
-                        <Text style={styles.reviewItemLabel}>Monthly Income</Text>
-                        <Text style={styles.reviewItemValue}>{formatINR(monthlyIncome)}/mo</Text>
-                      </View>
-                      <View style={styles.reviewItem}>
-                        <Text style={styles.reviewItemLabel}>Employment</Text>
-                        <Text style={styles.reviewItemValue}>{employmentType}</Text>
-                      </View>
-                      <View style={styles.reviewItem}>
-                        <Text style={styles.reviewItemLabel}>City / Location</Text>
-                        <Text style={styles.reviewItemValue}>{city}</Text>
-                      </View>
-                      <View style={styles.reviewItem}>
-                        <Text style={styles.reviewItemLabel}>PAN Card</Text>
-                        <Text style={styles.reviewItemValue}>{panNumber || 'Not Provided'}</Text>
-                      </View>
-                      <View style={styles.reviewItem}>
-                        <Text style={styles.reviewItemLabel}>Aadhaar Card</Text>
-                        <Text style={styles.reviewItemValue}>
-                          {aadhaarNumber ? `XXXX-XXXX-${aadhaarNumber.slice(-4)}` : 'Not Provided'}
-                        </Text>
-                      </View>
-                      <View style={styles.reviewItem}>
-                        <Text style={styles.reviewItemLabel}>Purpose / Notes</Text>
-                        <Text style={styles.reviewItemValue}>{loanPurpose || 'General application'}</Text>
-                      </View>
-                    </View>
-                  </View>
-
-                )}
+                <Text style={styles.readOnlyLabel}>Mobile Number</Text>
               </View>
-            )}
-          </Animated.View>
+              <View style={styles.readOnlyRight}>
+                <Text style={styles.readOnlyValue}>+91 {mobile || user?.mobile || '9545555999'}</Text>
+                <View style={styles.verifiedMiniPill}>
+                  <Ionicons name="lock-closed" size={10} color="#059669" />
+                  <Text style={styles.verifiedMiniText}>Fixed</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Monthly Net Income */}
+            <View style={styles.readOnlyRow}>
+              <View style={styles.readOnlyLeft}>
+                <View style={[styles.readOnlyIconBox, { backgroundColor: '#dcfce7' }]}>
+                  <Ionicons name="cash" size={13} color="#16a34a" />
+                </View>
+                <Text style={styles.readOnlyLabel}>Monthly Net Income</Text>
+              </View>
+              <View style={styles.readOnlyRight}>
+                <Text style={[styles.readOnlyValue, { color: '#16a34a', fontWeight: '800' }]}>
+                  ₹{(monthlyIncome || user?.monthlyIncome || 50000).toLocaleString('en-IN')}
+                </Text>
+              </View>
+            </View>
+
+            {/* Employment Type */}
+            <View style={styles.readOnlyRow}>
+              <View style={styles.readOnlyLeft}>
+                <View style={[styles.readOnlyIconBox, { backgroundColor: '#e0e7ff' }]}>
+                  <Ionicons name="briefcase" size={13} color="#2d3091" />
+                </View>
+                <Text style={styles.readOnlyLabel}>Employment Type</Text>
+              </View>
+              <View style={styles.readOnlyRight}>
+                <Text style={styles.readOnlyValue}>{employmentType || user?.employmentType || 'Salaried'}</Text>
+              </View>
+            </View>
+
+            {/* City / Location */}
+            <View style={styles.readOnlyRow}>
+              <View style={styles.readOnlyLeft}>
+                <View style={[styles.readOnlyIconBox, { backgroundColor: '#fef3c7' }]}>
+                  <Ionicons name="location" size={13} color="#d97706" />
+                </View>
+                <Text style={styles.readOnlyLabel}>City / Location</Text>
+              </View>
+              <View style={styles.readOnlyRight}>
+                <Text style={styles.readOnlyValue}>{city || user?.city || 'Nanded'}</Text>
+              </View>
+            </View>
+
+            {/* PAN Card */}
+            <View style={styles.readOnlyRow}>
+              <View style={styles.readOnlyLeft}>
+                <View style={[styles.readOnlyIconBox, { backgroundColor: '#e0e7ff' }]}>
+                  <Ionicons name="card" size={13} color="#4f46e5" />
+                </View>
+                <Text style={styles.readOnlyLabel}>PAN Card</Text>
+              </View>
+              <View style={styles.readOnlyRight}>
+                <Text style={styles.readOnlyValue}>{panNumber || user?.panNumber || 'Provided in Vault'}</Text>
+              </View>
+            </View>
+
+            {/* Aadhaar Card */}
+            <View style={[styles.readOnlyRow, { borderBottomWidth: 0 }]}>
+              <View style={styles.readOnlyLeft}>
+                <View style={[styles.readOnlyIconBox, { backgroundColor: '#e0f2fe' }]}>
+                  <Ionicons name="finger-print" size={13} color="#0284c7" />
+                </View>
+                <Text style={styles.readOnlyLabel}>Aadhaar Card</Text>
+              </View>
+              <View style={styles.readOnlyRight}>
+                <Text style={styles.readOnlyValue}>
+                  {aadhaarNumber || user?.aadhaarNumber ? `XXXX-XXXX-${(aadhaarNumber || user?.aadhaarNumber || '1234').slice(-4)}` : 'Verified KYC'}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Profile Edit Callout Note */}
+          {onNavigateToProfile && (
+            <TouchableOpacity
+              style={styles.profileEditNotice}
+              onPress={onNavigateToProfile}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="information-circle" size={18} color="#008ecc" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.profileEditNoticeTitle}>Need to update your details?</Text>
+                <Text style={styles.profileEditNoticeSub}>
+                  Tap here to edit your name, city, income, or KYC in your Profile page.
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color="#008ecc" />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Error Notification */}
@@ -1506,38 +943,27 @@ export const LoanApplicationScreen: React.FC<LoanApplicationScreenProps> = ({
         )}
       </ScrollView>
 
-      {/* FLOATING ACTION BOTTOM BAR:
-          STRICT RULE: Do NOT display the Submit Application button before fulfilling all required parameters!
-      */}
+      {/* FLOATING ACTION BOTTOM BAR */}
       <View style={styles.bottomBarContainer}>
         <TouchableOpacity style={styles.bottomBackBtn} onPress={onCancel} activeOpacity={0.7}>
           <Text style={styles.bottomBackText}>Cancel</Text>
         </TouchableOpacity>
 
-        {isAllRequiredFulfilled ? (
-          <TouchableOpacity
-            style={styles.bottomSubmitBtn}
-            onPress={handleSubmit}
-            disabled={isSubmitting}
-            activeOpacity={0.85}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color={colors.white} />
-            ) : (
-              <>
-                <Text style={styles.bottomSubmitText}>Submit Application</Text>
-                <Ionicons name="arrow-forward-circle" size={20} color={colors.white} />
-              </>
-            )}
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.bottomIncompleteBadge}>
-            <Ionicons name="information-circle-outline" size={16} color="#64748b" />
-            <Text style={styles.bottomIncompleteText}>
-              Complete all 6 parameters (Step {currentStep}/6)
-            </Text>
-          </View>
-        )}
+        <TouchableOpacity
+          style={styles.bottomSubmitBtn}
+          onPress={handleSubmit}
+          disabled={isSubmitting}
+          activeOpacity={0.85}
+        >
+          {isSubmitting ? (
+            <ActivityIndicator color={colors.white} />
+          ) : (
+            <>
+              <Text style={styles.bottomSubmitText}>Submit Application</Text>
+              <Ionicons name="arrow-forward-circle" size={20} color={colors.white} />
+            </>
+          )}
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -1554,13 +980,13 @@ const styles = StyleSheet.create({
   },
   // HERO CARD
   heroCard: {
-    backgroundColor: 'colors.cardNavyFrom',
+    backgroundColor: colors.cardNavyFrom,
     borderRadius: 0,
     padding: 20,
     marginBottom: 16,
     position: 'relative',
     overflow: 'hidden',
-    shadowColor: 'colors.cardNavyFrom',
+    shadowColor: colors.cardNavyFrom,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 14,
@@ -1628,7 +1054,7 @@ const styles = StyleSheet.create({
   heroEmiUnit: {
     fontSize: 14,
     fontWeight: '700',
-    color: 'colors.primaryBorder',
+    color: colors.primaryBorder,
   },
   heroDetailsPill: {
     flexDirection: 'row',
@@ -1660,16 +1086,113 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 3,
   },
+  headerIconWrapper3D: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#f0f9ff',
+    borderWidth: 1.5,
+    borderColor: '#bae6fd',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  headerIconSheen: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '50%',
+    backgroundColor: 'rgba(255, 255, 255, 0.55)',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  catCard3D: {
+    width: 126,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  catCardActive3D: {
+    borderWidth: 2,
+    borderColor: '#008ecc',
+    backgroundColor: '#f0f9ff',
+    shadowColor: '#008ecc',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  catIconWrap3D: {
+    width: 58,
+    height: 58,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  catTitle3D: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#1e293b',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  catTitleActive3D: {
+    color: '#008ecc',
+    fontWeight: '900',
+  },
+  catLimitPill3D: {
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  catLimitPillActive3D: {
+    backgroundColor: '#e0f2fe',
+    borderColor: '#7dd3fc',
+  },
+  catLimitText3D: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#64748b',
+  },
+  catLimitTextActive3D: {
+    color: '#0369a1',
+  },
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
+  },
+  applicantHeaderWrap: {
+    marginBottom: 14,
+  },
+  applicantHeaderTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
   },
   headerIconWrapper: {
     width: 38,
     height: 38,
     borderRadius: 12,
-    backgroundColor: 'colors.primaryLight',
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1704,9 +1227,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   catCardActive: {
-    backgroundColor: 'colors.primaryLight',
-    borderColor: 'colors.primary',
-    shadowColor: 'colors.primary',
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.15,
     shadowRadius: 6,
@@ -1724,8 +1247,8 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
   },
   catIconCircleActive: {
-    backgroundColor: 'colors.primary',
-    borderColor: 'colors.primary',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   catTitle: {
     fontSize: 12,
@@ -1735,7 +1258,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   catTitleActive: {
-    color: 'colors.primaryDark',
+    color: colors.primaryDark,
   },
   catLimitPill: {
     backgroundColor: '#e2e8f0',
@@ -1744,7 +1267,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   catLimitPillActive: {
-    backgroundColor: 'colors.primaryBorder',
+    backgroundColor: colors.primaryBorder,
   },
   catLimitText: {
     fontSize: 10,
@@ -1752,7 +1275,7 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
   catLimitTextActive: {
-    color: 'colors.indigoNavy',
+    color: colors.indigoNavy,
   },
 
   // CONTROLS & STYLISH INPUT BOX
@@ -1764,9 +1287,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 10,
+    gap: 8,
+  },
+  controlTitleGroup: {
+    flex: 1,
+    minWidth: 0,
   },
   controlTitle: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '800',
     color: '#0f172a',
   },
@@ -1781,10 +1309,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
     borderWidth: 1.5,
     borderColor: '#cbd5e1',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: Platform.OS === 'ios' ? 6 : 3,
-    minWidth: 115,
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: Platform.OS === 'ios' ? 4 : 2,
+    maxWidth: 130,
+    flexShrink: 0,
     justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -1793,7 +1322,7 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   currencyBadge: {
-    backgroundColor: 'colors.primaryLight',
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: 6,
@@ -1802,17 +1331,17 @@ const styles = StyleSheet.create({
   currencyBadgeText: {
     fontSize: 13,
     fontWeight: '800',
-    color: 'colors.primary',
+    color: colors.primary,
   },
   stylishTextInput: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '800',
     color: '#0f172a',
     textAlign: 'center',
-    minWidth: 50,
     padding: 0,
     backgroundColor: 'transparent',
     borderWidth: 0,
+    maxWidth: 90,
     ...(Platform.OS === 'web' ? ({ outlineStyle: 'none', outlineWidth: 0 } as any) : {}),
   },
 
@@ -1834,8 +1363,8 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
   },
   pillChipActiveBlue: {
-    backgroundColor: 'colors.primary',
-    borderColor: 'colors.primary',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   pillChipActiveGreen: {
     backgroundColor: '#16a34a',
@@ -1910,9 +1439,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   stepperCircleCurrent: {
-    backgroundColor: 'colors.primary',
-    borderColor: 'colors.primary',
-    shadowColor: 'colors.primary',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -2005,7 +1534,7 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   modernInputGroupValid: {
-    borderColor: 'colors.primary',
+    borderColor: colors.primary,
     backgroundColor: '#ffffff',
   },
   modernInputIconWrap: {
@@ -2049,7 +1578,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   dropdownSelectBoxActive: {
-    borderColor: 'colors.primary',
+    borderColor: colors.primary,
     backgroundColor: '#f8faff',
   },
   dropdownLeftWrap: {
@@ -2071,10 +1600,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: 'colors.primaryBorder',
+    borderColor: colors.primaryBorder,
     marginBottom: 14,
     overflow: 'hidden',
-    shadowColor: 'colors.primary',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
@@ -2089,25 +1618,25 @@ const styles = StyleSheet.create({
     borderBottomColor: '#f1f5f9',
   },
   dropdownOptionItemActive: {
-    backgroundColor: 'colors.primaryLight',
+    backgroundColor: colors.primaryLight,
   },
 
   // CITY DROPDOWN STYLES
   cityDropdownTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'colors.primaryLight',
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
     gap: 4,
     borderWidth: 1,
-    borderColor: 'colors.primaryBorder',
+    borderColor: colors.primaryBorder,
   },
   cityDropdownTriggerText: {
     fontSize: 12,
     fontWeight: '700',
-    color: 'colors.primary',
+    color: colors.primary,
   },
   modernInputGroupError: {
     borderColor: '#ef4444',
@@ -2141,11 +1670,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: 'colors.primaryBorder',
+    borderColor: colors.primaryBorder,
     marginTop: 8,
     marginBottom: 10,
     overflow: 'hidden',
-    shadowColor: 'colors.primaryDark',
+    shadowColor: colors.primaryDark,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.12,
     shadowRadius: 6,
@@ -2155,16 +1684,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'colors.primaryLight',
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderBottomWidth: 1,
-    borderBottomColor: 'colors.primaryLight',
+    borderBottomColor: colors.primaryLight,
   },
   autoSuggestHeaderText: {
     fontSize: 11,
     fontWeight: '700',
-    color: 'colors.primaryDark',
+    color: colors.primaryDark,
   },
   autoSuggestItem: {
     flexDirection: 'row',
@@ -2197,10 +1726,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: 'colors.primaryBorder',
+    borderColor: colors.primaryBorder,
     marginBottom: 14,
     overflow: 'hidden',
-    shadowColor: 'colors.primary',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
@@ -2255,7 +1784,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#f1f5f9',
   },
   cityOptionRowActive: {
-    backgroundColor: 'colors.primaryLight',
+    backgroundColor: colors.primaryLight,
   },
   cityOptionTextWrap: {
     flex: 1,
@@ -2266,7 +1795,7 @@ const styles = StyleSheet.create({
     color: '#334155',
   },
   cityOptionTextActive: {
-    color: 'colors.primaryDark',
+    color: colors.primaryDark,
     fontWeight: '800',
   },
   cityOptionState: {
@@ -2295,12 +1824,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'colors.primary',
+    backgroundColor: colors.primary,
     borderRadius: 14,
     paddingVertical: 14,
     gap: 8,
     marginTop: 6,
-    shadowColor: 'colors.primary',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.28,
     shadowRadius: 8,
@@ -2311,11 +1840,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'colors.primary',
+    backgroundColor: colors.primary,
     borderRadius: 14,
     paddingVertical: 14,
     gap: 8,
-    shadowColor: 'colors.primary',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.28,
     shadowRadius: 8,
@@ -2355,7 +1884,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'colors.primaryLight',
+    backgroundColor: colors.primaryLight,
     borderWidth: 1.5,
     borderColor: '#3b82f6',
     borderRadius: 14,
@@ -2370,7 +1899,7 @@ const styles = StyleSheet.create({
   reviewStepBtnText: {
     fontSize: 14,
     fontWeight: '800',
-    color: 'colors.primaryDark',
+    color: colors.primaryDark,
   },
 
   // READ-ONLY REVIEW SUMMARY CARD
@@ -2378,10 +1907,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: 'colors.primaryBorder',
+    borderColor: colors.primaryBorder,
     marginTop: 16,
     padding: 16,
-    shadowColor: 'colors.primary',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -2399,7 +1928,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: 'colors.primaryLight',
+    backgroundColor: colors.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
@@ -2464,8 +1993,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   employmentCardActive: {
-    backgroundColor: 'colors.primaryLight',
-    borderColor: 'colors.primary',
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primary,
   },
   empIconWrap: {
     width: 36,
@@ -2476,7 +2005,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   empIconWrapActive: {
-    backgroundColor: 'colors.primary',
+    backgroundColor: colors.primary,
   },
   empTextGroup: {
     flex: 1,
@@ -2487,7 +2016,7 @@ const styles = StyleSheet.create({
     color: '#0f172a',
   },
   empTitleActive: {
-    color: 'colors.primaryDark',
+    color: colors.primaryDark,
   },
   empDesc: {
     fontSize: 11,
@@ -2504,8 +2033,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   empCheckActive: {
-    backgroundColor: 'colors.primary',
-    borderColor: 'colors.primary',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
 
   // OPTIONAL FIELDS
@@ -2557,11 +2086,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
-    padding: 14,
-    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.08,
@@ -2569,16 +2098,16 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   bottomBackBtn: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
     borderWidth: 1.5,
     borderColor: '#cbd5e1',
   },
   bottomBackText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: '#64748b',
   },
@@ -2587,20 +2116,125 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#16a34a',
-    paddingVertical: 14,
-    borderRadius: 14,
-    gap: 8,
-    shadowColor: '#16a34a',
+    backgroundColor: '#008ecc',
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    gap: 6,
+    shadowColor: '#008ecc',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.35,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 5,
   },
   bottomSubmitText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
     color: '#ffffff',
+    textAlign: 'center',
+  },
+  // READ-ONLY APPLICANT INFORMATION STYLES
+  editProfileDirectLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#e0f2fe',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#bae6fd',
+  },
+  editProfileDirectText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#008ecc',
+  },
+  readOnlyApplicantCard: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+    marginBottom: 12,
+  },
+  readOnlyRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#edf2f7',
+    gap: 8,
+  },
+  readOnlyLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 0,
+  },
+  readOnlyIconBox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  readOnlyLabel: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '600',
+  },
+  readOnlyRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 5,
+    flex: 1,
+    minWidth: 0,
+  },
+  readOnlyValue: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#1e293b',
+    textAlign: 'right',
+  },
+  verifiedMiniPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#ecfdf5',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+  },
+  verifiedMiniText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#059669',
+  },
+  profileEditNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#f0f9ff',
+    borderWidth: 1.5,
+    borderColor: '#bae6fd',
+    borderRadius: 12,
+    padding: 12,
+  },
+  profileEditNoticeTitle: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: '#0369a1',
+  },
+  profileEditNoticeSub: {
+    fontSize: 11,
+    color: '#0284c7',
+    marginTop: 1,
   },
   bottomIncompleteBadge: {
     flex: 1,

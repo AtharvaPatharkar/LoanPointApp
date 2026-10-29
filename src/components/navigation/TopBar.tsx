@@ -1,5 +1,5 @@
-import React from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Image } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, Image, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { COMPANY_INFO } from '../../data/mockData';
@@ -25,8 +25,83 @@ export const TopBar: React.FC<TopBarProps> = ({
   userName = 'Rahul',
   isHomeScreen = true,
 }) => {
+  // Continuous breathing pulse animation for notifications and call buttons
+  const notifPulse = useRef(new Animated.Value(1)).current;
+  const callPulse = useRef(new Animated.Value(1)).current;
+  const badgePulse = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    // 1. Notification bell gentle breathing loop
+    const notifLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(notifPulse, {
+          toValue: 1.08,
+          duration: 1300,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(notifPulse, {
+          toValue: 0.96,
+          duration: 1300,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    // 2. Call button staggered pulse
+    const callLoop = Animated.loop(
+      Animated.sequence([
+        Animated.delay(650),
+        Animated.timing(callPulse, {
+          toValue: 1.08,
+          duration: 1300,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(callPulse, {
+          toValue: 0.96,
+          duration: 1300,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    // 3. Unread notification badge heartbeat
+    const badgeLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(badgePulse, {
+          toValue: 1.2,
+          duration: 700,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(badgePulse, {
+          toValue: 1,
+          duration: 700,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    notifLoop.start();
+    callLoop.start();
+    badgeLoop.start();
+
+    return () => {
+      notifLoop.stop();
+      callLoop.stop();
+      badgeLoop.stop();
+    };
+  }, [notifPulse, callPulse, badgePulse]);
+
   return (
     <View style={styles.header}>
+      {/* Top Accent Sky Cyan Highlight Line */}
+      <View style={styles.topAccentBar} />
+
       <View style={styles.leftContainer}>
         {showBack ? (
           <TouchableOpacity
@@ -53,38 +128,69 @@ export const TopBar: React.FC<TopBarProps> = ({
               {title}
             </Text>
           ) : (
-            <Text style={styles.candidateName} numberOfLines={1}>
-              {userName}
-            </Text>
+            <View>
+              <Text style={styles.welcomeSalute}>WELCOME TO LOAN POINT</Text>
+              <Text style={styles.candidateName} numberOfLines={1}>
+                {userName}
+              </Text>
+            </View>
           )}
         </View>
       </View>
 
       <View style={styles.rightActions}>
+        {/* Notification Button with 3D Specular Sheen & Zoom-In Pulse */}
         {onOpenNotifications && (
           <TouchableOpacity
             onPress={onOpenNotifications}
-            style={[styles.iconBtn, styles.notifBtn]}
-            accessibilityLabel="Notifications"
             activeOpacity={0.75}
+            style={styles.actionBtnTouch}
           >
-            <Ionicons name="notifications" size={20} color="#d97706" />
+            <Animated.View
+              style={[
+                styles.iconBtnPlatform,
+                styles.notifBtn,
+                { transform: [{ scale: notifPulse }] },
+              ]}
+            >
+              {/* Top Half-Circle Specular Light Sheen */}
+              <View style={styles.btnHalfSheen} />
+              <Ionicons name="notifications" size={19} color="#d97706" />
+            </Animated.View>
+
+            {/* Notification Badge Floating Outside Overflow with Heartbeat Pulse */}
             {unreadCount > 0 && (
-              <View style={styles.badgeCountPill}>
-                <Text style={styles.badgeCountText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
-              </View>
+              <Animated.View
+                style={[
+                  styles.badgeCountPill,
+                  { transform: [{ scale: badgePulse }] },
+                ]}
+              >
+                <Text style={styles.badgeCountText}>
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </Text>
+              </Animated.View>
             )}
           </TouchableOpacity>
         )}
 
+        {/* Call Support Button with 3D Specular Sheen & Zoom-In Pulse */}
         {onOpenSupport && (
           <TouchableOpacity
             onPress={onOpenSupport}
-            style={[styles.iconBtn, styles.callBtn]}
-            accessibilityLabel="Call Support"
             activeOpacity={0.75}
+            style={styles.actionBtnTouch}
           >
-            <Ionicons name="call" size={18} color="#008ecc" />
+            <Animated.View
+              style={[
+                styles.iconBtnPlatform,
+                styles.callBtn,
+                { transform: [{ scale: callPulse }] },
+              ]}
+            >
+              <View style={styles.btnHalfSheen} />
+              <Ionicons name="call" size={18} color="#008ecc" />
+            </Animated.View>
           </TouchableOpacity>
         )}
       </View>
@@ -94,51 +200,61 @@ export const TopBar: React.FC<TopBarProps> = ({
 
 const styles = StyleSheet.create({
   header: {
-    height: 58,
+    height: 60,
     backgroundColor: colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: '#e2e8f0',
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    elevation: 4,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    position: 'relative',
+  },
+  topAccentBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 2.5,
+    backgroundColor: '#008ecc', // Vivid Sky Cyan Top Line
   },
   leftContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    marginRight: 10,
+    minWidth: 0,
+    marginRight: 6,
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8,
+    marginRight: 4,
     marginLeft: -4,
   },
   logoBadgeContainer: {
     width: 48,
     height: 36,
-    borderRadius: 8,
+    borderRadius: 10,
     backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 1.2,
+    borderColor: '#e2e8f0',
     padding: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
   },
   simpleLogo: {
     width: '100%',
@@ -146,56 +262,97 @@ const styles = StyleSheet.create({
   },
   titleContainer: {
     flex: 1,
+    minWidth: 0,
+    justifyContent: 'center',
+  },
+  welcomeSalute: {
+    fontSize: 8.5,
+    fontWeight: '800',
+    color: '#008ecc',
+    letterSpacing: 0.5,
   },
   candidateName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.text,
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0f172a',
+    letterSpacing: -0.2,
   },
   screenTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.text,
+    fontSize: 14.5,
+    fontWeight: '800',
+    color: '#0f172a',
+    letterSpacing: -0.2,
   },
   rightActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    flexShrink: 0,
   },
-  iconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+  actionBtnTouch: {
+    position: 'relative',
+  },
+  iconBtnPlatform: {
+    width: 36,
+    height: 36,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    borderWidth: 1,
+    borderWidth: 1.5,
+    overflow: 'hidden',
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 3,
+  },
+  btnHalfSheen: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '46%',
+    backgroundColor: 'rgba(255, 255, 255, 0.45)',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
   },
   notifBtn: {
     backgroundColor: '#fef3c7', // Warm Amber Gold Tint
     borderColor: '#fde68a',
+    shadowColor: '#d97706',
+    elevation: 3,
+    shadowOpacity: 0.2,
   },
   callBtn: {
     backgroundColor: '#e6f6fc', // Logo Sky Cyan Tint
     borderColor: '#bae6f7',
+    shadowColor: '#008ecc',
+    elevation: 3,
+    shadowOpacity: 0.2,
   },
   badgeCountPill: {
     position: 'absolute',
-    top: -3,
-    right: -3,
-    minWidth: 17,
-    height: 17,
-    borderRadius: 8.5,
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: '#ee1c25', // Logo Crimson Red
     borderWidth: 1.5,
     borderColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 2,
+    paddingHorizontal: 3,
+    zIndex: 999,
+    elevation: 6,
+    shadowColor: '#ee1c25',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.35,
+    shadowRadius: 2,
   },
   badgeCountText: {
-    fontSize: 9,
-    fontWeight: '800',
+    fontSize: 9.5,
+    fontWeight: '900',
     color: '#ffffff',
+    includeFontPadding: false,
+    textAlign: 'center',
   },
 });
