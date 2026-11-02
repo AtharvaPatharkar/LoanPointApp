@@ -2,9 +2,9 @@ import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LoanCategory } from '../../types';
-import { LoanIcon } from '../common/LoanIcon';
 import { formatINR } from '../../utils/calculator';
 import { colors } from '../../theme/colors';
+import { IsometricTile } from '../common/IsometricTile';
 
 interface LoanDetailScreenProps {
   category: LoanCategory;
@@ -13,22 +13,105 @@ interface LoanDetailScreenProps {
   onBack: () => void;
 }
 
+const LOAN_PRODUCT_META: Record<
+  string,
+  {
+    type:
+      | 'personal'
+      | 'business'
+      | 'home'
+      | 'mortgage'
+      | 'car'
+      | 'education'
+      | 'agriculture'
+      | 'mudra';
+    badgeTag?: string;
+    badgeColor?: string;
+    glowColor?: string;
+  }
+> = {
+  personal: {
+    type: 'personal',
+    badgeTag: 'Highest Approval',
+    badgeColor: '#10b981',
+    glowColor: '#fed7aa',
+  },
+  home: {
+    type: 'home',
+    badgeTag: 'Lowest 8.40%',
+    badgeColor: '#0284c7',
+    glowColor: '#fecdd3',
+  },
+  business: {
+    type: 'business',
+    badgeTag: 'No Collateral',
+    badgeColor: '#6366f1',
+    glowColor: '#ddd6fe',
+  },
+  mortgage: {
+    type: 'mortgage',
+    badgeTag: 'Max Funding',
+    badgeColor: '#0d9488',
+    glowColor: '#bae6fd',
+  },
+  car: {
+    type: 'car',
+    badgeTag: 'Up to 90%',
+    badgeColor: '#2563eb',
+    glowColor: '#bfdbfe',
+  },
+  education: {
+    type: 'education',
+    badgeTag: 'Study India/Abroad',
+    badgeColor: '#c026d3',
+    glowColor: '#fbcfe8',
+  },
+  agriculture: {
+    type: 'agriculture',
+    badgeTag: 'Govt Subsidy',
+    badgeColor: '#16a34a',
+    glowColor: '#bbf7d0',
+  },
+  mudra: {
+    type: 'mudra',
+    badgeTag: 'PMMY 0% Security',
+    badgeColor: '#ea580c',
+    glowColor: '#fde68a',
+  },
+};
+
 export const LoanDetailScreen: React.FC<LoanDetailScreenProps> = ({
   category,
   onApplyNow,
   onOpenCalculator,
 }) => {
+  const meta = LOAN_PRODUCT_META[category.id] || {
+    type: 'personal',
+    badgeTag: 'Verified Product',
+    badgeColor: '#008ecc',
+    glowColor: '#bae6fd',
+  };
+
   return (
     <View style={styles.root}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        {/* 1. Header Summary Spotlight Card */}
+        {/* 1. 3D Premium Hero Spotlight Card */}
         <View style={styles.headerHeroCard}>
           <View style={styles.heroGlowCircle} />
 
           <View style={styles.topRow}>
-            <View style={styles.iconBox}>
-              <LoanIcon name={category.iconName} size={28} />
+            {/* 3D Isometric FinTech Tile with Specular Sheen Platform */}
+            <View style={styles.icon3DWrap}>
+              <View style={styles.icon3DSheen} />
+              <IsometricTile
+                type={meta.type}
+                size={70}
+                badgeTag={meta.badgeTag}
+                badgeColor={meta.badgeColor}
+                animated={true}
+              />
             </View>
+
             <View style={styles.titleBox}>
               <View style={styles.categoryBadge}>
                 <View style={styles.badgeDot} />
@@ -39,7 +122,7 @@ export const LoanDetailScreen: React.FC<LoanDetailScreenProps> = ({
             </View>
           </View>
 
-          {/* Quick Metrics Hero Row */}
+          {/* Quick Metrics Hero Row with 3D Specular Elevation */}
           <View style={styles.metricsRow}>
             <View style={styles.metricItem}>
               <View style={styles.metricLabelRow}>
@@ -69,68 +152,80 @@ export const LoanDetailScreen: React.FC<LoanDetailScreenProps> = ({
           </View>
         </View>
 
-        {/* 2. Key Features Card */}
+        {/* 2. Key Benefits & Features Card with 3D Embossed Style */}
         <View style={styles.card}>
           <View style={styles.sectionHeadingRow}>
-            <View style={[styles.sectionIconBox, { backgroundColor: colors.primaryLight }]}>
-              <Ionicons name="sparkles" size={16} color={colors.primary} />
+            <View style={[styles.sectionIconBox3D, { backgroundColor: '#e0f2fe', borderColor: '#bae6fd' }]}>
+              <View style={styles.iconSheenHighlight} />
+              <Ionicons name="sparkles" size={17} color="#008ecc" />
             </View>
-            <Text style={styles.cardHeading}>Key Benefits & Features</Text>
+            <View style={styles.headingTextGroup}>
+              <Text style={styles.cardHeading}>Key Benefits & Features</Text>
+              <Text style={styles.cardSubheading}>Instant perks tailored for this borrowing tier</Text>
+            </View>
           </View>
           {category.features.map((feature, idx) => (
             <View key={idx} style={styles.featureRow}>
-              <View style={styles.checkIconWrap}>
-                <Ionicons name="checkmark-circle" size={17} color={colors.success} />
+              <View style={styles.checkIconWrap3D}>
+                <Ionicons name="checkmark-circle" size={18} color="#16a34a" />
               </View>
               <Text style={styles.featureText}>{feature}</Text>
             </View>
           ))}
         </View>
 
-        {/* 3. Required Documents Card */}
+        {/* 3. Required Documents Checklist Card with 3D Style */}
         <View style={styles.card}>
           <View style={styles.sectionHeadingRow}>
-            <View style={[styles.sectionIconBox, { backgroundColor: colors.secondaryRedLight }]}>
-              <Ionicons name="documents-outline" size={16} color={colors.secondaryRed} />
+            <View style={[styles.sectionIconBox3D, { backgroundColor: '#fee2e2', borderColor: '#fca5a5' }]}>
+              <View style={styles.iconSheenHighlight} />
+              <Ionicons name="documents" size={17} color="#dc2626" />
             </View>
-            <Text style={[styles.cardHeading, { color: colors.secondaryRedDark }]}>
-              Required Documents Checklist
-            </Text>
+            <View style={styles.headingTextGroup}>
+              <Text style={[styles.cardHeading, { color: '#991b1b' }]}>
+                Required Documents Checklist
+              </Text>
+              <Text style={styles.cardSubheading}>Keep digital or physical copies ready</Text>
+            </View>
           </View>
           {category.requiredDocuments.map((doc, idx) => (
             <View key={idx} style={styles.docRow}>
-              <View style={styles.docIconWrap}>
-                <Ionicons name="document-text" size={15} color={colors.primary} />
+              <View style={styles.docIconWrap3D}>
+                <Ionicons name="document-text" size={15} color="#008ecc" />
               </View>
               <Text style={styles.docText}>{doc}</Text>
             </View>
           ))}
         </View>
 
-        {/* 4. Quick Calculator Action */}
+        {/* 4. Quick Calculator Action Card with 3D Elevation */}
         <TouchableOpacity
           style={styles.calcBtn}
           onPress={() => onOpenCalculator(category)}
-          activeOpacity={0.7}
+          activeOpacity={0.8}
         >
-          <View style={styles.calcIconWrap}>
-            <Ionicons name="calculator" size={17} color={colors.primary} />
+          <View style={styles.calcIconWrap3D}>
+            <View style={styles.iconSheenHighlight} />
+            <Ionicons name="calculator" size={20} color="#008ecc" />
           </View>
           <View style={styles.calcBtnTextWrap}>
             <Text style={styles.calcBtnText}>Calculate EMI for {category.title}</Text>
             <Text style={styles.calcBtnSub}>Interactive installment & interest breakdown</Text>
           </View>
-          <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+          <View style={styles.calcChevronWrap}>
+            <Ionicons name="chevron-forward" size={16} color="#008ecc" />
+          </View>
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Floating Bottom Apply CTA */}
+      {/* Floating Bottom Apply CTA with Specular Sheen & Attractive FinTech Color */}
       <View style={styles.bottomBar}>
         <TouchableOpacity
           style={styles.applyBtn}
           onPress={() => onApplyNow(category)}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
         >
+          <View style={styles.btnTopSheen} />
           <View style={styles.applyIconWrap}>
             <Ionicons name="flash" size={15} color="#ffffff" />
           </View>
@@ -145,7 +240,7 @@ export const LoanDetailScreen: React.FC<LoanDetailScreenProps> = ({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#f8fafc',
   },
   container: {
     padding: 16,
@@ -159,44 +254,57 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: colors.cardNavyFrom,
     borderRadius: 18,
-    padding: 20,
+    padding: 18,
     shadowColor: colors.cardNavyFrom,
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    elevation: 7,
   },
   heroGlowCircle: {
     position: 'absolute',
     top: -50,
     right: -50,
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(0, 142, 204, 0.18)',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: 'rgba(56, 189, 248, 0.2)',
   },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
   },
-  iconBox: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.16)',
-    borderWidth: 1,
+  icon3DWrap: {
+    width: 78,
+    height: 78,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.24)',
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+    overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  icon3DSheen: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '48%',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
   },
   titleBox: {
     flex: 1,
+    minWidth: 0,
   },
   categoryBadge: {
     flexDirection: 'row',
@@ -273,59 +381,90 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
 
-  /* 2 & 3. Structured Content Cards */
+  /* 2 & 3. Structured 3D Content Cards */
   card: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    padding: 18,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
   },
   sectionHeadingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
     marginBottom: 14,
-    paddingBottom: 8,
+    paddingBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: colors.surfaceSubtle,
+    borderBottomColor: '#f1f5f9',
   },
-  sectionIconBox: {
-    width: 26,
-    height: 26,
-    borderRadius: 6,
+  sectionIconBox3D: {
+    width: 36,
+    height: 36,
+    borderRadius: 11,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  iconSheenHighlight: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '48%',
+    backgroundColor: 'rgba(255, 255, 255, 0.65)',
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+  },
+  headingTextGroup: {
+    flex: 1,
   },
   cardHeading: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
-    color: colors.primaryDeep,
-    letterSpacing: 0.5,
+    color: '#0f172a',
+    letterSpacing: -0.2,
+  },
+  cardSubheading: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 1,
   },
   featureRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     marginBottom: 10,
+    backgroundColor: '#f8fafc',
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#edf2f7',
   },
-  checkIconWrap: {
+  checkIconWrap3D: {
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: colors.successLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   featureText: {
     fontSize: 12.5,
     fontWeight: '600',
-    color: colors.text,
+    color: '#334155',
     flex: 1,
     lineHeight: 18,
   },
@@ -334,60 +473,78 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     marginBottom: 10,
+    backgroundColor: '#f8fafc',
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#edf2f7',
   },
-  docIconWrap: {
+  docIconWrap3D: {
     width: 24,
     height: 24,
-    borderRadius: 6,
-    backgroundColor: colors.primaryLight,
+    borderRadius: 7,
+    backgroundColor: '#e0f2fe',
     alignItems: 'center',
     justifyContent: 'center',
   },
   docText: {
     fontSize: 12.5,
     fontWeight: '600',
-    color: colors.text,
+    color: '#334155',
     flex: 1,
     lineHeight: 18,
   },
 
-  /* 4. Calculator Card Link */
+  /* 4. Calculator Card Link with 3D Elevation */
   calcBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: '#ffffff',
     borderWidth: 1.5,
-    borderColor: colors.primaryBorder,
-    borderRadius: 16,
+    borderColor: '#bae6fd',
+    borderRadius: 18,
     padding: 14,
     gap: 12,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
+    shadowColor: '#008ecc',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
     elevation: 3,
   },
-  calcIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: colors.primaryLight,
+  calcIconWrap3D: {
+    width: 44,
+    height: 44,
+    borderRadius: 13,
+    backgroundColor: '#f0f9ff',
+    borderWidth: 1.5,
+    borderColor: '#bae6fd',
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+    overflow: 'hidden',
   },
   calcBtnTextWrap: {
     flex: 1,
   },
   calcBtnText: {
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '800',
-    color: colors.text,
+    color: '#0f172a',
   },
   calcBtnSub: {
     fontSize: 11,
     fontWeight: '600',
-    color: colors.primary,
+    color: '#008ecc',
     marginTop: 2,
+  },
+  calcChevronWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#f0f9ff',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   /* Floating Bottom Bar */
@@ -398,7 +555,7 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: colors.white,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: '#e2e8f0',
     paddingVertical: 12,
     paddingHorizontal: 16,
     shadowColor: '#000',
@@ -411,16 +568,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primary,
+    backgroundColor: '#008ecc',
     borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: 18,
     gap: 8,
-    shadowColor: colors.primary,
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#008ecc',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.28,
+    shadowOpacity: 0.35,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 5,
+  },
+  btnTopSheen: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '48%',
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
   },
   applyIconWrap: {
     width: 22,

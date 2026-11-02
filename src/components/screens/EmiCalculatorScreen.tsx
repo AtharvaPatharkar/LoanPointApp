@@ -569,7 +569,7 @@ const styles = StyleSheet.create({
   },
   resultCard: {
     backgroundColor: colors.cardNavyFrom,
-    borderRadius: 0,
+    borderRadius: 18,
     padding: 18,
     marginBottom: 16,
     position: 'relative',
@@ -729,7 +729,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.white,
-    borderRadius: 0,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     padding: 16,

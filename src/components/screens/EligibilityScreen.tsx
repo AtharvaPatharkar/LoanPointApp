@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
   },
   headerCard: {
     backgroundColor: colors.white,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: colors.border,
     padding: 16,
@@ -489,7 +489,7 @@ const styles = StyleSheet.create({
   /* 3. Inputs Form */
   card: {
     backgroundColor: colors.white,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: colors.border,
     padding: 16,
@@ -619,7 +619,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fffbeb',
     borderWidth: 1.5,
     borderColor: '#fcd34d',
-    borderRadius: 14,
+    borderRadius: 18,
     padding: 12,
     gap: 10,
     width: '100%',

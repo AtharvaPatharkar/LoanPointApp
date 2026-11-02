@@ -229,7 +229,6 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                 maxLength={10}
                 placeholder="9545555999"
                 placeholderTextColor="#94a3b8"
-                autoFocus
               />
               {isMobileValid && <Ionicons name="checkmark-circle" size={18} color="#16a34a" />}
             </View>

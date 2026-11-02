@@ -121,8 +121,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const bannerShimmer = useRef(new Animated.Value(0)).current;
   const quickActionZoom = useRef(new Animated.Value(1)).current;
   const giftPulse = useRef(new Animated.Value(1)).current;
-  const supportCallPulse = useRef(new Animated.Value(1)).current;
-  const supportWaPulse = useRef(new Animated.Value(1)).current;
+
 
   useEffect(() => {
     // 1. Live status dot gentle breathing
@@ -197,58 +196,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       ])
     );
 
-    // 5. Call Branch & WhatsApp continuous alternating pulse
-    const supportCallLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(supportCallPulse, {
-          toValue: 1.04,
-          duration: 1300,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(supportCallPulse, {
-          toValue: 0.98,
-          duration: 1300,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ])
-    );
 
-    const supportWaLoop = Animated.loop(
-      Animated.sequence([
-        Animated.delay(650),
-        Animated.timing(supportWaPulse, {
-          toValue: 1.04,
-          duration: 1300,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(supportWaPulse, {
-          toValue: 0.98,
-          duration: 1300,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ])
-    );
 
     dotLoop.start();
     bannerLoop.start();
     actionZoomLoop.start();
     giftLoop.start();
-    supportCallLoop.start();
-    supportWaLoop.start();
 
     return () => {
       dotLoop.stop();
       bannerLoop.stop();
       actionZoomLoop.stop();
       giftLoop.stop();
-      supportCallLoop.stop();
-      supportWaLoop.stop();
     };
-  }, [pulseLiveDot, bannerShimmer, quickActionZoom, giftPulse, supportCallPulse, supportWaPulse]);
+  }, [pulseLiveDot, bannerShimmer, quickActionZoom, giftPulse]);
 
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -643,44 +604,34 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <Text style={styles.supportSub}>Connect directly with our branch relationship team</Text>
 
         <View style={styles.supportButtonsRow}>
-          {/* Call Branch Button with Zoom Pulse */}
+          {/* Call Branch Button (Clean Static without animation) */}
           <TouchableOpacity
             style={styles.supportBtnTouch}
             onPress={onOpenCall}
             activeOpacity={0.8}
           >
-            <Animated.View
-              style={[
-                styles.supportCallBtn,
-                { transform: [{ scale: supportCallPulse }] },
-              ]}
-            >
+            <View style={styles.supportCallBtn}>
               <View style={styles.supportHalfSheen} />
               <View style={styles.supportIconCircle}>
                 <Ionicons name="call" size={16} color="#008ecc" />
               </View>
               <Text style={styles.supportBtnText}>Call Branch</Text>
-            </Animated.View>
+            </View>
           </TouchableOpacity>
 
-          {/* WhatsApp Support Button with Zoom Pulse */}
+          {/* WhatsApp Support Button (Clean Static without animation) */}
           <TouchableOpacity
             style={styles.supportBtnTouch}
             onPress={onOpenWhatsApp}
             activeOpacity={0.8}
           >
-            <Animated.View
-              style={[
-                styles.supportWaBtn,
-                { transform: [{ scale: supportWaPulse }] },
-              ]}
-            >
+            <View style={styles.supportWaBtn}>
               <View style={styles.supportHalfSheen} />
               <View style={styles.supportIconCircle}>
                 <Ionicons name="logo-whatsapp" size={17} color="#16a34a" />
               </View>
               <Text style={styles.supportBtnText}>WhatsApp</Text>
-            </Animated.View>
+            </View>
           </TouchableOpacity>
         </View>
       </View>
