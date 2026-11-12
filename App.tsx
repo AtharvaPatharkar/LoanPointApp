@@ -55,6 +55,8 @@ import { RateUsScreen } from './src/components/screens/RateUsScreen';
 import { ProfileScreen } from './src/components/screens/ProfileScreen';
 import { AdminScreen } from './src/components/screens/AdminScreen';
 import { NotificationCenterModal } from './src/components/screens/NotificationCenterModal';
+import { MyInsuranceScreen } from './src/components/screens/MyInsuranceScreen';
+import { AllReviewsScreen } from './src/components/screens/AllReviewsScreen';
 import { AuthScreens } from './src/components/auth/AuthScreens';
 import { SplashScreen } from './src/components/common/SplashScreen';
 import { CompleteProfileModal } from './src/components/common/CompleteProfileModal';
@@ -135,9 +137,19 @@ function MainApp() {
   };
 
   const handleNavigate = (screen: string, params?: Record<string, unknown>) => {
-    if (screen === 'home' || screen === 'applications' || screen === 'services' || screen === 'profile') {
+    if (screen === 'home' || screen === 'applications' || screen === 'apply' || screen === 'insurance' || screen === 'refer') {
+      if (screen === 'apply') {
+        setSelectedCategory(categories[0]);
+        setActiveSubScreen('loan_apply');
+        return;
+      }
       setCurrentTab(screen as TabType);
       setActiveSubScreen(null);
+      return;
+    }
+
+    if (screen === 'profile') {
+      setActiveSubScreen('profile_settings');
       return;
     }
 
@@ -199,6 +211,10 @@ function MainApp() {
         return 'Rate Comparison';
       case 'cibil_services':
         return 'CIBIL & Credit Advisory';
+      case 'services':
+        return 'Services & Financial Tools';
+      case 'all_reviews':
+        return 'Customer Reviews & Ratings';
       case 'documents':
         return 'My Documents';
       case 'support':
@@ -207,6 +223,8 @@ function MainApp() {
         return 'Offers & Rewards';
       case 'rate_us':
         return 'Rate Us & Feedback';
+      case 'profile_settings':
+        return 'My Profile & Account';
       case 'admin':
         return 'Admin Console';
       default:
@@ -268,7 +286,9 @@ function MainApp() {
             onBack={handleBack}
             unreadCount={unreadNotifications}
             onOpenNotifications={() => setIsNotificationOpen(true)}
-            onOpenSupport={handleOpenCall}
+            onOpenProfile={() => {
+              setActiveSubScreen('profile_settings');
+            }}
             userName={user?.name || 'Rahul'}
             isHomeScreen={!activeSubScreen && currentTab === 'home'}
           />
@@ -296,8 +316,7 @@ function MainApp() {
                 user={user}
                 onCategoryChange={(cat) => setSelectedCategory(cat)}
                 onNavigateToProfile={() => {
-                  setCurrentTab('profile');
-                  setActiveSubScreen(null);
+                  setActiveSubScreen('profile_settings');
                 }}
                 onSuccess={(newApp) => {
                   setApplications(loanService.getApplications());
@@ -370,6 +389,17 @@ function MainApp() {
               />
             )}
 
+            {activeSubScreen === 'services' && (
+              <ServicesScreen
+                onSelectCategory={handleSelectCategory}
+                onNavigate={handleNavigate}
+              />
+            )}
+
+            {activeSubScreen === 'all_reviews' && (
+              <AllReviewsScreen onBack={handleBack} />
+            )}
+
             {activeSubScreen === 'documents' && <DocumentsScreen />}
 
             {activeSubScreen === 'support' && <SupportScreen user={user} />}
@@ -386,6 +416,23 @@ function MainApp() {
             )}
 
             {activeSubScreen === 'rate_us' && <RateUsScreen />}
+
+            {activeSubScreen === 'profile_settings' && (
+              <ProfileScreen
+                user={user}
+                onUpdateUser={(updatedUser) => setUser(updatedUser)}
+                currentLanguage={currentLanguage}
+                onLanguageChange={(l) => setCurrentLanguage(l)}
+                onLogout={() => {
+                  authService.logout();
+                  setIsAuthenticated(false);
+                  setUser(null);
+                  setActiveSubScreen(null);
+                }}
+                onNavigate={handleNavigate}
+                onResetDemoData={handleResetDemo}
+              />
+            )}
 
             {activeSubScreen === 'admin' && (
               <AdminScreen
@@ -431,26 +478,22 @@ function MainApp() {
                   />
                 )}
 
-                {currentTab === 'services' && (
-                  <ServicesScreen
-                    onSelectCategory={handleSelectCategory}
-                    onNavigate={handleNavigate}
+                {currentTab === 'insurance' && (
+                  <MyInsuranceScreen
+                    user={user}
+                    onOpenCall={handleOpenCall}
+                    onOpenWhatsApp={handleOpenWhatsApp}
                   />
                 )}
 
-                {currentTab === 'profile' && (
-                  <ProfileScreen
+                {currentTab === 'refer' && (
+                  <OffersReferralScreen
                     user={user}
-                    onUpdateUser={(updatedUser) => setUser(updatedUser)}
-                    currentLanguage={currentLanguage}
-                    onLanguageChange={(l) => setCurrentLanguage(l)}
-                    onLogout={() => {
-                      authService.logout();
-                      setIsAuthenticated(false);
-                      setUser(null);
+                    onNavigateLoan={(type) => {
+                      const cat = categories.find((c) => c.id === type) || categories[0];
+                      setSelectedCategory(cat);
+                      setActiveSubScreen('loan_apply');
                     }}
-                    onNavigate={handleNavigate}
-                    onResetDemoData={handleResetDemo}
                   />
                 )}
               </>
@@ -462,8 +505,13 @@ function MainApp() {
             <BottomNav
               currentTab={currentTab}
               onSelectTab={(tab) => {
-                setCurrentTab(tab);
-                setActiveSubScreen(null);
+                if (tab === 'apply') {
+                  setSelectedCategory(categories[0]);
+                  setActiveSubScreen('loan_apply');
+                } else {
+                  setCurrentTab(tab);
+                  setActiveSubScreen(null);
+                }
               }}
               pendingDocsCount={pendingDocsCount}
             />

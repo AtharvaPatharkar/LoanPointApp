@@ -5,6 +5,7 @@ import { UserProfile, LoanApplication, LoanCategory, LoanType } from '../../type
 import { COMPANY_INFO } from '../../data/mockData';
 import { LoanIcon } from '../common/LoanIcon';
 import { IsometricTile } from '../common/IsometricTile';
+import { GoogleReviewsSection } from '../common/GoogleReviewsSection';
 import { formatINR } from '../../utils/calculator';
 import { colors } from '../../theme/colors';
 
@@ -271,38 +272,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       </View>
 
       {/* 2. 45° 3D Isometric FinTech Quick Actions with Half-Circle Sheen & Zoom-In Pulse */}
+      {/* 2. High-Impact Quick Tools & Financial Services Hub */}
       <View style={styles.section}>
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionTitle}>Quick Tools & Desk</Text>
-          <Text style={styles.quickToolsSub}>1-Tap Instant Access</Text>
+          <TouchableOpacity onPress={() => onNavigate('services')} activeOpacity={0.7}>
+            <View style={styles.seeAllBadge}>
+              <Text style={styles.seeAllText}>All Services</Text>
+              <Ionicons name="arrow-forward" size={11} color={colors.primary} />
+            </View>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.actionsGrid}>
-          {/* Apply Fast: 45° Gold Money Pouch */}
-          <TouchableOpacity
-            style={styles.actionItem}
-            onPress={() => onNavigate('loan_apply', { loanType: 'personal' })}
-            activeOpacity={0.78}
-          >
-            <Animated.View
-              style={[
-                styles.actionHalfCirclePlatform,
-                styles.actionPlatformApply,
-                { transform: [{ scale: quickActionZoom }] },
-              ]}
-            >
-              {/* Half-circle specular light sheen */}
-              <View style={styles.actionPlatformSheen} />
-              <View style={styles.actionIconTilt45}>
-                <MaterialCommunityIcons name="file-document-edit" size={24} color="#ffffff" />
-              </View>
-            </Animated.View>
-            <Text style={styles.actionLabel}>Apply Loan</Text>
-            <View style={[styles.actionMicroPill, { backgroundColor: '#e0f2fe' }]}>
-              <Text style={[styles.actionMicroPillText, { color: '#0369a1' }]}>Instant</Text>
-            </View>
-          </TouchableOpacity>
-
           {/* EMI Calculator: 45° Royal Indigo Navy Tile */}
           <TouchableOpacity
             style={styles.actionItem}
@@ -351,27 +333,51 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             </View>
           </TouchableOpacity>
 
-          {/* Track Loan: 45° Crimson Radar Compass */}
+          {/* Balance Transfer: 45° Crimson Swap */}
           <TouchableOpacity
             style={styles.actionItem}
-            onPress={() => onNavigate('applications')}
+            onPress={() => onNavigate('balance_transfer')}
             activeOpacity={0.78}
           >
             <Animated.View
               style={[
                 styles.actionHalfCirclePlatform,
-                styles.actionPlatformTrack,
+                styles.actionPlatformTransfer,
                 { transform: [{ scale: quickActionZoom }] },
               ]}
             >
               <View style={styles.actionPlatformSheen} />
               <View style={styles.actionIconTilt45}>
-                <Ionicons name="compass" size={24} color="#ffffff" />
+                <MaterialCommunityIcons name="swap-horizontal-bold" size={24} color="#ffffff" />
               </View>
             </Animated.View>
-            <Text style={styles.actionLabel}>Track Status</Text>
+            <Text style={styles.actionLabel}>Transfer</Text>
             <View style={[styles.actionMicroPill, { backgroundColor: '#fee2e2' }]}>
-              <Text style={[styles.actionMicroPillText, { color: '#b91c1c' }]}>Live</Text>
+              <Text style={[styles.actionMicroPillText, { color: '#b91c1c' }]}>Save EMI</Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* Rate Comparison: 45° Vivid Amber/Gold Scale */}
+          <TouchableOpacity
+            style={styles.actionItem}
+            onPress={() => onNavigate('rate_comparison')}
+            activeOpacity={0.78}
+          >
+            <Animated.View
+              style={[
+                styles.actionHalfCirclePlatform,
+                styles.actionPlatformCompare,
+                { transform: [{ scale: quickActionZoom }] },
+              ]}
+            >
+              <View style={styles.actionPlatformSheen} />
+              <View style={styles.actionIconTilt45}>
+                <MaterialCommunityIcons name="scale-balance" size={24} color="#ffffff" />
+              </View>
+            </Animated.View>
+            <Text style={styles.actionLabel}>Compare</Text>
+            <View style={[styles.actionMicroPill, { backgroundColor: '#fef3c7' }]}>
+              <Text style={[styles.actionMicroPillText, { color: '#b45309' }]}>Banks</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -485,38 +491,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </View>
       )}
 
-      {/* Refer & Earn Banner with 3D Specular Platform & Zoom Animation */}
-      <TouchableOpacity
-        style={styles.referralBanner}
-        onPress={() => onNavigate('offers_referral')}
-        activeOpacity={0.84}
-      >
-        <Animated.View
-          style={[
-            styles.referralIconBox,
-            { transform: [{ scale: giftPulse }] },
-          ]}
-        >
-          {/* Half-Circle Specular Top Sheen */}
-          <View style={styles.referralHalfSheen} />
-          <FontAwesome5 name="gift" size={20} color="#ffffff" />
-        </Animated.View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.referralBannerTitle}>Refer Friends & Earn Cash</Text>
-          <Text style={styles.referralBannerSub}>Get up to ₹2,000 per successful disbursement</Text>
-        </View>
-        <Animated.View
-          style={[
-            styles.referralPill,
-            { transform: [{ scale: quickActionZoom }] },
-          ]}
-        >
-          <MaterialCommunityIcons name="send-circle" size={17} color="#ffffff" />
-          <Text style={styles.referralPillText}>Invite</Text>
-        </Animated.View>
-      </TouchableOpacity>
-
-      {/* 4. Paisabazaar-Style 3D Isometric FinTech Loan Grid */}
+      {/* 3. Paisabazaar-Style 3D Isometric FinTech Loan Grid */}
       <View style={styles.section}>
         <View style={styles.sectionHeaderRow}>
           <View>
@@ -592,7 +567,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </View>
       </View>
 
-      {/* 5. One-Tap Support Bar with Specular Platforms & Zoom-In Pulse */}
+      {/* 5. Google Customer Reviews & Ratings Carousel */}
+      <GoogleReviewsSection onViewAll={() => onNavigate('all_reviews')} />
+
+      {/* 6. One-Tap Support Bar with Specular Platforms & Zoom-In Pulse */}
       <View style={styles.supportBox}>
         <View style={styles.supportHeaderRow}>
           <Text style={styles.supportTitle}>Need Help with Loans?</Text>
@@ -913,6 +891,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#008ecc', // Sky Cyan
     shadowColor: '#008ecc',
   },
+  actionPlatformServices: {
+    backgroundColor: '#0284c7', // Brand Vivid Sky / Azure
+    shadowColor: '#0284c7',
+  },
   actionPlatformEmi: {
     backgroundColor: '#2d3091', // Indigo Navy
     shadowColor: '#2d3091',
@@ -920,6 +902,14 @@ const styles = StyleSheet.create({
   actionPlatformElig: {
     backgroundColor: '#16a34a', // Emerald Green
     shadowColor: '#16a34a',
+  },
+  actionPlatformTransfer: {
+    backgroundColor: '#ee1c25', // Crimson Red
+    shadowColor: '#ee1c25',
+  },
+  actionPlatformCompare: {
+    backgroundColor: '#d97706', // Warm Amber Gold
+    shadowColor: '#d97706',
   },
   actionPlatformTrack: {
     backgroundColor: '#ee1c25', // Crimson Red

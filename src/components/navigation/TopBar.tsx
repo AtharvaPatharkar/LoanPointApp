@@ -2,7 +2,6 @@ import React, { useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Image, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
-import { COMPANY_INFO } from '../../data/mockData';
 
 interface TopBarProps {
   title?: string;
@@ -11,6 +10,7 @@ interface TopBarProps {
   unreadCount?: number;
   onOpenNotifications?: () => void;
   onOpenSupport?: () => void;
+  onOpenProfile?: () => void;
   userName?: string;
   isHomeScreen?: boolean;
 }
@@ -22,6 +22,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   unreadCount = 0,
   onOpenNotifications,
   onOpenSupport,
+  onOpenProfile,
   userName = 'Rahul',
   isHomeScreen = true,
 }) => {
@@ -129,9 +130,9 @@ export const TopBar: React.FC<TopBarProps> = ({
             </Text>
           ) : (
             <View>
-              <Text style={styles.welcomeSalute}>WELCOME TO LOAN POINT</Text>
+              <Text style={styles.welcomeSalute}>LOAN POINT</Text>
               <Text style={styles.candidateName} numberOfLines={1}>
-                {userName}
+                Your Loan, Our Support
               </Text>
             </View>
           )}
@@ -139,7 +140,7 @@ export const TopBar: React.FC<TopBarProps> = ({
       </View>
 
       <View style={styles.rightActions}>
-        {/* Notification Button with 3D Specular Sheen & Zoom-In Pulse */}
+        {/* Notification Bell Button matching the Reference Image */}
         {onOpenNotifications && (
           <TouchableOpacity
             onPress={onOpenNotifications}
@@ -153,12 +154,11 @@ export const TopBar: React.FC<TopBarProps> = ({
                 { transform: [{ scale: notifPulse }] },
               ]}
             >
-              {/* Top Half-Circle Specular Light Sheen */}
               <View style={styles.btnHalfSheen} />
               <Ionicons name="notifications" size={19} color="#d97706" />
             </Animated.View>
 
-            {/* Notification Badge Floating Outside Overflow with Heartbeat Pulse */}
+            {/* Notification Count Badge */}
             {unreadCount > 0 && (
               <Animated.View
                 style={[
@@ -174,8 +174,21 @@ export const TopBar: React.FC<TopBarProps> = ({
           </TouchableOpacity>
         )}
 
-        {/* Call Support Button with 3D Specular Sheen & Zoom-In Pulse */}
-        {onOpenSupport && (
+        {/* User Profile Avatar Pill matching the Reference Image Header */}
+        {onOpenProfile && (
+          <TouchableOpacity
+            onPress={onOpenProfile}
+            activeOpacity={0.8}
+            style={styles.avatarTouch}
+          >
+            <View style={styles.avatarCircle}>
+              <Ionicons name="person" size={17} color="#008ecc" />
+            </View>
+          </TouchableOpacity>
+        )}
+
+        {/* Call Support Button (kept as compact optional action if provided) */}
+        {onOpenSupport && !onOpenProfile && (
           <TouchableOpacity
             onPress={onOpenSupport}
             activeOpacity={0.75}
@@ -266,19 +279,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   welcomeSalute: {
-    fontSize: 8.5,
-    fontWeight: '800',
-    color: '#008ecc',
-    letterSpacing: 0.5,
-  },
-  candidateName: {
-    fontSize: 15,
-    fontWeight: '800',
+    fontSize: 13,
+    fontWeight: '900',
     color: '#0f172a',
     letterSpacing: -0.2,
   },
+  candidateName: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#008ecc',
+    letterSpacing: 0.2,
+    marginTop: 1,
+  },
   screenTitle: {
-    fontSize: 14.5,
+    fontSize: 15,
     fontWeight: '800',
     color: '#0f172a',
     letterSpacing: -0.2,
@@ -286,7 +300,7 @@ const styles = StyleSheet.create({
   rightActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     flexShrink: 0,
   },
   actionBtnTouch: {
@@ -327,6 +341,24 @@ const styles = StyleSheet.create({
     shadowColor: '#008ecc',
     elevation: 3,
     shadowOpacity: 0.2,
+  },
+  avatarTouch: {
+    position: 'relative',
+  },
+  avatarCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#e0f2fe',
+    borderWidth: 2,
+    borderColor: '#008ecc',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#008ecc',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   badgeCountPill: {
     position: 'absolute',
