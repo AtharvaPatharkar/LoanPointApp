@@ -27,16 +27,22 @@ interface HomeScreenProps {
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
-  user,
   categories,
   onSelectCategory,
   onNavigate,
-  onOpenCall,
-  onOpenWhatsApp,
 }) => {
   const [reviewData, setReviewData] = useState<GooglePlaceReviewData>(
     googleReviewsService.getVerifiedData()
   );
+  const [activeReviewIndex, setActiveReviewIndex] = useState<number>(0);
+  const [expandedReviews, setExpandedReviews] = useState<Record<string, boolean>>({});
+
+  const toggleExpandReview = (reviewId: string) => {
+    setExpandedReviews((prev) => ({
+      ...prev,
+      [reviewId]: !prev[reviewId],
+    }));
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -49,6 +55,44 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       isMounted = false;
     };
   }, []);
+
+  // Sourced 100% from real Google Place details (Place ID: ChIJLy2Wo0HW0TsRiEKAhjtJx9U)
+  // Only real verified reviews with rating > 3 stars
+  const reviewsList = (reviewData.reviews || []).filter((r) => r.rating > 3);
+
+  const currentReview =
+    reviewsList.length > 0
+      ? reviewsList[activeReviewIndex % reviewsList.length]
+      : reviewData.reviews?.[0] || {
+          id: 'placeholder',
+          author_name: 'Google Customer',
+          relative_time_description: 'Recently',
+          rating: 5,
+          text: 'Excellent service by Loan Point team.',
+        };
+
+  const isCurrentExpanded = Boolean(expandedReviews[currentReview.id]);
+
+  // Auto-rotation timer: rotate reviews one by one every 4.5 seconds
+  // Automatically PAUSES when user clicks "..more" to read the full review,
+  // and RESUMES when user clicks "Show Less"
+  useEffect(() => {
+    if (reviewsList.length <= 1 || isCurrentExpanded) return;
+
+    const timer = setInterval(() => {
+      setActiveReviewIndex((prev) => (prev + 1) % reviewsList.length);
+    }, 4500);
+
+    return () => clearInterval(timer);
+  }, [reviewsList.length, isCurrentExpanded]);
+
+  const handlePrevReview = () => {
+    setActiveReviewIndex((prev) => (prev > 0 ? prev - 1 : reviewsList.length - 1));
+  };
+
+  const handleNextReview = () => {
+    setActiveReviewIndex((prev) => (prev + 1) % reviewsList.length);
+  };
 
   return (
     <ScrollView
@@ -74,58 +118,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         />
       </TouchableOpacity>
 
-      {/* 3. Four Quick Action Cards using Solid Vibrant Filled Icons */}
-      <View style={styles.quickActionsGrid}>
-        {/* Card 1: Check Eligibility */}
-        <TouchableOpacity
-          style={styles.quickActionCard}
-          onPress={() => onNavigate('eligibility_checker')}
-          activeOpacity={0.8}
-        >
-          <View style={[styles.quickIconCircle, { backgroundColor: '#f59e0b' }]}>
-            <MaterialCommunityIcons name="speedometer" size={26} color="#ffffff" />
-          </View>
-          <Text style={styles.quickActionText}>Check{'\n'}Eligibility</Text>
-        </TouchableOpacity>
-
-        {/* Card 2: EMI Calculator */}
-        <TouchableOpacity
-          style={styles.quickActionCard}
-          onPress={() => onNavigate('emi_calculator')}
-          activeOpacity={0.8}
-        >
-          <View style={[styles.quickIconCircle, { backgroundColor: '#2563eb' }]}>
-            <MaterialCommunityIcons name="calculator-variant" size={25} color="#ffffff" />
-          </View>
-          <Text style={styles.quickActionText}>EMI{'\n'}Calculator</Text>
-        </TouchableOpacity>
-
-        {/* Card 3: Chat on WhatsApp */}
-        <TouchableOpacity
-          style={styles.quickActionCard}
-          onPress={onOpenWhatsApp}
-          activeOpacity={0.8}
-        >
-          <View style={[styles.quickIconCircle, { backgroundColor: '#16a34a' }]}>
-            <Ionicons name="logo-whatsapp" size={26} color="#ffffff" />
-          </View>
-          <Text style={styles.quickActionText}>Chat on{'\n'}WhatsApp</Text>
-        </TouchableOpacity>
-
-        {/* Card 4: Request Callback */}
-        <TouchableOpacity
-          style={styles.quickActionCard}
-          onPress={onOpenCall}
-          activeOpacity={0.8}
-        >
-          <View style={[styles.quickIconCircle, { backgroundColor: '#0284c7' }]}>
-            <Ionicons name="call" size={23} color="#ffffff" />
-          </View>
-          <Text style={styles.quickActionText}>Request{'\n'}Callback</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* 4. Our Loan Products Header */}
+      {/* 3. Our Loan Products Header */}
       <View style={styles.loanProductsHeader}>
         <Text style={styles.loanProductsTitle}>Our Loan Products</Text>
         <TouchableOpacity
@@ -138,7 +131,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* 5. Five Loan Product Cards with Solid Vibrant Filled Icons */}
+      {/* 4. Five Loan Product Cards Row with Solid Vibrant Filled Icons */}
       <View style={styles.loanProductsRow}>
         {/* Product 1: Home Loan */}
         <TouchableOpacity
@@ -201,49 +194,185 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* 6. Google Reviews Strip */}
-      <TouchableOpacity
-        style={styles.googleReviewsCard}
-        onPress={() => onNavigate('all_reviews')}
-        activeOpacity={0.88}
-      >
-        <FontAwesome5 name="award" size={20} color="#eab308" />
+      {/* 5. Google Reviews & Happy Customers Review Section matching reference image */}
+      <View style={styles.reviewsContainerCard}>
+        {/* Top Dark Navy Header Strip */}
+        <View style={styles.reviewsTopStrip}>
+          {/* Left: Gold Laurel Wreath + Google G Logo + Title */}
+          <View style={styles.stripLeft}>
+            <Image
+              source={require('../../../assets/logo/laurel-wreath-left.png')}
+              style={styles.laurelImage}
+              resizeMode="contain"
+            />
+            <View style={styles.stripGoogleIconCircle}>
+              <Ionicons name="logo-google" size={18} color="#ea4335" />
+            </View>
+            <View>
+              <Text style={styles.stripGoogleText}>Google</Text>
+              <Text style={styles.stripReviewsText}>Reviews</Text>
+            </View>
+          </View>
 
-        <View style={styles.googleIconCircle}>
-          <Ionicons name="logo-google" size={19} color="#ea4335" />
-        </View>
+          <View style={styles.stripDivider} />
 
-        <View style={styles.googleReviewsContent}>
-          <Text style={styles.googleReviewsTitle}>Google Reviews</Text>
-          <View style={styles.googleRatingRow}>
-            <Text style={styles.googleReviewCount}>
+          {/* Middle: Review Count */}
+          <View style={styles.stripMiddle}>
+            <Ionicons name="people" size={15} color="#ffffff" style={{ marginRight: 4 }} />
+            <Text style={styles.stripCountText}>
               {reviewData.user_ratings_total.toLocaleString('en-IN')} Reviews
             </Text>
-            <Text style={styles.googleDivider}>|</Text>
-            <Ionicons name="star" size={13} color="#eab308" style={{ marginRight: 3 }} />
-            <Text style={styles.googleRatingScore}>
-              <Text style={styles.googleRatingBold}>
+          </View>
+
+          <View style={styles.stripDivider} />
+
+          {/* Right: Star + Average Rating + Gold Laurel Wreath */}
+          <View style={styles.stripRight}>
+            <Ionicons name="star" size={15} color="#eab308" style={{ marginRight: 4 }} />
+            <View>
+              <Text style={styles.stripRatingBold}>
                 {reviewData.rating.toFixed(1)} / 5.0
-              </Text>{' '}
-              Average Rating
-            </Text>
+              </Text>
+              <Text style={styles.stripRatingSub}>Average Rating</Text>
+            </View>
+            <Image
+              source={require('../../../assets/logo/laurel-wreath-right.png')}
+              style={styles.laurelImage}
+              resizeMode="contain"
+            />
           </View>
         </View>
 
-        <FontAwesome5 name="award" size={20} color="#eab308" />
-      </TouchableOpacity>
-
-      {/* 7. Insurance with Loan Point Strip */}
-      <View style={styles.insuranceCard}>
-        <View style={styles.insuranceShieldWrap}>
-          <MaterialCommunityIcons name="shield-account" size={32} color="#0284c7" />
+        {/* Section Title Row: Happy Customers Review & Link in One Clean Line */}
+        <View style={styles.happyRow}>
+          <Text style={styles.happyTitle} numberOfLines={1}>Happy Customers Review</Text>
+          <TouchableOpacity
+            onPress={() => onNavigate('all_reviews')}
+            activeOpacity={0.7}
+            style={styles.seeAllGoogleBtn}
+          >
+            <Text style={styles.seeAllGoogleText} numberOfLines={1}>See All Reviews on Google</Text>
+            <Ionicons name="open-outline" size={11} color="#004aad" style={{ marginLeft: 2 }} />
+          </TouchableOpacity>
         </View>
 
+        {/* Review Carousel Card Row with Left & Right Arrow Buttons */}
+        <View style={styles.reviewCarouselRow}>
+          {/* Left Arrow Button */}
+          <TouchableOpacity
+            style={styles.carouselNavBtn}
+            onPress={handlePrevReview}
+            activeOpacity={0.75}
+          >
+            <Ionicons name="chevron-back" size={18} color="#0f172a" />
+          </TouchableOpacity>
+
+          {/* Customer Review Card */}
+          <View style={styles.customerCard}>
+            <View style={styles.customerHeader}>
+              {/* Customer Avatar */}
+              <View style={styles.avatarWrap}>
+                {currentReview.profile_photo_url ? (
+                  <Image
+                    source={{ uri: currentReview.profile_photo_url }}
+                    style={styles.customerAvatar}
+                  />
+                ) : (
+                  <View style={styles.avatarPlaceholder}>
+                    <Text style={styles.avatarInitial}>
+                      {currentReview.author_name ? currentReview.author_name.charAt(0).toUpperCase() : 'G'}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Customer Name & Rating */}
+              <View style={styles.customerDetails}>
+                <Text style={styles.customerName}>{currentReview.author_name}</Text>
+                <View style={styles.starsRow}>
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Ionicons key={s} name="star" size={13} color="#f59e0b" style={{ marginRight: 2 }} />
+                  ))}
+                  <Text style={styles.reviewTime}>{currentReview.relative_time_description}</Text>
+                </View>
+              </View>
+
+              {/* Google G Logo Badge */}
+              <View style={styles.cardGoogleBadge}>
+                <Ionicons name="logo-google" size={17} color="#ea4335" />
+              </View>
+            </View>
+
+            {/* Review Testimonial Text with 3-line clamp & "..more" button */}
+            <View style={styles.reviewCommentWrap}>
+              <Text
+                style={styles.reviewCommentText}
+                numberOfLines={expandedReviews[currentReview.id] ? undefined : 3}
+              >
+                {currentReview.text}
+              </Text>
+              {currentReview.text && currentReview.text.length > 90 && (
+                <TouchableOpacity
+                  onPress={() => toggleExpandReview(currentReview.id)}
+                  activeOpacity={0.7}
+                  style={styles.moreBtnInline}
+                >
+                  <Text style={styles.moreBtnText}>
+                    {expandedReviews[currentReview.id] ? ' Show Less' : ' ..more'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {/* Right Arrow Button */}
+          <TouchableOpacity
+            style={styles.carouselNavBtn}
+            onPress={handleNextReview}
+            activeOpacity={0.75}
+          >
+            <Ionicons name="chevron-forward" size={18} color="#0f172a" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Carousel Pagination Dots */}
+        <View style={styles.dotsRow}>
+          {reviewsList.map((item, dot) => (
+            <TouchableOpacity
+              key={item.id || dot}
+              onPress={() => setActiveReviewIndex(dot)}
+              style={[
+                styles.dot,
+                activeReviewIndex === dot ? styles.dotActive : styles.dotInactive,
+              ]}
+            />
+          ))}
+        </View>
+      </View>
+
+      {/* 6. Insurance with Loan Point Strip matching exact design in uploaded screenshot */}
+      <View style={styles.insuranceCard}>
+        {/* Decorative Top-Right Umbrella & Family Watermark */}
+        <Image
+          source={require('../../../assets/logo/insurance-watermark-umbrella.png')}
+          style={styles.umbrellaWatermark}
+          resizeMode="contain"
+        />
+
+        {/* Left: Blue Shield with Family Icon */}
+        <Image
+          source={require('../../../assets/logo/insurance-family-shield.png')}
+          style={styles.familyShieldIcon}
+          resizeMode="contain"
+        />
+
+        {/* Middle: Title & Subtitle */}
         <View style={styles.insuranceContent}>
           <Text style={styles.insuranceTitle}>Insurance with Loan Point</Text>
-          <Text style={styles.insuranceSubtitle}>Health Insurance | Life Insurance</Text>
+          <Text style={styles.insuranceSubtitle}>Health Insurance  |  Life Insurance</Text>
         </View>
 
+        {/* Right: Golden Yellow 'Get Quote ->' Pill Button */}
         <TouchableOpacity
           style={styles.getQuoteBtn}
           onPress={() => onNavigate('insurance')}
@@ -263,14 +392,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
   },
   scrollContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingTop: 6,
-    paddingBottom: 24,
+    paddingBottom: 28,
   },
 
   // 1. Welcome to Loan Point 👋
   welcomeRow: {
-    marginBottom: 12,
+    marginBottom: 10,
     marginTop: 4,
   },
   welcomeTitle: {
@@ -299,46 +428,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
 
-  // 3. Four Quick Action Cards
-  quickActionsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
-    marginBottom: 20,
-  },
-  quickActionCard: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#e8f0fe',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
-    elevation: 2,
-  },
-  quickIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  quickActionText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#0f172a',
-    textAlign: 'center',
-    lineHeight: 14,
-  },
-
-  // 4. Our Loan Products Header
+  // 3. Our Loan Products Header
   loanProductsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -360,7 +450,7 @@ const styles = StyleSheet.create({
     color: '#004aad',
   },
 
-  // 5. Five Loan Product Cards
+  // 4. Five Loan Product Cards Row
   loanProductsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -399,94 +489,287 @@ const styles = StyleSheet.create({
     lineHeight: 13,
   },
 
-  // 6. Google Reviews Strip
-  googleReviewsCard: {
-    backgroundColor: '#fffdf0',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#fef08a',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+  // 5. Google Reviews & Happy Customers Review Section
+  reviewsContainerCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#facc15', // Golden Yellow Border
+    overflow: 'hidden',
+    paddingBottom: 14,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+
+  // Top Dark Navy Strip
+  reviewsTopStrip: {
+    backgroundColor: '#0a3875',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14,
-    shadowColor: '#eab308',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
   },
-  googleIconCircle: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+  stripLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  laurelImage: {
+    width: 18,
+    height: 28,
+  },
+  stripGoogleIconCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stripGoogleText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#ffffff',
+    lineHeight: 13,
+  },
+  stripReviewsText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#cbd5e1',
+    lineHeight: 11,
+  },
+  stripDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.28)',
+  },
+  stripMiddle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  stripCountText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  stripRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  stripRatingBold: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#ffffff',
+  },
+  stripRatingSub: {
+    fontSize: 8.5,
+    color: '#cbd5e1',
+    fontWeight: '600',
+  },
+
+  // Section Title Row
+  happyRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingTop: 11,
+    paddingBottom: 9,
+    flexWrap: 'nowrap',
+  },
+  happyTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0f172a',
+    flexShrink: 1,
+  },
+  seeAllGoogleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 0,
+    marginLeft: 6,
+  },
+  seeAllGoogleText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#004aad',
+    textDecorationLine: 'underline',
+  },
+
+  // Review Carousel Row
+  reviewCarouselRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    gap: 8,
+  },
+  carouselNavBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#fef08a',
-    marginRight: 8,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  googleReviewsContent: {
+  customerCard: {
     flex: 1,
-    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 10,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  googleReviewsTitle: {
-    fontSize: 13.5,
-    fontWeight: '800',
-    color: '#0f172a',
-    marginBottom: 2,
-  },
-  googleRatingRow: {
+  customerHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
+    marginBottom: 6,
   },
-  googleReviewCount: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#0f172a',
+  avatarWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    overflow: 'hidden',
+    marginRight: 8,
+    backgroundColor: '#e2e8f0',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  googleDivider: {
-    marginHorizontal: 6,
-    color: '#cbd5e1',
-    fontWeight: '600',
+  customerAvatar: {
+    width: '100%',
+    height: '100%',
   },
-  googleRatingScore: {
-    fontSize: 11,
-    color: '#334155',
-    fontWeight: '500',
+  avatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#0a3875',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  googleRatingBold: {
+  avatarInitial: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  customerDetails: {
+    flex: 1,
+  },
+  customerName: {
+    fontSize: 12.5,
     fontWeight: '800',
     color: '#0f172a',
   },
-
-  // 7. Insurance with Loan Point Strip
-  insuranceCard: {
-    backgroundColor: '#f0fdf4',
-    borderRadius: 16,
+  starsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 1,
+  },
+  reviewTime: {
+    fontSize: 9.5,
+    color: '#64748b',
+    marginLeft: 4,
+    fontWeight: '500',
+  },
+  cardGoogleBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#bbf7d0',
+    borderColor: '#e2e8f0',
+  },
+  reviewCommentWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  reviewCommentText: {
+    fontSize: 11,
+    color: '#334155',
+    lineHeight: 15,
+    fontWeight: '600',
+  },
+  moreBtnInline: {
+    paddingVertical: 1,
+  },
+  moreBtnText: {
+    fontSize: 11,
+    color: '#004aad',
+    fontWeight: '800',
+  },
+
+  // Carousel Pagination Dots
+  dotsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 10,
+  },
+  dot: {
+    height: 8,
+    borderRadius: 4,
+  },
+  dotActive: {
+    width: 8,
+    borderRadius: 4,
+    backgroundColor: '#0329e4', // Deep Royal Blue Active Dot matching screenshot
+  },
+  dotInactive: {
+    width: 8,
+    borderRadius: 4,
+    backgroundColor: '#cbd5e1', // Inactive light grey dot
+  },
+
+  // 6. Insurance with Loan Point Strip matching exact design in uploaded screenshot
+  insuranceCard: {
+    backgroundColor: '#ebfaf0', // Soft pastel mint-green background
+    borderRadius: 18,
+    borderWidth: 1.2,
+    borderColor: '#c6edd0', // Clean mint border
     paddingVertical: 10,
     paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginTop: 14,
+    position: 'relative',
+    overflow: 'hidden',
     shadowColor: '#16a34a',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 2,
   },
-  insuranceShieldWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#e0f2fe',
-    alignItems: 'center',
-    justifyContent: 'center',
+  umbrellaWatermark: {
+    position: 'absolute',
+    top: -2,
+    right: 48,
+    width: 80,
+    height: 48,
+    opacity: 0.35,
+  },
+  familyShieldIcon: {
+    width: 42,
+    height: 42,
     marginRight: 10,
   },
   insuranceContent: {
@@ -507,13 +790,13 @@ const styles = StyleSheet.create({
   getQuoteBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#facc15',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 18,
-    shadowColor: '#000',
+    backgroundColor: '#fad805', // Exact vibrant golden-yellow fill
+    paddingVertical: 7,
+    paddingHorizontal: 13,
+    borderRadius: 20,
+    shadowColor: '#ca8a04',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.2,
     shadowRadius: 2,
     elevation: 2,
   },

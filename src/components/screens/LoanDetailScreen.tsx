@@ -33,6 +33,18 @@ interface BenefitItem {
   iconBg: string;
 }
 
+// Map each loan category id to its hero banner image in assets/banner
+const LOAN_HERO_BANNERS: Record<string, any> = {
+  personal: require('../../../assets/banner/personal-loan-hero-banner.png'),
+  home: require('../../../assets/banner/home-loan-hero-banner.png'),
+  business: require('../../../assets/banner/business-loan-hero-banner.png'),
+  car: require('../../../assets/banner/car-loan-hero-banner.png'),
+  education: require('../../../assets/banner/education-loan-hero-banner.png'),
+  agriculture: require('../../../assets/banner/agriculture-loan-hero-banner.png'),
+  mortgage: require('../../../assets/banner/martgage-loan-hero-banner.png'),
+  mudra: require('../../../assets/banner/mudra-loan-hero-banner.png'),
+};
+
 export const LoanDetailScreen: React.FC<LoanDetailScreenProps> = ({
   category,
   onApplyNow,
@@ -190,6 +202,41 @@ export const LoanDetailScreen: React.FC<LoanDetailScreenProps> = ({
             iconBg: '#fef9c3',
           },
         ];
+      case 'mudra':
+        return [
+          {
+            id: 'b1',
+            title: 'Govt Scheme\n0% Collateral',
+            iconName: 'shield-check',
+            iconFamily: 'mci',
+            iconColor: '#ea580c',
+            iconBg: '#ffedd5',
+          },
+          {
+            id: 'b2',
+            title: 'Shishu, Kishore\n& Tarun Tiers',
+            iconName: 'layers-outline',
+            iconFamily: 'mci',
+            iconColor: '#0284c7',
+            iconBg: '#e0f2fe',
+          },
+          {
+            id: 'b3',
+            title: 'Up to ₹10 Lakh\nFunding',
+            iconName: 'hand-holding-usd',
+            iconFamily: 'fa5',
+            iconColor: '#16a34a',
+            iconBg: '#dcfce7',
+          },
+          {
+            id: 'b4',
+            title: 'Subsidized\nInterest Rate',
+            iconName: 'percent',
+            iconFamily: 'mci',
+            iconColor: '#ca8a04',
+            iconBg: '#fef08a',
+          },
+        ];
       default:
         return [
           {
@@ -236,11 +283,11 @@ export const LoanDetailScreen: React.FC<LoanDetailScreenProps> = ({
       contentContainerStyle={styles.scrollContainer}
       showsVerticalScrollIndicator={false}
     >
-      {/* 1. Top Hero Banner (for Personal Loan, uses the exact reference image banner; for other loans uses dynamic rich card) */}
-      {category.id === 'personal' ? (
+      {/* 1. Top Hero Banner for each loan type using images from assets/banner */}
+      {LOAN_HERO_BANNERS[category.id] ? (
         <View style={styles.heroBannerImageWrap}>
           <Image
-            source={require('../../../assets/banner/personal-loan-hero-banner.png')}
+            source={LOAN_HERO_BANNERS[category.id]}
             style={styles.heroBannerImage}
             resizeMode="cover"
           />
@@ -398,7 +445,7 @@ const styles = StyleSheet.create({
   // 1. Hero Banner
   heroBannerImageWrap: {
     width: '100%',
-    aspectRatio: 2.32,
+    aspectRatio: 2.357,
     borderRadius: 20,
     overflow: 'hidden',
     marginBottom: 14,
