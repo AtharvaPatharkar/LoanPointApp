@@ -114,29 +114,26 @@ export const TopBar: React.FC<TopBarProps> = ({
             <Ionicons name="arrow-back" size={22} color={colors.text} />
           </TouchableOpacity>
         ) : (
-          <View style={styles.logoBadgeContainer}>
+          <View style={styles.brandRow}>
             <Image
-              source={require('../../../assets/loan-point-logo.png')}
-              style={styles.simpleLogo}
+              source={require('../../../assets/logo/loan-point-logo.png')}
+              style={styles.oldLogoImage}
               resizeMode="contain"
             />
+            <View style={styles.brandTextWrap}>
+              <Text style={styles.brandTitle}>LOAN POINT</Text>
+              <Text style={styles.brandSubtitle}>Your Loan, Our Support</Text>
+            </View>
           </View>
         )}
 
-        <View style={styles.titleContainer}>
-          {showBack || title ? (
+        {showBack && (
+          <View style={styles.titleContainer}>
             <Text style={styles.screenTitle} numberOfLines={1}>
               {title}
             </Text>
-          ) : (
-            <View>
-              <Text style={styles.welcomeSalute}>LOAN POINT</Text>
-              <Text style={styles.candidateName} numberOfLines={1}>
-                Your Loan, Our Support
-              </Text>
-            </View>
-          )}
-        </View>
+          </View>
+        )}
       </View>
 
       <View style={styles.rightActions}>
@@ -147,30 +144,16 @@ export const TopBar: React.FC<TopBarProps> = ({
             activeOpacity={0.75}
             style={styles.actionBtnTouch}
           >
-            <Animated.View
-              style={[
-                styles.iconBtnPlatform,
-                styles.notifBtn,
-                { transform: [{ scale: notifPulse }] },
-              ]}
-            >
-              <View style={styles.btnHalfSheen} />
-              <Ionicons name="notifications" size={19} color="#d97706" />
-            </Animated.View>
-
-            {/* Notification Count Badge */}
-            {unreadCount > 0 && (
-              <Animated.View
-                style={[
-                  styles.badgeCountPill,
-                  { transform: [{ scale: badgePulse }] },
-                ]}
-              >
-                <Text style={styles.badgeCountText}>
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </Text>
-              </Animated.View>
-            )}
+            <View style={styles.cleanNotifWrap}>
+              <Ionicons name="notifications-outline" size={24} color="#0f172a" />
+              {unreadCount > 0 && (
+                <View style={styles.badgeCountPill}>
+                  <Text style={styles.badgeCountText}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </Text>
+                </View>
+              )}
+            </View>
           </TouchableOpacity>
         )}
 
@@ -181,8 +164,8 @@ export const TopBar: React.FC<TopBarProps> = ({
             activeOpacity={0.8}
             style={styles.avatarTouch}
           >
-            <View style={styles.avatarCircle}>
-              <Ionicons name="person" size={17} color="#008ecc" />
+            <View style={styles.avatarCircleWrap}>
+              <Ionicons name="person" size={20} color="#008ecc" />
             </View>
           </TouchableOpacity>
         )}
@@ -213,86 +196,61 @@ export const TopBar: React.FC<TopBarProps> = ({
 
 const styles = StyleSheet.create({
   header: {
-    height: 60,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    height: 64,
+    backgroundColor: '#ffffff',
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    elevation: 4,
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
     position: 'relative',
   },
   topAccentBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 2.5,
-    backgroundColor: '#008ecc', // Vivid Sky Cyan Top Line
+    display: 'none',
   },
   leftContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    minWidth: 0,
-    marginRight: 6,
   },
   backButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 4,
-    marginLeft: -4,
-  },
-  logoBadgeContainer: {
-    width: 48,
+    width: 36,
     height: 36,
-    borderRadius: 10,
-    backgroundColor: '#ffffff',
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
-    borderWidth: 1.2,
-    borderColor: '#e2e8f0',
-    padding: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 2,
+    marginRight: 8,
   },
-  simpleLogo: {
-    width: '100%',
-    height: '100%',
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  oldLogoImage: {
+    width: 44,
+    height: 40,
+    marginRight: 8,
+  },
+  brandTextWrap: {
+    justifyContent: 'center',
+  },
+  brandTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#0a1d37',
+    letterSpacing: 0.3,
+  },
+  brandSubtitle: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#008ecc',
+    marginTop: -1,
   },
   titleContainer: {
     flex: 1,
     minWidth: 0,
     justifyContent: 'center',
   },
-  welcomeSalute: {
-    fontSize: 13,
-    fontWeight: '900',
-    color: '#0f172a',
-    letterSpacing: -0.2,
-  },
-  candidateName: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#008ecc',
-    letterSpacing: 0.2,
-    marginTop: 1,
-  },
   screenTitle: {
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '800',
     color: '#0f172a',
     letterSpacing: -0.2,
@@ -300,11 +258,52 @@ const styles = StyleSheet.create({
   rightActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 14,
     flexShrink: 0,
   },
   actionBtnTouch: {
     position: 'relative',
+    padding: 2,
+  },
+  cleanNotifWrap: {
+    position: 'relative',
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarTouch: {
+    position: 'relative',
+  },
+  avatarCircleWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#e0f2fe',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#bae6fd',
+  },
+  badgeCountPill: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#ef4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: '#ffffff',
+  },
+  badgeCountText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#ffffff',
+    textAlign: 'center',
   },
   iconBtnPlatform: {
     width: 36,
@@ -312,79 +311,11 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
-    borderWidth: 1.5,
-    overflow: 'hidden',
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 3,
   },
   btnHalfSheen: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '46%',
-    backgroundColor: 'rgba(255, 255, 255, 0.45)',
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-  },
-  notifBtn: {
-    backgroundColor: '#fef3c7', // Warm Amber Gold Tint
-    borderColor: '#fde68a',
-    shadowColor: '#d97706',
-    elevation: 3,
-    shadowOpacity: 0.2,
+    display: 'none',
   },
   callBtn: {
-    backgroundColor: '#e6f6fc', // Logo Sky Cyan Tint
-    borderColor: '#bae6f7',
-    shadowColor: '#008ecc',
-    elevation: 3,
-    shadowOpacity: 0.2,
-  },
-  avatarTouch: {
-    position: 'relative',
-  },
-  avatarCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#e0f2fe',
-    borderWidth: 2,
-    borderColor: '#008ecc',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#008ecc',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  badgeCountPill: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#ee1c25', // Logo Crimson Red
-    borderWidth: 1.5,
-    borderColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 3,
-    zIndex: 999,
-    elevation: 6,
-    shadowColor: '#ee1c25',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.35,
-    shadowRadius: 2,
-  },
-  badgeCountText: {
-    fontSize: 9.5,
-    fontWeight: '900',
-    color: '#ffffff',
-    includeFontPadding: false,
-    textAlign: 'center',
+    backgroundColor: '#e6f6fc',
   },
 });

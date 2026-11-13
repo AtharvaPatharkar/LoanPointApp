@@ -115,7 +115,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
       {/* Brand Header */}
       <View style={styles.headerBox}>
         <Image
-          source={require('../../../assets/loan-point-logo.png')}
+          source={require('../../../assets/logo/loan-point-logo.png')}
           style={styles.logoImage}
           resizeMode="contain"
         />

@@ -57,6 +57,7 @@ import { AdminScreen } from './src/components/screens/AdminScreen';
 import { NotificationCenterModal } from './src/components/screens/NotificationCenterModal';
 import { MyInsuranceScreen } from './src/components/screens/MyInsuranceScreen';
 import { AllReviewsScreen } from './src/components/screens/AllReviewsScreen';
+import { TopUpLoanScreen } from './src/components/screens/TopUpLoanScreen';
 import { AuthScreens } from './src/components/auth/AuthScreens';
 import { SplashScreen } from './src/components/common/SplashScreen';
 import { CompleteProfileModal } from './src/components/common/CompleteProfileModal';
@@ -215,6 +216,8 @@ function MainApp() {
         return 'Services & Financial Tools';
       case 'all_reviews':
         return 'Customer Reviews & Ratings';
+      case 'top_up_loan':
+        return 'Top Up Loan · Extra Funds';
       case 'documents':
         return 'My Documents';
       case 'support':
@@ -306,6 +309,7 @@ function MainApp() {
                   setSelectedCategory(cat);
                   setActiveSubScreen('emi_calculator');
                 }}
+                onOpenWhatsApp={handleOpenWhatsApp}
                 onBack={handleBack}
               />
             )}
@@ -393,11 +397,23 @@ function MainApp() {
               <ServicesScreen
                 onSelectCategory={handleSelectCategory}
                 onNavigate={handleNavigate}
+                onOpenCall={handleOpenCall}
               />
             )}
 
             {activeSubScreen === 'all_reviews' && (
               <AllReviewsScreen onBack={handleBack} />
+            )}
+
+            {activeSubScreen === 'top_up_loan' && (
+              <TopUpLoanScreen
+                user={user}
+                onBack={handleBack}
+                onApplySuccess={() => {
+                  setActiveSubScreen(null);
+                  setCurrentTab('applications');
+                }}
+              />
             )}
 
             {activeSubScreen === 'documents' && <DocumentsScreen />}

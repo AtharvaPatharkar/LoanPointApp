@@ -310,7 +310,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
           <View style={styles.logoRingWrapper}>
             <View style={styles.logoCard}>
               <Image
-                source={require('../../../assets/loan-point-logo.png')}
+                source={require('../../../assets/logo/loan-point-logo.png')}
                 style={styles.logoImage}
                 resizeMode="contain"
               />

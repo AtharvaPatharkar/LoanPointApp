@@ -189,7 +189,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
       {/* Brand Header */}
       <View style={styles.headerBox}>
         <Image
-          source={require('../../../assets/loan-point-logo.png')}
+          source={require('../../../assets/logo/loan-point-logo.png')}
           style={styles.logoImage}
           resizeMode="contain"
         />

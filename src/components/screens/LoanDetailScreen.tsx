@@ -1,606 +1,735 @@
 import React from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-native';
-import { Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Image,
+  Dimensions,
+} from 'react-native';
+import {
+  Ionicons,
+  MaterialCommunityIcons,
+  FontAwesome5,
+} from '@expo/vector-icons';
 import { LoanCategory } from '../../types';
 import { formatINR } from '../../utils/calculator';
-import { colors } from '../../theme/colors';
-import { IsometricTile } from '../common/IsometricTile';
 
 interface LoanDetailScreenProps {
   category: LoanCategory;
   onApplyNow: (category: LoanCategory) => void;
   onOpenCalculator: (category: LoanCategory) => void;
+  onOpenWhatsApp?: () => void;
   onBack: () => void;
 }
 
-const LOAN_PRODUCT_META: Record<
-  string,
-  {
-    type:
-      | 'personal'
-      | 'business'
-      | 'home'
-      | 'mortgage'
-      | 'car'
-      | 'education'
-      | 'agriculture'
-      | 'mudra';
-    badgeTag?: string;
-    badgeColor?: string;
-    glowColor?: string;
-  }
-> = {
-  personal: {
-    type: 'personal',
-    badgeTag: 'Highest Approval',
-    badgeColor: '#10b981',
-    glowColor: '#fed7aa',
-  },
-  home: {
-    type: 'home',
-    badgeTag: 'Lowest 8.40%',
-    badgeColor: '#0284c7',
-    glowColor: '#fecdd3',
-  },
-  business: {
-    type: 'business',
-    badgeTag: 'No Collateral',
-    badgeColor: '#6366f1',
-    glowColor: '#ddd6fe',
-  },
-  mortgage: {
-    type: 'mortgage',
-    badgeTag: 'Max Funding',
-    badgeColor: '#0d9488',
-    glowColor: '#bae6fd',
-  },
-  car: {
-    type: 'car',
-    badgeTag: 'Up to 90%',
-    badgeColor: '#2563eb',
-    glowColor: '#bfdbfe',
-  },
-  education: {
-    type: 'education',
-    badgeTag: 'Study India/Abroad',
-    badgeColor: '#c026d3',
-    glowColor: '#fbcfe8',
-  },
-  agriculture: {
-    type: 'agriculture',
-    badgeTag: 'Govt Subsidy',
-    badgeColor: '#16a34a',
-    glowColor: '#bbf7d0',
-  },
-  mudra: {
-    type: 'mudra',
-    badgeTag: 'PMMY 0% Security',
-    badgeColor: '#ea580c',
-    glowColor: '#fde68a',
-  },
-};
+interface BenefitItem {
+  id: string;
+  title: string;
+  iconName: string;
+  iconFamily: 'mci' | 'ion' | 'fa5';
+  iconColor: string;
+  iconBg: string;
+}
 
 export const LoanDetailScreen: React.FC<LoanDetailScreenProps> = ({
   category,
   onApplyNow,
   onOpenCalculator,
+  onOpenWhatsApp,
 }) => {
-  const meta = LOAN_PRODUCT_META[category.id] || {
-    type: 'personal',
-    badgeTag: 'Verified Product',
-    badgeColor: '#008ecc',
-    glowColor: '#bae6fd',
+  // Extract starting interest rate (e.g. "9.99%" or from category.indicativeInterestRate)
+  const rateMatch = category.indicativeInterestRate.match(/[\d.]+/);
+  const startingRate = rateMatch ? `${rateMatch[0]}%` : '9.99%';
+
+  // Format min and max loan amounts
+  const minAmtFormatted = formatINR(category.minAmount);
+  const maxAmtFormatted = formatINR(category.maxAmount);
+
+  // Dynamic Key Benefits for each loan type
+  const getBenefits = (): BenefitItem[] => {
+    switch (category.id) {
+      case 'personal':
+        return [
+          {
+            id: 'b1',
+            title: 'Minimal\nDocuments',
+            iconName: 'file-document-edit-outline',
+            iconFamily: 'mci',
+            iconColor: '#0284c7',
+            iconBg: '#e0f2fe',
+          },
+          {
+            id: 'b2',
+            title: 'No\nCollateral',
+            iconName: 'hand-holding-usd',
+            iconFamily: 'fa5',
+            iconColor: '#0284c7',
+            iconBg: '#e0f2fe',
+          },
+          {
+            id: 'b3',
+            title: 'Quick\nDisbursement',
+            iconName: 'speedometer',
+            iconFamily: 'mci',
+            iconColor: '#e11d48',
+            iconBg: '#ffe4e6',
+          },
+          {
+            id: 'b4',
+            title: 'Flexible\nTenure',
+            iconName: 'calendar-month-outline',
+            iconFamily: 'mci',
+            iconColor: '#0284c7',
+            iconBg: '#e0f2fe',
+          },
+        ];
+      case 'home':
+        return [
+          {
+            id: 'b1',
+            title: 'Lowest\nInterest Rate',
+            iconName: 'percent',
+            iconFamily: 'mci',
+            iconColor: '#0284c7',
+            iconBg: '#e0f2fe',
+          },
+          {
+            id: 'b2',
+            title: 'Up to 30 Yrs\nTenure',
+            iconName: 'home',
+            iconFamily: 'fa5',
+            iconColor: '#e11d48',
+            iconBg: '#ffe4e6',
+          },
+          {
+            id: 'b3',
+            title: 'Tax Benefit\nSec 80C & 24',
+            iconName: 'shield-check-outline',
+            iconFamily: 'mci',
+            iconColor: '#16a34a',
+            iconBg: '#dcfce7',
+          },
+          {
+            id: 'b4',
+            title: 'Fast Doorstep\nService',
+            iconName: 'speedometer',
+            iconFamily: 'mci',
+            iconColor: '#0284c7',
+            iconBg: '#e0f2fe',
+          },
+        ];
+      case 'business':
+        return [
+          {
+            id: 'b1',
+            title: 'Collateral\nFree Loan',
+            iconName: 'store',
+            iconFamily: 'fa5',
+            iconColor: '#dc2626',
+            iconBg: '#fee2e2',
+          },
+          {
+            id: 'b2',
+            title: 'Working\nCapital / CC',
+            iconName: 'cash-multiple',
+            iconFamily: 'mci',
+            iconColor: '#0284c7',
+            iconBg: '#e0f2fe',
+          },
+          {
+            id: 'b3',
+            title: 'Up to ₹1 Cr\nFunding',
+            iconName: 'trending-up',
+            iconFamily: 'mci',
+            iconColor: '#16a34a',
+            iconBg: '#dcfce7',
+          },
+          {
+            id: 'b4',
+            title: '48 Hours\nDisbursal',
+            iconName: 'clock-fast',
+            iconFamily: 'mci',
+            iconColor: '#0284c7',
+            iconBg: '#e0f2fe',
+          },
+        ];
+      case 'car':
+        return [
+          {
+            id: 'b1',
+            title: 'Up to 90%\nOn-Road Price',
+            iconName: 'car',
+            iconFamily: 'fa5',
+            iconColor: '#2563eb',
+            iconBg: '#dbeafe',
+          },
+          {
+            id: 'b2',
+            title: 'New & Used\nCars Financed',
+            iconName: 'car-key',
+            iconFamily: 'mci',
+            iconColor: '#0284c7',
+            iconBg: '#e0f2fe',
+          },
+          {
+            id: 'b3',
+            title: 'Lowest EMI\nTenure 7 Yrs',
+            iconName: 'calendar-clock',
+            iconFamily: 'mci',
+            iconColor: '#ca8a04',
+            iconBg: '#fef08a',
+          },
+          {
+            id: 'b4',
+            title: 'Same Day\nApproval',
+            iconName: 'flash',
+            iconFamily: 'ion',
+            iconColor: '#eab308',
+            iconBg: '#fef9c3',
+          },
+        ];
+      default:
+        return [
+          {
+            id: 'b1',
+            title: 'Minimal\nDocuments',
+            iconName: 'file-document-edit-outline',
+            iconFamily: 'mci',
+            iconColor: '#0284c7',
+            iconBg: '#e0f2fe',
+          },
+          {
+            id: 'b2',
+            title: 'Lowest\nInterest Rate',
+            iconName: 'percent',
+            iconFamily: 'mci',
+            iconColor: '#16a34a',
+            iconBg: '#dcfce7',
+          },
+          {
+            id: 'b3',
+            title: 'Quick\nApproval',
+            iconName: 'clock-fast',
+            iconFamily: 'mci',
+            iconColor: '#e11d48',
+            iconBg: '#ffe4e6',
+          },
+          {
+            id: 'b4',
+            title: 'Flexible\nTenure',
+            iconName: 'calendar-month-outline',
+            iconFamily: 'mci',
+            iconColor: '#0284c7',
+            iconBg: '#e0f2fe',
+          },
+        ];
+    }
   };
 
+  const benefits = getBenefits();
+
   return (
-    <View style={styles.root}>
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        {/* 1. 3D Premium Hero Spotlight Card */}
-        <View style={styles.headerHeroCard}>
-          <View style={styles.heroGlowCircle} />
-
-          <View style={styles.topRow}>
-            {/* 3D Isometric FinTech Tile with Specular Sheen Platform */}
-            <View style={styles.icon3DWrap}>
-              <View style={styles.icon3DSheen} />
-              <IsometricTile
-                type={meta.type}
-                size={70}
-                badgeTag={meta.badgeTag}
-                badgeColor={meta.badgeColor}
-                animated={true}
-              />
-            </View>
-
-            <View style={styles.titleBox}>
-              <View style={styles.categoryBadge}>
-                <View style={styles.badgeDot} />
-                <Text style={styles.categoryBadgeText}>OFFICIAL LOAN PRODUCT</Text>
-              </View>
-              <Text style={styles.title}>{category.title}</Text>
-              <Text style={styles.desc}>{category.shortDescription}</Text>
-            </View>
-          </View>
-
-          {/* Quick Metrics Hero Row with 3D Specular Elevation */}
-          <View style={styles.metricsRow}>
-            <View style={styles.metricItem}>
-              <View style={styles.metricLabelRow}>
-                <MaterialCommunityIcons name="percent" size={12} color="#93c5fd" />
-                <Text style={styles.metricLabel}>Interest Rate</Text>
-              </View>
-              <Text style={styles.metricVal}>{category.indicativeInterestRate}</Text>
-            </View>
-            <View style={styles.metricDivider} />
-
-            <View style={styles.metricItem}>
-              <View style={styles.metricLabelRow}>
-                <FontAwesome5 name="wallet" size={11} color="#93c5fd" />
-                <Text style={styles.metricLabel}>Max Amount</Text>
-              </View>
-              <Text style={styles.metricVal}>{formatINR(category.maxAmount)}</Text>
-            </View>
-            <View style={styles.metricDivider} />
-
-            <View style={styles.metricItem}>
-              <View style={styles.metricLabelRow}>
-                <Ionicons name="calendar-outline" size={12} color="#93c5fd" />
-                <Text style={styles.metricLabel}>Max Tenure</Text>
-              </View>
-              <Text style={styles.metricVal}>{category.tenureRange}</Text>
-            </View>
-          </View>
+    <ScrollView
+      style={styles.root}
+      contentContainerStyle={styles.scrollContainer}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* 1. Top Hero Banner (for Personal Loan, uses the exact reference image banner; for other loans uses dynamic rich card) */}
+      {category.id === 'personal' ? (
+        <View style={styles.heroBannerImageWrap}>
+          <Image
+            source={require('../../../assets/banner/personal-loan-hero-banner.png')}
+            style={styles.heroBannerImage}
+            resizeMode="cover"
+          />
         </View>
+      ) : (
+        <View style={styles.dynamicHeroBanner}>
+          <View style={styles.heroDecoRing1} />
+          <View style={styles.heroDecoRing2} />
 
-        {/* 2. Key Benefits & Features Card with 3D Embossed Style */}
-        <View style={styles.card}>
-          <View style={styles.sectionHeadingRow}>
-            <View style={[styles.sectionIconBox3D, { backgroundColor: '#e0f2fe', borderColor: '#bae6fd' }]}>
-              <View style={styles.iconSheenHighlight} />
-              <Ionicons name="sparkles" size={17} color="#008ecc" />
-            </View>
-            <View style={styles.headingTextGroup}>
-              <Text style={styles.cardHeading}>Key Benefits & Features</Text>
-              <Text style={styles.cardSubheading}>Instant perks tailored for this borrowing tier</Text>
-            </View>
-          </View>
-          {category.features.map((feature, idx) => (
-            <View key={idx} style={styles.featureRow}>
-              <View style={styles.checkIconWrap3D}>
-                <Ionicons name="checkmark-circle" size={18} color="#16a34a" />
-              </View>
-              <Text style={styles.featureText}>{feature}</Text>
-            </View>
-          ))}
-        </View>
+          <View style={styles.heroContentLeft}>
+            <Text style={styles.heroLoanTitle}>{category.title}</Text>
+            <Text style={styles.heroLoanSub}>{category.shortDescription}</Text>
 
-        {/* 3. Required Documents Checklist Card with 3D Style */}
-        <View style={styles.card}>
-          <View style={styles.sectionHeadingRow}>
-            <View style={[styles.sectionIconBox3D, { backgroundColor: '#fee2e2', borderColor: '#fca5a5' }]}>
-              <View style={styles.iconSheenHighlight} />
-              <Ionicons name="documents" size={17} color="#dc2626" />
-            </View>
-            <View style={styles.headingTextGroup}>
-              <Text style={[styles.cardHeading, { color: '#991b1b' }]}>
-                Required Documents Checklist
+            <View style={styles.heroRateBadge}>
+              <Text style={styles.heroRateTag}>Interest Rate Starting from</Text>
+              <Text style={styles.heroRateNum}>
+                {startingRate} <Text style={styles.heroRatePer}>p.a.</Text>
               </Text>
-              <Text style={styles.cardSubheading}>Keep digital or physical copies ready</Text>
             </View>
           </View>
-          {category.requiredDocuments.map((doc, idx) => (
-            <View key={idx} style={styles.docRow}>
-              <View style={styles.docIconWrap3D}>
-                <Ionicons name="document-text" size={15} color="#008ecc" />
-              </View>
-              <Text style={styles.docText}>{doc}</Text>
-            </View>
-          ))}
+
+          <View style={styles.heroRightBadge}>
+            <MaterialCommunityIcons name="shield-check" size={54} color="#facc15" />
+          </View>
+        </View>
+      )}
+
+      {/* 2. Three Metric Highlights Bar (Loan Amount | Tenure | Quick Approval) */}
+      <View style={styles.metricsBar}>
+        {/* Metric 1: Loan Amount */}
+        <View style={styles.metricItem}>
+          <MaterialCommunityIcons name="sack" size={24} color="#f59e0b" />
+          <Text style={styles.metricLabel}>Loan Amount</Text>
+          <Text style={styles.metricValue}>
+            {minAmtFormatted} – {maxAmtFormatted}
+          </Text>
         </View>
 
-        {/* 4. Quick Calculator Action Card with 3D Elevation */}
-        <TouchableOpacity
-          style={styles.calcBtn}
-          onPress={() => onOpenCalculator(category)}
-          activeOpacity={0.8}
-        >
-          <View style={styles.calcIconWrap3D}>
-            <View style={styles.iconSheenHighlight} />
-            <Ionicons name="calculator" size={20} color="#008ecc" />
-          </View>
-          <View style={styles.calcBtnTextWrap}>
-            <Text style={styles.calcBtnText}>Calculate EMI for {category.title}</Text>
-            <Text style={styles.calcBtnSub}>Interactive installment & interest breakdown</Text>
-          </View>
-          <View style={styles.calcChevronWrap}>
-            <Ionicons name="chevron-forward" size={16} color="#008ecc" />
-          </View>
-        </TouchableOpacity>
-      </ScrollView>
+        <View style={styles.metricDivider} />
 
-      {/* Floating Bottom Apply CTA with Specular Sheen & Attractive FinTech Color */}
-      <View style={styles.bottomBar}>
+        {/* Metric 2: Tenure */}
+        <View style={styles.metricItem}>
+          <MaterialCommunityIcons name="calendar-month-outline" size={24} color="#0284c7" />
+          <Text style={styles.metricLabel}>Tenure</Text>
+          <Text style={styles.metricValue}>{category.tenureRange || '1 – 7 Years'}</Text>
+        </View>
+
+        <View style={styles.metricDivider} />
+
+        {/* Metric 3: Quick Approval */}
+        <View style={styles.metricItem}>
+          <Ionicons name="flash" size={24} color="#eab308" />
+          <Text style={styles.metricLabel}>Quick Approval</Text>
+          <Text style={styles.metricValue}>24 – 48 Hours*</Text>
+        </View>
+      </View>
+
+      {/* 3. Section Title: Key Benefits */}
+      <View style={styles.sectionTitleRow}>
+        <View style={styles.yellowIndicatorBar} />
+        <Text style={styles.sectionHeading}>Key Benefits</Text>
+      </View>
+
+      {/* 4. 4 Key Benefit Cards Row */}
+      <View style={styles.benefitsRow}>
+        {benefits.map((b) => (
+          <View key={b.id} style={styles.benefitCard}>
+            <View style={[styles.benefitIconWrap, { backgroundColor: b.iconBg }]}>
+              {b.iconFamily === 'fa5' ? (
+                <FontAwesome5 name={b.iconName as any} size={18} color={b.iconColor} />
+              ) : b.iconFamily === 'ion' ? (
+                <Ionicons name={b.iconName as any} size={20} color={b.iconColor} />
+              ) : (
+                <MaterialCommunityIcons name={b.iconName as any} size={22} color={b.iconColor} />
+              )}
+            </View>
+            <Text style={styles.benefitTitle}>{b.title}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* 5. Check Your EMI Interactive Card */}
+      <TouchableOpacity
+        style={styles.emiCard}
+        onPress={() => onOpenCalculator(category)}
+        activeOpacity={0.88}
+      >
+        <Image
+          source={require('../../../assets/exploreAllLoanProducts/emi-calculator-3d.png')}
+          style={styles.emiCalcImage}
+          resizeMode="contain"
+        />
+
+        <View style={styles.emiContent}>
+          <Text style={styles.emiCardTitle}>Check Your EMI</Text>
+          <Text style={styles.emiCardSubtitle}>Know your monthly EMI{'\n'}in just 30 seconds.</Text>
+        </View>
+
+        <View style={styles.emiBtnPill}>
+          <Text style={styles.emiBtnText}>EMI Calculator</Text>
+          <Ionicons name="arrow-forward" size={13} color="#004aad" style={{ marginLeft: 4 }} />
+        </View>
+      </TouchableOpacity>
+
+      {/* 6. Primary Action: Apply for Personal Loan Now Button */}
+      <TouchableOpacity
+        style={styles.primaryApplyBtn}
+        onPress={() => onApplyNow(category)}
+        activeOpacity={0.88}
+      >
+        <MaterialCommunityIcons
+          name="file-document-edit-outline"
+          size={22}
+          color="#000000"
+          style={{ marginRight: 8 }}
+        />
+        <Text style={styles.primaryApplyText}>Apply for {category.title} Now</Text>
+        <Ionicons name="arrow-forward" size={18} color="#000000" style={{ marginLeft: 6 }} />
+      </TouchableOpacity>
+
+      {/* 7. WhatsApp Guidance Strip */}
+      <View style={styles.whatsAppCard}>
+        <View style={styles.whatsAppLeft}>
+          <Ionicons name="logo-whatsapp" size={32} color="#22c55e" />
+          <View style={styles.whatsAppTextWrap}>
+            <Text style={styles.whatsAppTitle}>Talk to Loan Expert on WhatsApp</Text>
+            <Text style={styles.whatsAppSub}>Get instant help & guidance.</Text>
+          </View>
+        </View>
+
         <TouchableOpacity
-          style={styles.applyBtn}
-          onPress={() => onApplyNow(category)}
+          style={styles.chatNowBtn}
+          onPress={onOpenWhatsApp}
           activeOpacity={0.85}
         >
-          <View style={styles.btnTopSheen} />
-          <View style={styles.applyIconWrap}>
-            <Ionicons name="flash" size={15} color="#ffffff" />
-          </View>
-          <Text style={styles.applyBtnText}>Apply for {category.title}</Text>
-          <Ionicons name="arrow-forward" size={16} color={colors.white} />
+          <Ionicons name="logo-whatsapp" size={14} color="#16a34a" style={{ marginRight: 4 }} />
+          <Text style={styles.chatNowText}>Chat Now</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#ffffff',
   },
-  container: {
-    padding: 16,
-    paddingBottom: 96,
-    gap: 16,
+  scrollContainer: {
+    paddingHorizontal: 14,
+    paddingTop: 8,
+    paddingBottom: 30,
   },
 
-  /* 1. Header Hero Spotlight Card */
-  headerHeroCard: {
-    position: 'relative',
+  // 1. Hero Banner
+  heroBannerImageWrap: {
+    width: '100%',
+    aspectRatio: 2.32,
+    borderRadius: 20,
     overflow: 'hidden',
-    backgroundColor: colors.cardNavyFrom,
-    borderRadius: 18,
-    padding: 18,
-    shadowColor: colors.cardNavyFrom,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.28,
-    shadowRadius: 14,
-    elevation: 7,
-  },
-  heroGlowCircle: {
-    position: 'absolute',
-    top: -50,
-    right: -50,
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: 'rgba(56, 189, 248, 0.2)',
-  },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  icon3DWrap: {
-    width: 78,
-    height: 78,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.24)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-    overflow: 'hidden',
-    shadowColor: '#000',
+    marginBottom: 14,
+    backgroundColor: '#0a3875',
+    shadowColor: '#0a3875',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.18,
     shadowRadius: 8,
     elevation: 4,
   },
-  icon3DSheen: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '48%',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
+  heroBannerImage: {
+    width: '100%',
+    height: '100%',
   },
-  titleBox: {
-    flex: 1,
-    minWidth: 0,
-  },
-  categoryBadge: {
+  dynamicHeroBanner: {
+    backgroundColor: '#0a3875',
+    borderRadius: 20,
+    padding: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-    marginBottom: 4,
+    marginBottom: 14,
+    overflow: 'hidden',
+    position: 'relative',
+    shadowColor: '#0a3875',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  badgeDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: '#38bdf8',
+  heroDecoRing1: {
+    position: 'absolute',
+    right: -25,
+    top: -25,
+    width: 130,
+    height: 130,
+    borderRadius: 65,
+    backgroundColor: 'rgba(251, 191, 36, 0.16)',
   },
-  categoryBadgeText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#bae6fd',
-    letterSpacing: 0.5,
+  heroDecoRing2: {
+    position: 'absolute',
+    right: 40,
+    bottom: -30,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: 'rgba(59, 130, 246, 0.25)',
   },
-  title: {
-    fontSize: 20,
+  heroContentLeft: {
+    flex: 1,
+    zIndex: 2,
+  },
+  heroLoanTitle: {
+    fontSize: 24,
     fontWeight: '900',
-    color: colors.white,
+    color: '#ffffff',
     letterSpacing: -0.3,
   },
-  desc: {
+  heroLoanSub: {
     fontSize: 12,
-    color: '#e0f2fe',
-    marginTop: 3,
-    lineHeight: 17,
+    color: '#e2e8f0',
+    marginTop: 4,
+    marginBottom: 10,
+    lineHeight: 16,
+    fontWeight: '500',
+  },
+  heroRateBadge: {
+    backgroundColor: '#fbbf24',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  heroRateTag: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  heroRateNum: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#0f172a',
+    letterSpacing: -0.3,
+  },
+  heroRatePer: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  heroRightBadge: {
+    zIndex: 2,
+    paddingLeft: 8,
   },
 
-  /* Metrics Hero Row */
-  metricsRow: {
+  // 2. Metrics Bar (3 items with dividers)
+  metricsBar: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 6,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.14)',
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    marginTop: 18,
+    borderColor: '#e8eff7',
+    marginBottom: 16,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 5,
+    elevation: 2,
   },
   metricItem: {
     flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 2,
   },
   metricDivider: {
     width: 1,
-    height: 28,
-    backgroundColor: 'rgba(255, 255, 255, 0.18)',
-  },
-  metricLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 4,
+    height: 38,
+    backgroundColor: '#e2e8f0',
   },
   metricLabel: {
-    fontSize: 10,
+    fontSize: 10.5,
+    color: '#64748b',
     fontWeight: '600',
-    color: '#bae6fd',
+    marginTop: 5,
+    textAlign: 'center',
   },
-  metricVal: {
-    fontSize: 13,
+  metricValue: {
+    fontSize: 11.5,
     fontWeight: '900',
-    color: colors.white,
-    letterSpacing: 0.2,
+    color: '#0f172a',
+    marginTop: 2,
+    textAlign: 'center',
   },
 
-  /* 2 & 3. Structured 3D Content Cards */
-  card: {
-    backgroundColor: '#ffffff',
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    padding: 18,
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  sectionHeadingRow: {
+  // 3. Section Title
+  sectionTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginBottom: 14,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    marginBottom: 10,
   },
-  sectionIconBox3D: {
-    width: 36,
-    height: 36,
-    borderRadius: 11,
-    borderWidth: 1.5,
+  yellowIndicatorBar: {
+    width: 4,
+    height: 16,
+    borderRadius: 2,
+    backgroundColor: '#f59e0b',
+    marginRight: 8,
+  },
+  sectionHeading: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+
+  // 4. 4 Key Benefits Cards Row
+  benefitsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 16,
+  },
+  benefitCard: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e8eff7',
+    paddingVertical: 12,
+    paddingHorizontal: 4,
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
-    overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1.5,
+  },
+  benefitIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  benefitTitle: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#0f172a',
+    textAlign: 'center',
+    lineHeight: 13,
+  },
+
+  // 5. Check Your EMI Interactive Card
+  emiCard: {
+    backgroundColor: '#fffdf5',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#fef3c7',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+    shadowColor: '#f59e0b',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
-    shadowRadius: 3,
+    shadowRadius: 5,
     elevation: 2,
   },
-  iconSheenHighlight: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '48%',
-    backgroundColor: 'rgba(255, 255, 255, 0.65)',
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
+  emiCalcImage: {
+    width: 44,
+    height: 44,
+    marginRight: 10,
   },
-  headingTextGroup: {
+  emiContent: {
     flex: 1,
   },
-  cardHeading: {
+  emiCardTitle: {
     fontSize: 14,
     fontWeight: '800',
     color: '#0f172a',
-    letterSpacing: -0.2,
+    marginBottom: 2,
   },
-  cardSubheading: {
-    fontSize: 11,
-    color: '#64748b',
-    marginTop: 1,
+  emiCardSubtitle: {
+    fontSize: 10.5,
+    color: '#475569',
+    lineHeight: 14,
+    fontWeight: '500',
   },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 10,
-    backgroundColor: '#f8fafc',
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#edf2f7',
-  },
-  checkIconWrap3D: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  featureText: {
-    fontSize: 12.5,
-    fontWeight: '600',
-    color: '#334155',
-    flex: 1,
-    lineHeight: 18,
-  },
-  docRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 10,
-    backgroundColor: '#f8fafc',
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#edf2f7',
-  },
-  docIconWrap3D: {
-    width: 24,
-    height: 24,
-    borderRadius: 7,
-    backgroundColor: '#e0f2fe',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  docText: {
-    fontSize: 12.5,
-    fontWeight: '600',
-    color: '#334155',
-    flex: 1,
-    lineHeight: 18,
-  },
-
-  /* 4. Calculator Card Link with 3D Elevation */
-  calcBtn: {
+  emiBtnPill: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ffffff',
-    borderWidth: 1.5,
-    borderColor: '#bae6fd',
+    borderWidth: 1.2,
+    borderColor: '#004aad',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     borderRadius: 18,
-    padding: 14,
-    gap: 12,
-    shadowColor: '#008ecc',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  calcIconWrap3D: {
-    width: 44,
-    height: 44,
-    borderRadius: 13,
-    backgroundColor: '#f0f9ff',
-    borderWidth: 1.5,
-    borderColor: '#bae6fd',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  calcBtnTextWrap: {
-    flex: 1,
-  },
-  calcBtnText: {
-    fontSize: 13.5,
-    fontWeight: '800',
-    color: '#0f172a',
-  },
-  calcBtnSub: {
+  emiBtnText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#008ecc',
-    marginTop: 2,
-  },
-  calcChevronWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#f0f9ff',
-    alignItems: 'center',
-    justifyContent: 'center',
+    fontWeight: '800',
+    color: '#004aad',
   },
 
-  /* Floating Bottom Bar */
-  bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: colors.white,
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 10,
-  },
-  applyBtn: {
+  // 6. Primary Action: Apply for Personal Loan Now Button
+  primaryApplyBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#008ecc',
-    borderRadius: 14,
+    backgroundColor: '#fbbf24', // Rich Golden Yellow
     paddingVertical: 14,
-    paddingHorizontal: 18,
-    gap: 8,
-    position: 'relative',
-    overflow: 'hidden',
-    shadowColor: '#008ecc',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 5,
+    paddingHorizontal: 16,
+    borderRadius: 22,
+    marginBottom: 14,
+    shadowColor: '#d97706',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.28,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  btnTopSheen: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '48%',
-    backgroundColor: 'rgba(255, 255, 255, 0.22)',
-  },
-  applyIconWrap: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  applyBtnText: {
+  primaryApplyText: {
     fontSize: 15,
     fontWeight: '800',
-    color: colors.white,
-    letterSpacing: 0.3,
+    color: '#000000',
+  },
+
+  // 7. WhatsApp Guidance Strip
+  whatsAppCard: {
+    backgroundColor: '#f0fdf4',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#16a34a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  whatsAppLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 10,
+  },
+  whatsAppTextWrap: {
+    flex: 1,
+  },
+  whatsAppTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  whatsAppSub: {
+    fontSize: 10,
+    color: '#475569',
+    marginTop: 1,
+    fontWeight: '500',
+  },
+  chatNowBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderWidth: 1.2,
+    borderColor: '#16a34a',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  chatNowText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#16a34a',
   },
 });

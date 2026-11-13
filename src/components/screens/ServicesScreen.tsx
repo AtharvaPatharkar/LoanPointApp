@@ -1,675 +1,484 @@
-import React, { useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Animated, Easing } from 'react-native';
-import { Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
-import { LOAN_CATEGORIES } from '../../data/mockData';
+import React from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Image,
+  Dimensions,
+} from 'react-native';
+import {
+  Ionicons,
+  MaterialCommunityIcons,
+  FontAwesome5,
+} from '@expo/vector-icons';
 import { LoanType } from '../../types';
-import { IsometricTile } from '../common/IsometricTile';
-import { colors } from '../../theme/colors';
 
 interface ServicesScreenProps {
   onSelectCategory: (id: LoanType) => void;
   onNavigate: (screen: string, params?: Record<string, unknown>) => void;
+  onOpenCall?: () => void;
 }
 
-interface ToolItem {
+interface ProductItem {
   id: string;
+  isLoanType: boolean;
+  loanTypeId?: LoanType;
   title: string;
-  desc: string;
-  badge: string;
-  badgeColor: string;
-  icon: string;
-  iconFamily: 'mci' | 'ion' | 'fa5';
-  color: string;
-  iconBg: string;
-  rowCardBg: string;
-  rowBorderColor: string;
+  subtitle: string;
+  imageSource: any;
+  cardBg: string;
+  cardBorder: string;
 }
 
-/**
- * Services & Financial Tools Screen with DISTINCT Animations:
- * 1. Gentle Pendulum Balance Tilt (±2.5°) on tool cards & loan icons
- * 2. Rotating Radiant Star / Sparkle Pulse on the Hub badge
- * 3. Dynamic Chevron Horizontal Arrow Bounce (0 -> 4px -> 0)
- * 4. 45° 3D Isometric loan models with specular half-sheen
- */
 export const ServicesScreen: React.FC<ServicesScreenProps> = ({
   onSelectCategory,
   onNavigate,
+  onOpenCall,
 }) => {
-  // Animation Values
-  const pendulumAnim = useRef(new Animated.Value(0)).current;
-  const chevronBounceAnim = useRef(new Animated.Value(0)).current;
-  const hubRotateAnim = useRef(new Animated.Value(0)).current;
-  const cardScaleAnim = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    // 1. Subtle Pendulum Sway (-2.5 deg to +2.5 deg)
-    const pendulumLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pendulumAnim, {
-          toValue: 1,
-          duration: 1800,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pendulumAnim, {
-          toValue: -1,
-          duration: 1800,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    // 2. Chevron Forward Slide Bounce (0px to 4px)
-    const chevronLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(chevronBounceAnim, {
-          toValue: 4,
-          duration: 900,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(chevronBounceAnim, {
-          toValue: 0,
-          duration: 900,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    // 3. 360-degree slow ambient rotation on the smart hub badge
-    const rotateLoop = Animated.loop(
-      Animated.timing(hubRotateAnim, {
-        toValue: 1,
-        duration: 8000,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    );
-
-    // 4. Subtle card breathing scale (1.0 to 1.03)
-    const scaleLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(cardScaleAnim, {
-          toValue: 1.04,
-          duration: 1400,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(cardScaleAnim, {
-          toValue: 0.98,
-          duration: 1400,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    pendulumLoop.start();
-    chevronLoop.start();
-    rotateLoop.start();
-    scaleLoop.start();
-
-    return () => {
-      pendulumLoop.stop();
-      chevronLoop.stop();
-      rotateLoop.stop();
-      scaleLoop.stop();
-    };
-  }, [pendulumAnim, chevronBounceAnim, hubRotateAnim, cardScaleAnim]);
-
-  // Interpolations
-  const pendulumRotation = pendulumAnim.interpolate({
-    inputRange: [-1, 1],
-    outputRange: ['-3deg', '3deg'],
-  });
-
-  const hubSpin = hubRotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
-
-  const tools: ToolItem[] = [
+  // 10 Product Cards in 2 columns matching the exact reference layout
+  const products: ProductItem[] = [
     {
-      id: 'emi_calculator',
-      title: 'EMI Calculator',
-      desc: 'Plan monthly payments & interest breakdown',
-      badge: 'POPULAR',
-      badgeColor: '#0284c7',
-      icon: 'calculator-variant',
-      iconFamily: 'mci',
-      color: '#008ecc', // Vivid Brand Sky Cyan
-      iconBg: '#e0f2fe',
-      rowCardBg: '#f0f9ff', // Light Sky Blue Tint
-      rowBorderColor: '#bae6fd',
+      id: 'home',
+      isLoanType: true,
+      loanTypeId: 'home',
+      title: 'Home Loan',
+      subtitle: 'Build or buy your dream home',
+      imageSource: require('../../../assets/exploreAllLoanProducts/homeloan.png'),
+      cardBg: '#fff5f5', // soft blush pink
+      cardBorder: '#ffe4e6',
     },
     {
-      id: 'eligibility_checker',
-      title: 'Loan Eligibility Estimator',
-      desc: 'Check borrowing power by salary & FOIR ratio',
-      badge: 'INSTANT',
-      badgeColor: '#16a34a',
-      icon: 'speedometer',
-      iconFamily: 'ion',
-      color: '#16a34a', // Emerald Green
-      iconBg: '#dcfce7',
-      rowCardBg: '#f0fdf4', // Light Mint Green Tint
-      rowBorderColor: '#bbf7d0',
+      id: 'personal',
+      isLoanType: true,
+      loanTypeId: 'personal',
+      title: 'Personal Loan',
+      subtitle: 'Fulfil your personal needs',
+      imageSource: require('../../../assets/exploreAllLoanProducts/personalloan.png'),
+      cardBg: '#f0f7ff', // soft ice blue
+      cardBorder: '#e0f0fe',
     },
     {
-      id: 'balance_transfer',
-      title: 'Balance Transfer & Foreclosure',
-      desc: 'Lower existing EMI or close debts with RBI NOC',
-      badge: 'SAVE LAKHS',
-      badgeColor: '#ee1c25',
-      icon: 'swap-horizontal-bold',
-      iconFamily: 'mci',
-      color: '#ee1c25', // Logo Ruby Red
-      iconBg: '#fee2e2',
-      rowCardBg: '#fef2f2', // Light Rose Red Tint
-      rowBorderColor: '#fecaca',
+      id: 'business',
+      isLoanType: true,
+      loanTypeId: 'business',
+      title: 'Business Loan',
+      subtitle: 'Grow your business further',
+      imageSource: require('../../../assets/exploreAllLoanProducts/businessloan.png'),
+      cardBg: '#fffaf5', // soft warm cream
+      cardBorder: '#ffedd5',
     },
     {
-      id: 'rate_comparison',
-      title: 'Bank Rate Comparison',
-      desc: 'Compare rates across SBI, HDFC, BoB, ICICI & Axis',
-      badge: '6 TOP BANKS',
-      badgeColor: '#4338ca',
-      icon: 'scale-balance',
-      iconFamily: 'mci',
-      color: '#2d3091', // Royal Indigo Navy
-      iconBg: '#e0e7ff',
-      rowCardBg: '#faf8ff', // Light Lavender Indigo Tint
-      rowBorderColor: '#ddd6fe',
+      id: 'car',
+      isLoanType: true,
+      loanTypeId: 'car',
+      title: 'Car Loan',
+      subtitle: 'New or Used Car with easy EMI',
+      imageSource: require('../../../assets/exploreAllLoanProducts/carloan.png'),
+      cardBg: '#fdf9f2', // soft warm almond
+      cardBorder: '#fef3c7',
+    },
+    {
+      id: 'education',
+      isLoanType: true,
+      loanTypeId: 'education',
+      title: 'Education Loan',
+      subtitle: 'Fund your education dreams',
+      imageSource: require('../../../assets/exploreAllLoanProducts/educationloan.png'),
+      cardBg: '#f6faff', // soft sky blue
+      cardBorder: '#e0f2fe',
+    },
+    {
+      id: 'credit_card',
+      isLoanType: false,
+      title: 'Credit Card',
+      subtitle: 'Choose from top bank cards',
+      imageSource: require('../../../assets/exploreAllLoanProducts/credit-card.png'),
+      cardBg: '#f8f6ff', // soft lavender
+      cardBorder: '#ede9fe',
+    },
+    {
+      id: 'agriculture',
+      isLoanType: true,
+      loanTypeId: 'agriculture',
+      title: 'Agriculture Loan',
+      subtitle: 'Financial support for farming needs',
+      imageSource: require('../../../assets/exploreAllLoanProducts/agriculatureloan.png'),
+      cardBg: '#f4fbf7', // soft mint
+      cardBorder: '#dcfce7',
+    },
+    {
+      id: 'mortgage',
+      isLoanType: true,
+      loanTypeId: 'mortgage',
+      title: 'Mortgage Loan',
+      subtitle: 'Loan against your property',
+      imageSource: require('../../../assets/exploreAllLoanProducts/mortgageloan.png'),
+      cardBg: '#f5faf9', // soft pale aqua
+      cardBorder: '#ccfbf1',
+    },
+    {
+      id: 'mudra',
+      isLoanType: true,
+      loanTypeId: 'mudra',
+      title: 'Mudra Loan',
+      subtitle: 'Business loan under Govt. scheme',
+      imageSource: require('../../../assets/exploreAllLoanProducts/mudraloan.png'),
+      cardBg: '#fffdf5', // soft pale yellow
+      cardBorder: '#fef9c3',
     },
     {
       id: 'cibil_services',
-      title: 'CIBIL Credit Advisory',
-      desc: 'Credit score check, bureau dispute & PAN link',
-      badge: '100% FREE',
-      badgeColor: '#059669',
-      icon: 'shield-checkmark',
-      iconFamily: 'ion',
-      color: '#075665', // Slate Petrol
-      iconBg: '#e2f0f4',
-      rowCardBg: '#f0fdfa', // Light Aqua Teal Tint
-      rowBorderColor: '#99f6e4',
-    },
-    {
-      id: 'documents',
-      title: 'My Documents Vault',
-      desc: 'Encrypted storage for PAN, Aadhaar & ITR proofs',
-      badge: '256-BIT SECURE',
-      badgeColor: '#d97706',
-      icon: 'folder-lock',
-      iconFamily: 'mci',
-      color: '#d97706', // Warm Amber Gold
-      iconBg: '#fef3c7',
-      rowCardBg: '#fffdf5', // Light Golden Tint
-      rowBorderColor: '#fde68a',
+      isLoanType: false,
+      title: 'CIBIL Services',
+      subtitle: 'Check & Improve your CIBIL Score',
+      imageSource: require('../../../assets/exploreAllLoanProducts/cibil-services.png'),
+      cardBg: '#fdf4f4', // soft pale rose
+      cardBorder: '#ffe4e6',
     },
   ];
 
+  const handleCardPress = (item: ProductItem) => {
+    if (item.isLoanType && item.loanTypeId) {
+      onSelectCategory(item.loanTypeId);
+    } else if (item.id === 'cibil_services') {
+      onNavigate('cibil_services');
+    } else if (item.id === 'credit_card') {
+      onNavigate('loan_apply', { loanType: 'personal' });
+    }
+  };
+
   return (
-    <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-      {/* 1. Header Hero Card with Rotating Sunburst & Specular Glow */}
-      <View style={styles.headerHeroCard}>
-        <View style={styles.heroGlowCircle} />
+    <ScrollView
+      style={styles.root}
+      contentContainerStyle={styles.scrollContainer}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* 1. Explore All Loan Products Hero Banner */}
+      <TouchableOpacity
+        style={styles.heroBannerTouchable}
+        onPress={() => onNavigate('loan_apply', { loanType: 'personal' })}
+        activeOpacity={0.9}
+      >
+        <Image
+          source={require('../../../assets/banner/explore-all-loan-products-banner.png')}
+          style={styles.heroBannerImage}
+          resizeMode="cover"
+        />
+      </TouchableOpacity>
 
-        <View style={styles.headerTopRow}>
-          <Animated.View
+      {/* 2. 10 Loan Products Grid (2 Columns, Horizontal Row inside each card) */}
+      <View style={styles.grid}>
+        {products.map((item) => (
+          <TouchableOpacity
+            key={item.id}
             style={[
-              styles.headerIconBadge,
-              { transform: [{ rotate: hubSpin }] },
+              styles.productCard,
+              {
+                backgroundColor: item.cardBg,
+                borderColor: item.cardBorder,
+              },
             ]}
+            onPress={() => handleCardPress(item)}
+            activeOpacity={0.82}
           >
-            <MaterialCommunityIcons name="compass-rose" size={26} color="#ffffff" />
-          </Animated.View>
-
-          <View style={styles.headerTitleWrap}>
-            <View style={styles.tagBadge}>
-              <View style={styles.tagDot} />
-              <Text style={styles.tagText}>SMART FINANCIAL DESK</Text>
+            {/* Left Image Graphic */}
+            <View style={styles.imageBox}>
+              <Image
+                source={item.imageSource}
+                style={styles.loanIconImage}
+                resizeMode="contain"
+              />
             </View>
-            <Text style={styles.screenHeading}>Services & Financial Tools</Text>
-            <Text style={styles.screenSub}>
-              Interactive EMI calculators, bank rate comparisons & official loan categories
+
+            {/* Middle Title + Subtitle */}
+            <View style={styles.cardInfo}>
+              <Text style={styles.productTitle} numberOfLines={1}>
+                {item.title}
+              </Text>
+              <Text style={styles.productSubtitle} numberOfLines={2}>
+                {item.subtitle}
+              </Text>
+            </View>
+
+            {/* Right Round Arrow Button */}
+            <View style={styles.arrowCircle}>
+              <Ionicons name="chevron-forward" size={13} color="#0f172a" />
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* 3. Four Value Props Bar with Vertical Dividers */}
+      <View style={styles.valuePropsBar}>
+        <View style={styles.valuePropItem}>
+          <Ionicons name="flash" size={20} color="#f59e0b" />
+          <Text style={styles.valuePropTitle}>Competitive</Text>
+          <Text style={styles.valuePropSub}>Interest Rates</Text>
+        </View>
+
+        <View style={styles.propDivider} />
+
+        <View style={styles.valuePropItem}>
+          <MaterialCommunityIcons name="file-document-outline" size={20} color="#2563eb" />
+          <Text style={styles.valuePropTitle}>Minimal</Text>
+          <Text style={styles.valuePropSub}>Documents</Text>
+        </View>
+
+        <View style={styles.propDivider} />
+
+        <View style={styles.valuePropItem}>
+          <MaterialCommunityIcons name="clock-fast" size={20} color="#0284c7" />
+          <Text style={styles.valuePropTitle}>Quick</Text>
+          <Text style={styles.valuePropSub}>Approval</Text>
+        </View>
+
+        <View style={styles.propDivider} />
+
+        <View style={styles.valuePropItem}>
+          <Ionicons name="shield-checkmark" size={20} color="#16a34a" />
+          <Text style={styles.valuePropTitle}>Multiple</Text>
+          <Text style={styles.valuePropSub}>Bank Options</Text>
+        </View>
+      </View>
+
+      {/* 4. Bottom Support CTA Strip with Headset, Text & Rounded Talk Now Button */}
+      <View style={styles.supportStrip}>
+        <View style={styles.supportLeft}>
+          <View style={styles.headsetIconWrap}>
+            <Ionicons name="headset" size={24} color="#ffffff" />
+          </View>
+          <View style={styles.supportTextWrap}>
+            <Text style={styles.supportTitle} numberOfLines={1}>
+              Need Help Choosing the Right Loan?
+            </Text>
+            <Text style={styles.supportSub} numberOfLines={1}>
+              Talk to our Loan Expert now.
             </Text>
           </View>
         </View>
-      </View>
 
-      {/* 2. Calculators & Tools Section with Pendulum Swing & Dynamic Bouncing Chevron */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeaderRow}>
-          <View style={styles.sectionIconBox}>
-            <Ionicons name="construct" size={15} color="#008ecc" />
-          </View>
-          <Text style={styles.sectionTitle}>Financial Tools & Calculators</Text>
-        </View>
-
-        <View style={styles.toolsGrid}>
-          {tools.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={[
-                styles.toolCard,
-                {
-                  backgroundColor: item.rowCardBg,
-                  borderColor: item.rowBorderColor,
-                },
-              ]}
-              onPress={() => onNavigate(item.id)}
-              activeOpacity={0.82}
-            >
-              {/* Pendulum-Swaying Specular Icon Platform */}
-              <Animated.View
-                style={[
-                  styles.toolIconWrap,
-                  {
-                    backgroundColor: item.iconBg,
-                    transform: [{ rotate: pendulumRotation }],
-                  },
-                ]}
-              >
-                {/* Half-Circle Specular Top Sheen */}
-                <View style={styles.toolHalfSheen} />
-
-                {item.iconFamily === 'mci' ? (
-                  <MaterialCommunityIcons
-                    name={item.icon as any}
-                    size={23}
-                    color={item.color}
-                  />
-                ) : item.iconFamily === 'fa5' ? (
-                  <FontAwesome5
-                    name={item.icon as any}
-                    size={19}
-                    color={item.color}
-                  />
-                ) : (
-                  <Ionicons
-                    name={item.icon as any}
-                    size={21}
-                    color={item.color}
-                  />
-                )}
-              </Animated.View>
-
-              <View style={styles.toolText}>
-                <View style={styles.toolTitleRow}>
-                  <Text style={styles.toolTitle}>{item.title}</Text>
-                  <View style={[styles.toolMicroBadge, { backgroundColor: item.iconBg }]}>
-                    <Text style={[styles.toolMicroBadgeText, { color: item.badgeColor }]}>
-                      {item.badge}
-                    </Text>
-                  </View>
-                </View>
-                <Text style={styles.toolDesc}>{item.desc}</Text>
-              </View>
-
-              {/* Dynamic Forward Bouncing Chevron */}
-              <Animated.View
-                style={[
-                  styles.chevronBox,
-                  {
-                    backgroundColor: item.iconBg,
-                    transform: [{ translateX: chevronBounceAnim }],
-                  },
-                ]}
-              >
-                <Ionicons name="chevron-forward" size={16} color={item.color} />
-              </Animated.View>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      {/* 3. Loan Categories Section with 45° Isometric Tiles */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeaderRow}>
-          <View style={[styles.sectionIconBox, { backgroundColor: '#fee2e2' }]}>
-            <Ionicons name="wallet" size={15} color="#ee1c25" />
-          </View>
-          <Text style={styles.sectionTitle}>Loan Products & Categories</Text>
-        </View>
-
-        <View style={styles.categoriesList}>
-          {LOAN_CATEGORIES.map((cat, index) => {
-            const isoType =
-              cat.id === 'home'
-                ? 'home'
-                : cat.id === 'business'
-                ? 'business'
-                : cat.id === 'mortgage'
-                ? 'mortgage'
-                : cat.id === 'car'
-                ? 'car'
-                : cat.id === 'education'
-                ? 'education'
-                : cat.id === 'agriculture'
-                ? 'agriculture'
-                : cat.id === 'mudra'
-                ? 'mudra'
-                : 'personal';
-
-            // Distinct light row background styling for each loan product
-            const loanRowStyles = [
-              { bg: '#fffbf5', border: '#fed7aa', accent: '#008ecc' }, // 1. Personal
-              { bg: '#faf8ff', border: '#ddd6fe', accent: '#2d3091' }, // 2. Business
-              { bg: '#fff8f8', border: '#fecdd3', accent: '#ee1c25' }, // 3. Home
-              { bg: '#f7fbff', border: '#bae6fd', accent: '#075665' }, // 4. Mortgage
-              { bg: '#f6faff', border: '#bfdbfe', accent: '#0284c7' }, // 5. Car
-              { bg: '#fdf8fa', border: '#fbcfe8', accent: '#c026d3' }, // 6. Education
-              { bg: '#f7fdf9', border: '#bbf7d0', accent: '#16a34a' }, // 7. Agriculture
-              { bg: '#fffdf5', border: '#fde68a', accent: '#d97706' }, // 8. Mudra
-            ];
-            const currentStyle = loanRowStyles[index % loanRowStyles.length];
-
-            return (
-              <TouchableOpacity
-                key={cat.id}
-                style={[
-                  styles.catRow,
-                  {
-                    backgroundColor: currentStyle.bg,
-                    borderColor: currentStyle.border,
-                  },
-                ]}
-                onPress={() => onSelectCategory(cat.id)}
-                activeOpacity={0.82}
-              >
-                {/* 45° Isometric 3D Model with Specular Half-Sheen */}
-                <View style={styles.catIconWrap}>
-                  <IsometricTile type={isoType} size={46} animated={false} />
-                </View>
-
-                <View style={styles.catText}>
-                  <Text style={styles.catTitle}>{cat.title}</Text>
-                  <Text style={styles.catRate}>
-                    From <Text style={[styles.catRateBold, { color: currentStyle.accent }]}>{cat.indicativeInterestRate}</Text>
-                  </Text>
-                </View>
-
-                <Animated.View
-                  style={[
-                    styles.applyBtnSmall,
-                    {
-                      backgroundColor: currentStyle.accent,
-                      shadowColor: currentStyle.accent,
-                      transform: [{ scale: cardScaleAnim }],
-                    },
-                  ]}
-                >
-                  <Text style={styles.applyBtnText}>Apply Fast</Text>
-                  <Ionicons name="arrow-forward" size={11} color="#ffffff" />
-                </Animated.View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        <TouchableOpacity
+          style={styles.talkNowBtn}
+          onPress={() => (onOpenCall ? onOpenCall() : onNavigate('support'))}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="call" size={14} color="#000000" style={{ marginRight: 6 }} />
+          <Text style={styles.talkNowText}>Talk Now</Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    paddingBottom: 36,
-    backgroundColor: colors.background,
-    gap: 16,
+  root: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
+  scrollContainer: {
+    paddingHorizontal: 14,
+    paddingTop: 8,
+    paddingBottom: 28,
   },
 
-  /* 1. Header Hero Card */
-  headerHeroCard: {
-    position: 'relative',
+  // 1. Hero Banner
+  heroBannerTouchable: {
+    width: '100%',
+    aspectRatio: 2.36,
+    borderRadius: 20,
     overflow: 'hidden',
-    backgroundColor: '#075665', // Deep Banking Petrol Teal
-    borderRadius: 18,
-    padding: 18,
-    shadowColor: '#075665',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.28,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  heroGlowCircle: {
-    position: 'absolute',
-    top: -50,
-    right: -50,
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(0, 142, 204, 0.25)',
-  },
-  headerTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  headerIconBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 15,
-    backgroundColor: '#008ecc', // Vivid Sky Cyan
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-    shadowColor: '#008ecc',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
+    marginBottom: 14,
+    backgroundColor: '#0a3875',
+    shadowColor: '#0a3875',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
     elevation: 4,
   },
-  headerTitleWrap: {
-    flex: 1,
-  },
-  tagBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(255, 255, 255, 0.16)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-    marginBottom: 4,
-  },
-  tagDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#38bdf8',
-  },
-  tagText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#bae6fd',
-    letterSpacing: 0.5,
-  },
-  screenHeading: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: colors.white,
-    letterSpacing: -0.3,
-  },
-  screenSub: {
-    fontSize: 11.5,
-    color: '#e0f2fe',
-    marginTop: 3,
-    lineHeight: 16,
+  heroBannerImage: {
+    width: '100%',
+    height: '100%',
   },
 
-  /* Section Styling */
-  section: {
-    gap: 10,
+  // 2. 10 Product Cards Grid (2 Columns, Horizontal Row Layout)
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 16,
   },
-  sectionHeaderRow: {
+  productCard: {
+    width: '48.6%',
+    height: 76,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1.5,
   },
-  sectionIconBox: {
-    width: 26,
-    height: 26,
-    borderRadius: 8,
-    backgroundColor: '#e0f2fe',
+  imageBox: {
+    width: 44,
+    height: 44,
+    marginRight: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sectionTitle: {
-    fontSize: 14,
+  loanIconImage: {
+    width: '100%',
+    height: '100%',
+  },
+  cardInfo: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingRight: 2,
+  },
+  productTitle: {
+    fontSize: 12.5,
     fontWeight: '800',
     color: '#0f172a',
-    letterSpacing: 0.2,
+    marginBottom: 2,
+    letterSpacing: -0.2,
   },
-
-  /* 2. Tools Grid */
-  toolsGrid: {
-    gap: 11,
+  productSubtitle: {
+    fontSize: 9.5,
+    color: '#475569',
+    lineHeight: 12.5,
+    fontWeight: '500',
   },
-  toolCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    padding: 13,
-    gap: 12,
-    shadowColor: '#2d3091',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  toolIconWrap: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
+  arrowCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
-    overflow: 'hidden',
-    borderWidth: 1.2,
-    borderColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
     shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
+    flexShrink: 0,
+  },
+
+  // 3. Value Props Bar with Vertical Dividers
+  valuePropsBar: {
+    flexDirection: 'row',
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderWidth: 1,
+    borderColor: '#e8eff7',
+    marginBottom: 14,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowOpacity: 0.04,
+    shadowRadius: 5,
     elevation: 2,
   },
-  toolHalfSheen: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '46%',
-    backgroundColor: 'rgba(255, 255, 255, 0.45)',
-    borderTopLeftRadius: 13,
-    borderTopRightRadius: 13,
-  },
-  toolText: {
+  valuePropItem: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 2,
   },
-  toolTitleRow: {
+  propDivider: {
+    width: 1,
+    height: 34,
+    backgroundColor: '#e2e8f0',
+  },
+  valuePropTitle: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  valuePropSub: {
+    fontSize: 9.5,
+    color: '#64748b',
+    textAlign: 'center',
+    marginTop: 1,
+  },
+
+  // 4. Bottom Support CTA Strip
+  supportStrip: {
+    backgroundColor: '#0a3875',
+    borderRadius: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 4,
+    gap: 8,
+    shadowColor: '#0a3875',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.24,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  toolTitle: {
-    fontSize: 13.5,
-    fontWeight: '800',
-    color: '#0f172a',
-    flex: 1,
-  },
-  toolMicroBadge: {
-    paddingHorizontal: 5,
-    paddingVertical: 1.5,
-    borderRadius: 4,
-  },
-  toolMicroBadgeText: {
-    fontSize: 8,
-    fontWeight: '900',
-    letterSpacing: 0.3,
-  },
-  toolDesc: {
-    fontSize: 11.5,
-    color: colors.textMuted,
-    marginTop: 2,
-    lineHeight: 15,
-  },
-  chevronBox: {
-    width: 26,
-    height: 26,
-    borderRadius: 8,
+  supportLeft: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  /* 3. Loan Categories Section */
-  categoriesList: {
+    flex: 1,
     gap: 10,
+    minWidth: 0,
   },
-  catRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  catIconWrap: {
+  headsetIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
-  catText: {
+  supportTextWrap: {
     flex: 1,
+    minWidth: 0,
   },
-  catTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#0f172a',
-  },
-  catRate: {
-    fontSize: 11,
-    color: '#64748b',
-    marginTop: 2,
-  },
-  catRateBold: {
-    fontWeight: '800',
-    color: '#008ecc',
-  },
-  applyBtnSmall: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#008ecc', // Sky Cyan
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    gap: 4,
-    shadowColor: '#008ecc',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  applyBtnText: {
-    fontSize: 11,
+  supportTitle: {
+    fontSize: 12.5,
     fontWeight: '800',
     color: '#ffffff',
+  },
+  supportSub: {
+    fontSize: 10.5,
+    color: '#cbd5e1',
+    marginTop: 2,
+  },
+  talkNowBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fbbf24', // Rich Golden Yellow
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+    borderRadius: 22,
+    flexShrink: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  talkNowText: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: '#000000',
   },
 });
