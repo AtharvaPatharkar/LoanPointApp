@@ -61,6 +61,20 @@ export interface LoanApplication {
   applicantName?: string;
   applicantMobile?: string;
   bankName?: string;
+  interestRate?: string;
+  emiAmount?: string;
+  disbursementDate?: string;
+  tenureYears?: string;
+  isTopUp?: boolean;
+  existingLoanAmount?: number;
+  topUpRequestedAmount?: number;
+  currentEmi?: string;
+  afterTopUpEmi?: string;
+  topUpStageIndex?: number;
+  rejectionReason?: string;
+  rejectedOn?: string;
+  nextStepText?: string;
+  reapplyDate?: string;
 }
 
 export interface UserProfile {

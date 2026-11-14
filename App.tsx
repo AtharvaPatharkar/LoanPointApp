@@ -502,11 +502,18 @@ function MainApp() {
             {activeSubScreen === 'top_up_loan' && (
               <TopUpLoanScreen
                 user={user}
+                application={
+                  selectedApplication ||
+                  applications.find((a) => a.id === 'HL-20260915-0087') ||
+                  applications[0]
+                }
                 onBack={handleBack}
                 onApplySuccess={() => {
                   setActiveSubScreen(null);
                   setCurrentTab('applications');
                 }}
+                onOpenCall={(phone) => handleOpenCall(phone)}
+                onOpenWhatsApp={(phone, text) => handleOpenWhatsApp(phone, text)}
               />
             )}
 
@@ -598,12 +605,14 @@ function MainApp() {
                     user={user}
                     onOpenCall={handleOpenCall}
                     onOpenWhatsApp={handleOpenWhatsApp}
+                    onNavigateTab={(tab) => setCurrentTab(tab as any)}
                   />
                 )}
 
                 {currentTab === 'refer' && (
                   <OffersReferralScreen
                     user={user}
+                    onNavigateHome={() => setCurrentTab('home')}
                     onNavigateLoan={(type) => {
                       const cat = categories.find((c) => c.id === type) || categories[0];
                       setSelectedCategory(cat);
