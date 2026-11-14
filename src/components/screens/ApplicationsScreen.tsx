@@ -1,728 +1,941 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Animated, Easing } from 'react-native';
-import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
-import { LoanApplication, ApplicationStatus } from '../../types';
-import { formatINR } from '../../utils/calculator';
-import { colors } from '../../theme/colors';
-import { IsometricTile } from '../common/IsometricTile';
+import React, { useState } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Platform,
+} from 'react-native';
+import {
+  Ionicons,
+  Feather,
+  MaterialCommunityIcons,
+  FontAwesome5,
+} from '@expo/vector-icons';
+import * as Linking from 'expo-linking';
+import { LoanApplication } from '../../types';
 
 interface ApplicationsScreenProps {
   applications: LoanApplication[];
   onSelectApplication: (app: LoanApplication) => void;
   onApplyNew: () => void;
-  onUploadDocForApp: (app: LoanApplication, docName: string) => void;
+  onTopUpLoan?: () => void;
+  onUploadDocForApp?: (app: LoanApplication, docName: string) => void;
+  onOpenCall?: (phone: string) => void;
+  onOpenWhatsApp?: (phone: string, text?: string) => void;
 }
 
-/**
- * My Applications Screen with Specialized FinTech Animations:
- * 1. Shimmering Scanning Laser line passing along the active progress cards
- * 2. Status Beacon Ring Ripple animation on live badges
- * 3. Float & Glow interactive card press micro-feedback
- * 4. 45° 3D Isometric loan models with specular half-sheen
- */
+type TabType = 'in_progress' | 'disbursed' | 'top_up' | 'rejected';
+
+interface StepMilestone {
+  key: string;
+  label: string;
+}
+
+const MILESTONES: StepMilestone[] = [
+  { key: 'received', label: 'Received' },
+  { key: 'documents', label: 'Documents' },
+  { key: 'assessment', label: 'Lender\nAssessment' },
+  { key: 'approval', label: 'Approval' },
+];
+
 export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
   applications,
   onSelectApplication,
   onApplyNew,
+  onTopUpLoan,
+  onOpenCall,
+  onOpenWhatsApp,
 }) => {
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<TabType>('in_progress');
 
-  // Animation Refs
-  const beaconRippleAnim = useRef(new Animated.Value(0.4)).current;
-  const newBtnPulse = useRef(new Animated.Value(1)).current;
+  // Categorize applications
+  const inProgressList = applications.filter(
+    (app) =>
+      app.status === 'Processing' ||
+      app.status === 'Documents Pending' ||
+      app.status === 'Application Submitted' ||
+      app.status === 'Enquiry Received'
+  );
 
-  useEffect(() => {
-    // 1. Radar Beacon Ring Breathing
-    const beaconLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(beaconRippleAnim, {
-          toValue: 1,
-          duration: 900,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(beaconRippleAnim, {
-          toValue: 0.35,
-          duration: 900,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ])
-    );
+  const disbursedList = applications.filter((app) => app.status === 'Disbursed');
+  const rejectedList = applications.filter((app) => app.status === 'Rejected');
+  const topUpCount = 0; // Top Up is 0 in reference image
 
-    // 2. New Loan Button Pulse
-    const newBtnLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(newBtnPulse, {
-          toValue: 1.05,
-          duration: 1300,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(newBtnPulse, {
-          toValue: 0.98,
-          duration: 1300,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ])
-    );
+  const currentList =
+    activeTab === 'in_progress'
+      ? inProgressList
+      : activeTab === 'disbursed'
+      ? disbursedList
+      : activeTab === 'rejected'
+      ? rejectedList
+      : [];
 
-    beaconLoop.start();
-    newBtnLoop.start();
+  const getStageIndex = (app: LoanApplication): number => {
+    if (app.status === 'Disbursed' || app.status === 'Approved') return 3;
+    if (app.status === 'Processing') return 2;
+    if (app.status === 'Documents Pending' || app.status === 'Application Submitted') return 1;
+    return 0;
+  };
 
-    return () => {
-      beaconLoop.stop();
-      newBtnLoop.stop();
-    };
-  }, [beaconRippleAnim, newBtnPulse]);
+  const formatAmountINR = (num: number): string => {
+    return '₹' + num.toLocaleString('en-IN');
+  };
 
-  const filterTabs = [
-    { id: 'all', label: 'All', count: applications.length },
-    {
-      id: 'active',
-      label: 'In Progress',
-      count: applications.filter((a) => a.status !== 'Disbursed' && a.status !== 'Rejected').length,
-    },
-    {
-      id: 'Approved',
-      label: 'Approved',
-      count: applications.filter((a) => a.status === 'Approved').length,
-    },
-    {
-      id: 'Disbursed',
-      label: 'Disbursed',
-      count: applications.filter((a) => a.status === 'Disbursed').length,
-    },
-  ];
-
-  const filtered = applications.filter((app) => {
-    if (statusFilter === 'all') return true;
-    if (statusFilter === 'active') {
-      return app.status !== 'Disbursed' && app.status !== 'Rejected';
-    }
-    return app.status === statusFilter;
-  });
-
-  const getStatusBadge = (status: ApplicationStatus) => {
-    switch (status) {
-      case 'Approved':
-        return {
-          cardBg: '#f0fdf4', // Soft Emerald Mint Tint
-          cardBorder: '#86efac',
-          bg: '#dcfce7',
-          text: '#15803d',
-          border: '#86efac',
-          dot: '#16a34a',
-          label: 'Sanction Ready',
-          accent: '#16a34a',
-        };
-      case 'Disbursed':
-        return {
-          cardBg: '#faf8ff', // Soft Lavender Royal Tint
-          cardBorder: '#c7d2fe',
-          bg: '#ede9fe',
-          text: '#4338ca',
-          border: '#c7d2fe',
-          dot: '#4338ca',
-          label: 'Disbursed',
-          accent: '#2d3091',
-        };
-      case 'Processing':
-        return {
-          cardBg: '#f0f9ff', // Soft Sky Blue Tint
-          cardBorder: '#bae6fd',
-          bg: '#e0f2fe',
-          text: '#0284c7',
-          border: '#bae6fd',
-          dot: '#008ecc',
-          label: 'Bank Credit Review',
-          accent: '#008ecc',
-        };
-      case 'Application Submitted':
-        return {
-          cardBg: '#f0fdfa', // Soft Aqua Cyan Tint
-          cardBorder: '#99f6e4',
-          bg: '#ccfbf1',
-          text: '#0f766e',
-          border: '#99f6e4',
-          dot: '#0d9488',
-          label: 'Desk Submitted',
-          accent: '#0d9488',
-        };
-      case 'Documents Pending':
-        return {
-          cardBg: '#fffdf5', // Soft Amber Gold Tint
-          cardBorder: '#fde68a',
-          bg: '#fef3c7',
-          text: '#b45309',
-          border: '#fde68a',
-          dot: '#d97706',
-          label: 'Action Required',
-          accent: '#d97706',
-        };
-      case 'Rejected':
-        return {
-          cardBg: '#fef2f2', // Soft Ruby Red Tint
-          cardBorder: '#fecaca',
-          bg: '#fee2e2',
-          text: '#991b1b',
-          border: '#fecaca',
-          dot: '#dc2626',
-          label: 'Closed',
-          accent: '#ee1c25',
-        };
-      default:
-        return {
-          cardBg: '#ffffff',
-          cardBorder: colors.border,
-          bg: colors.surfaceSubtle,
-          text: colors.text,
-          border: colors.border,
-          dot: '#64748b',
-          label: status,
-          accent: '#008ecc',
-        };
+  const handleCallRM = (phone: string) => {
+    if (onOpenCall) {
+      onOpenCall(phone);
+    } else {
+      Linking.openURL(`tel:${phone.replace(/\s+/g, '')}`);
     }
   };
 
-  const getIsoType = (type: string) => {
-    switch (type) {
-      case 'home':
-        return 'home';
-      case 'business':
-        return 'business';
-      case 'mortgage':
-        return 'mortgage';
-      case 'car':
-        return 'car';
-      case 'education':
-        return 'education';
-      case 'agriculture':
-        return 'agriculture';
-      case 'mudra':
-        return 'mudra';
-      default:
-        return 'personal';
+  const handleWhatsAppRM = (phone: string, name: string, appId: string) => {
+    const text = `Hello ${name}, I am following up on my loan application (${appId}).`;
+    if (onOpenWhatsApp) {
+      onOpenWhatsApp(phone, text);
+    } else {
+      const cleanPhone = phone.replace(/[^0-9]/g, '');
+      Linking.openURL(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`);
     }
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Top Header Row with High-Impact New Loan Button */}
-      <View style={styles.headerRow}>
-        <View>
-          <View style={styles.titleWithDot}>
-            <Text style={styles.title}>My Applications</Text>
-            <View style={styles.recordBadge}>
-              <Text style={styles.recordBadgeText}>{applications.length} Records</Text>
-            </View>
+    <View style={styles.screenWrapper}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Top Header Card Title with File-Check Badge */}
+        <View style={styles.headerTitleRow}>
+          <View style={styles.headerIconBox}>
+            <View style={styles.headerIconLineTop} />
+            <View style={styles.headerIconLineMid} />
+            <View style={styles.headerIconLineBot} />
+            <View style={styles.headerIconPenTip} />
           </View>
-          <Text style={styles.subtitle}>Real-time RBI & bank desk verification</Text>
+          <Text style={styles.headerTitleText}>My Loans</Text>
         </View>
 
-        <TouchableOpacity onPress={onApplyNew} activeOpacity={0.82}>
-          <Animated.View
+        {/* 4 Custom Segmented Tabs matching exact colors & badges */}
+        <View style={styles.tabsGridRow}>
+          {/* 1. In Progress (Green) */}
+          <TouchableOpacity
             style={[
-              styles.newBtnPlatform,
-              { transform: [{ scale: newBtnPulse }] },
+              styles.tabCard,
+              activeTab === 'in_progress' ? styles.tabCardGreenActive : styles.tabCardDefault,
             ]}
+            onPress={() => setActiveTab('in_progress')}
+            activeOpacity={0.85}
           >
-            {/* Specular Half-Circle Top Light Sheen */}
-            <View style={styles.newBtnHalfSheen} />
-            <View style={styles.newBtnIconCircle}>
-              <Ionicons name="add" size={15} color="#008ecc" />
+            <View style={styles.tabIconRow}>
+              <MaterialCommunityIcons
+                name="timer-sand"
+                size={18}
+                color={activeTab === 'in_progress' ? '#ffffff' : '#15803d'}
+              />
             </View>
-            <Text style={styles.newBtnText}>New Loan</Text>
-          </Animated.View>
-        </TouchableOpacity>
-      </View>
+            <Text
+              style={[
+                styles.tabCardText,
+                activeTab === 'in_progress' ? styles.tabCardTextActive : styles.tabCardTextDark,
+              ]}
+              numberOfLines={1}
+            >
+              In Progress ({inProgressList.length})
+            </Text>
+          </TouchableOpacity>
 
-      {/* Filter Tabs with Counter Pills */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-        <View style={styles.filterRow}>
-          {filterTabs.map((tab) => {
-            const isActive = statusFilter === tab.id;
-            return (
-              <TouchableOpacity
-                key={tab.id}
-                style={[styles.filterPill, isActive && styles.filterPillActive]}
-                onPress={() => setStatusFilter(tab.id)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.filterText, isActive && styles.filterTextActive]}>
-                  {tab.label}
-                </Text>
-                <View
-                  style={[
-                    styles.filterCountBadge,
-                    { backgroundColor: isActive ? 'rgba(255, 255, 255, 0.28)' : '#f1f5f9' },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.filterCountText,
-                      { color: isActive ? '#ffffff' : '#64748b' },
-                    ]}
-                  >
-                    {tab.count}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+          {/* 2. Disbursed (Soft Blue) */}
+          <TouchableOpacity
+            style={[
+              styles.tabCard,
+              activeTab === 'disbursed' ? styles.tabCardBlueActive : styles.tabCardBlueTint,
+            ]}
+            onPress={() => setActiveTab('disbursed')}
+            activeOpacity={0.85}
+          >
+            <View style={styles.tabIconRow}>
+              <Ionicons
+                name="checkmark-circle-outline"
+                size={18}
+                color={activeTab === 'disbursed' ? '#ffffff' : '#004aad'}
+              />
+            </View>
+            <Text
+              style={[
+                styles.tabCardText,
+                activeTab === 'disbursed' ? styles.tabCardTextActive : styles.tabCardTextBlue,
+              ]}
+              numberOfLines={1}
+            >
+              Disbursed ({disbursedList.length})
+            </Text>
+          </TouchableOpacity>
+
+          {/* 3. Top Up (Soft Warm Peach) */}
+          <TouchableOpacity
+            style={[
+              styles.tabCard,
+              activeTab === 'top_up' ? styles.tabCardPeachActive : styles.tabCardPeachTint,
+            ]}
+            onPress={() => setActiveTab('top_up')}
+            activeOpacity={0.85}
+          >
+            <View style={styles.tabIconRow}>
+              <MaterialCommunityIcons
+                name="cash-plus"
+                size={18}
+                color={activeTab === 'top_up' ? '#ffffff' : '#d97706'}
+              />
+            </View>
+            <Text
+              style={[
+                styles.tabCardText,
+                activeTab === 'top_up' ? styles.tabCardTextActive : styles.tabCardTextPeach,
+              ]}
+              numberOfLines={1}
+            >
+              Top Up ({topUpCount})
+            </Text>
+          </TouchableOpacity>
+
+          {/* 4. Rejected (Soft Red) */}
+          <TouchableOpacity
+            style={[
+              styles.tabCard,
+              activeTab === 'rejected' ? styles.tabCardRedActive : styles.tabCardRedTint,
+            ]}
+            onPress={() => setActiveTab('rejected')}
+            activeOpacity={0.85}
+          >
+            <View style={styles.tabIconRow}>
+              <Ionicons
+                name="close-circle-outline"
+                size={18}
+                color={activeTab === 'rejected' ? '#ffffff' : '#dc2626'}
+              />
+            </View>
+            <Text
+              style={[
+                styles.tabCardText,
+                activeTab === 'rejected' ? styles.tabCardTextActive : styles.tabCardTextRed,
+              ]}
+              numberOfLines={1}
+            >
+              Rejected ({rejectedList.length})
+            </Text>
+          </TouchableOpacity>
         </View>
-      </ScrollView>
 
-      {/* Applications List */}
-      {filtered.length === 0 ? (
-        <View style={styles.emptyCard}>
-          <View style={styles.emptyIconCircle}>
-            <Ionicons name="document-text-outline" size={32} color="#008ecc" />
+        {/* Applications List */}
+        {currentList.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="document-text-outline" size={44} color="#94a3b8" />
+            <Text style={styles.emptyTitle}>No loans in this section</Text>
+            <Text style={styles.emptySubtitle}>
+              Tap "Apply for New Loan" below or explore "Top Up My Loan" for instant cash.
+            </Text>
           </View>
-          <Text style={styles.emptyTitle}>No Applications in this category</Text>
-          <Text style={styles.emptySub}>
-            Tap 'New Loan' above to start a fresh digital application
-          </Text>
-        </View>
-      ) : (
-        <View style={styles.list}>
-          {filtered.map((app) => {
-            const badge = getStatusBadge(app.status);
-            const isoType = getIsoType(app.loanType);
-            const isProcessing = app.status === 'Processing' || app.status === 'Application Submitted';
+        ) : (
+          currentList.map((app) => {
+            const stageIndex = getStageIndex(app);
+            const isHome = app.loanType === 'home';
+            const bankName = app.bankName || (isHome ? 'HDFC Bank' : 'ICICI Bank');
+            const rmName = app.assignedManager?.name || (isHome ? 'Aasma Shaikh' : 'Disha Bhure');
+            const rmPhone = app.assignedManager?.phone || (isHome ? '+91 98230 45678' : '+91 90216 78901');
 
             return (
               <TouchableOpacity
                 key={app.id}
-                style={[
-                  styles.card,
-                  {
-                    backgroundColor: badge.cardBg,
-                    borderColor: badge.cardBorder,
-                  },
-                ]}
+                style={styles.loanCardWrapper}
                 onPress={() => onSelectApplication(app)}
-                activeOpacity={0.86}
+                activeOpacity={0.92}
               >
-                {/* Top Accent Gradient Bar */}
-                <View
-                  style={[
-                    styles.cardAccentBar,
-                    {
-                      backgroundColor: badge.accent,
-                    },
-                  ]}
-                />
-
-                <View style={styles.cardTop}>
-                  <View style={styles.cardTopLeft}>
-                    {/* 45° Isometric 3D Model Tile */}
-                    <View style={styles.loanIconWrap}>
-                      <IsometricTile type={isoType} size={46} animated={false} />
-                    </View>
-
-                    <View style={styles.titleInfo}>
-                      <Text style={styles.loanType}>{app.loanTypeName}</Text>
-                      <View style={styles.idRow}>
-                        <View style={styles.appIdBadge}>
-                          <Text style={styles.appId}>{app.id}</Text>
-                        </View>
-                        <Text style={styles.submissionDateText}>· {app.submissionDate}</Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* Status Beacon with Ripple Pulse */}
+                {/* 1. Card Top Row: Left Icon Box + Title/ID + Yellow In Progress Pill + Arrow */}
+                <View style={styles.cardHeaderRow}>
+                  {/* Icon Box (Peach for Home, Sky Blue for Car) */}
                   <View
                     style={[
-                      styles.badge,
-                      { backgroundColor: badge.bg, borderColor: badge.border },
+                      styles.loanIconSquare,
+                      isHome ? styles.homeIconBox : styles.carIconBox,
                     ]}
                   >
-                    <Animated.View
-                      style={[
-                        styles.statusBeaconDot,
-                        {
-                          backgroundColor: badge.dot,
-                          opacity: isProcessing ? beaconRippleAnim : 1,
-                        },
-                      ]}
-                    />
-                    <Text style={[styles.badgeText, { color: badge.text }]}>
-                      {badge.label}
+                    {isHome ? (
+                      <Ionicons name="home-outline" size={24} color="#0f172a" />
+                    ) : (
+                      <Ionicons name="car-outline" size={24} color="#004aad" />
+                    )}
+                  </View>
+
+                  {/* Title & App ID */}
+                  <View style={styles.loanTitleCol}>
+                    <Text style={styles.loanTitleText}>{app.loanTypeName}</Text>
+                    <View style={styles.appIdBadgePill}>
+                      <Text style={styles.appIdText}>Application ID: {app.id}</Text>
+                    </View>
+                  </View>
+
+                  {/* Yellow Status Pill */}
+                  <View style={styles.inProgressYellowPill}>
+                    <Text style={styles.inProgressYellowPillText}>
+                      {app.status === 'Disbursed' ? 'Disbursed' : 'In Progress'}
                     </Text>
+                  </View>
+
+                  {/* Right Arrow */}
+                  <Ionicons name="chevron-forward" size={18} color="#0f172a" />
+                </View>
+
+                {/* 2. Three Information Columns: Bank Name | Loan Amount | RM */}
+                <View style={styles.infoThreeColsRow}>
+                  {/* Column 1: Bank Name */}
+                  <View style={styles.infoColItem}>
+                    <View style={styles.colHeaderMiniRow}>
+                      <Ionicons name="business-outline" size={16} color="#004aad" />
+                      <Text style={styles.colHeaderLabel}>Bank Name</Text>
+                    </View>
+                    <View style={styles.bankValueRow}>
+                      {bankName.includes('HDFC') ? (
+                        <View style={styles.hdfcLogoBox}>
+                          <View style={styles.hdfcSquareRed} />
+                          <View style={styles.hdfcBlueHBar} />
+                          <View style={styles.hdfcBlueVBar} />
+                        </View>
+                      ) : (
+                        <View style={styles.iciciLogoBox}>
+                          <Ionicons name="flame" size={15} color="#ea580c" />
+                        </View>
+                      )}
+                      <Text style={styles.bankNameText} numberOfLines={1}>
+                        {bankName}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Divider */}
+                  <View style={styles.colVerticalDivider} />
+
+                  {/* Column 2: Loan Amount */}
+                  <View style={styles.infoColItem}>
+                    <View style={styles.colHeaderMiniRow}>
+                      <View style={styles.moneyBagIconCircle}>
+                        <Text style={styles.moneyBagSymbol}>₹</Text>
+                      </View>
+                      <Text style={styles.colHeaderLabel}>Loan Amount</Text>
+                    </View>
+                    <Text style={styles.loanAmountValue}>
+                      {formatAmountINR(app.requestedAmount)}
+                    </Text>
+                  </View>
+
+                  {/* Divider */}
+                  <View style={styles.colVerticalDivider} />
+
+                  {/* Column 3: Relationship Manager & Contact */}
+                  <View style={styles.infoColItemRM}>
+                    <View style={styles.colHeaderMiniRow}>
+                      <Ionicons name="person-outline" size={14} color="#d97706" />
+                      <Text style={styles.colHeaderLabel} numberOfLines={1}>
+                        RM: {rmName}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.rmContactPill}
+                      onPress={() => handleCallRM(rmPhone)}
+                      activeOpacity={0.75}
+                    >
+                      <View style={styles.rmPhoneCallCircle}>
+                        <Ionicons name="call" size={10} color="#ffffff" />
+                      </View>
+                      <Text style={styles.rmPhoneText} numberOfLines={1}>
+                        {rmPhone}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
 
-                {/* 3-Column Metrics Row */}
-                <View style={styles.metricsBox}>
-                  <View style={styles.metricItem}>
-                    <Text style={styles.metaLabel}>SANCTION REQ.</Text>
-                    <Text style={styles.metaVal}>{formatINR(app.requestedAmount)}</Text>
-                  </View>
-                  <View style={styles.metricDivider} />
-                  <View style={styles.metricItem}>
-                    <Text style={styles.metaLabel}>TENURE</Text>
-                    <Text style={styles.metaVal}>{app.tenureMonths} Mos</Text>
-                  </View>
-                  <View style={styles.metricDivider} />
-                  <View style={styles.metricItem}>
-                    <Text style={styles.metaLabel}>DOCS VERIFIED</Text>
-                    <Text style={[styles.metaVal, { color: '#16a34a' }]}>100% KYC</Text>
-                  </View>
-                </View>
+                {/* 3. 4-Step Stepper Progress Bar */}
+                <View style={styles.stepperContainer}>
+                  {MILESTONES.map((milestone, idx) => {
+                    const isPassed = stageIndex > idx;
+                    const isCurrent = stageIndex === idx;
 
-                {/* Next Action Footnote Bar */}
-                <View style={styles.cardBottom}>
-                  <View style={styles.nextActionRow}>
-                    <MaterialCommunityIcons name="clock-fast" size={15} color="#008ecc" />
-                    <Text style={styles.nextActionText} numberOfLines={1}>
-                      {app.nextAction || 'Under bank credit evaluation'}
-                    </Text>
-                  </View>
-                  <View style={styles.viewActionPill}>
-                    <Text style={styles.viewText}>Track Status</Text>
-                    <Ionicons name="chevron-forward" size={12} color="#ffffff" />
-                  </View>
+                    return (
+                      <React.Fragment key={milestone.key}>
+                        {/* Node */}
+                        <View style={styles.nodeItem}>
+                          {isPassed ? (
+                            <View style={styles.greenCheckCircle}>
+                              <Ionicons name="checkmark" size={13} color="#ffffff" />
+                            </View>
+                          ) : isCurrent ? (
+                            <View style={styles.yellowActiveRing}>
+                              <View style={styles.yellowActiveInnerDot} />
+                            </View>
+                          ) : (
+                            <View style={styles.grayOutlineCircle} />
+                          )}
+
+                          <Text
+                            style={[
+                              styles.milestoneLabel,
+                              (isPassed || isCurrent)
+                                ? styles.milestoneLabelDark
+                                : styles.milestoneLabelGray,
+                            ]}
+                          >
+                            {milestone.label}
+                          </Text>
+                        </View>
+
+                        {/* Line */}
+                        {idx < MILESTONES.length - 1 && (
+                          <View
+                            style={[
+                              styles.connectorLine,
+                              stageIndex > idx
+                                ? styles.connectorLineGreen
+                                : styles.connectorLineGray,
+                            ]}
+                          />
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
                 </View>
               </TouchableOpacity>
             );
-          })}
-        </View>
-      )}
-    </ScrollView>
+          })
+        )}
+      </ScrollView>
+
+      {/* Bottom Floating Actions Container matching exact 2 buttons */}
+      <View style={styles.bottomBarContainer}>
+        {/* Button 1: [+ Apply for New Loan] (Deep Royal Navy Blue) */}
+        <TouchableOpacity
+          style={styles.applyNewLoanBtn}
+          onPress={onApplyNew}
+          activeOpacity={0.88}
+        >
+          <View style={styles.applyPlusCircle}>
+            <Ionicons name="add" size={18} color="#002e75" />
+          </View>
+          <Text style={styles.applyNewLoanBtnText}>Apply for New Loan</Text>
+        </TouchableOpacity>
+
+        {/* Button 2: [🪙 Top Up My Loan] (Light Gold Tint with Gold Border) */}
+        <TouchableOpacity
+          style={styles.topUpLoanBtn}
+          onPress={() => {
+            if (onTopUpLoan) onTopUpLoan();
+          }}
+          activeOpacity={0.88}
+        >
+          <View style={styles.topUpCoinsIcon}>
+            <MaterialCommunityIcons name="cash-plus" size={20} color="#d97706" />
+          </View>
+          <Text style={styles.topUpLoanBtnText}>Top Up My Loan</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  screenWrapper: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
+  scrollContent: {
     padding: 16,
-    paddingBottom: 28,
-    backgroundColor: colors.background,
+    paddingBottom: 160,
   },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  titleWithDot: {
+  headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
+    marginBottom: 16,
+    marginTop: 4,
   },
-  title: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0f172a',
+  headerIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 8,
+    backgroundColor: '#ffd700',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 6,
+    position: 'relative',
+    shadowColor: '#d97706',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  headerIconLineTop: {
+    width: 18,
+    height: 2.5,
+    backgroundColor: '#002e75',
+    borderRadius: 1,
+    marginBottom: 3,
+  },
+  headerIconLineMid: {
+    width: 14,
+    height: 2.5,
+    backgroundColor: '#002e75',
+    borderRadius: 1,
+    marginBottom: 3,
+    alignSelf: 'flex-start',
+    marginLeft: 3,
+  },
+  headerIconLineBot: {
+    width: 18,
+    height: 2.5,
+    backgroundColor: '#002e75',
+    borderRadius: 1,
+  },
+  headerIconPenTip: {
+    position: 'absolute',
+    right: 5,
+    top: 14,
+    width: 4,
+    height: 10,
+    backgroundColor: '#002e75',
+    borderRadius: 2,
+  },
+  headerTitleText: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#002e75',
     letterSpacing: -0.3,
   },
-  recordBadge: {
-    backgroundColor: '#e6f6fc',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#bae6f7',
+  tabsGridRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 18,
   },
-  recordBadgeText: {
-    fontSize: 10,
+  tabCard: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderRadius: 12,
+    borderWidth: 1.2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+  },
+  tabIconRow: {
+    marginBottom: 4,
+  },
+  tabCardText: {
+    fontSize: 11,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  // Green Tab
+  tabCardGreenActive: {
+    backgroundColor: '#16a34a',
+    borderColor: '#15803d',
+    shadowColor: '#16a34a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  tabCardDefault: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+  },
+  tabCardTextActive: {
+    color: '#ffffff',
     fontWeight: '800',
-    color: '#008ecc',
   },
-  subtitle: {
-    fontSize: 11.5,
-    color: colors.textMuted,
-    marginTop: 2,
+  tabCardTextDark: {
+    color: '#15803d',
   },
-  newBtnPlatform: {
+  // Blue Tab
+  tabCardBlueActive: {
+    backgroundColor: '#004aad',
+    borderColor: '#002e75',
+  },
+  tabCardBlueTint: {
+    backgroundColor: '#f0f9ff',
+    borderColor: '#bae6fd',
+  },
+  tabCardTextBlue: {
+    color: '#004aad',
+  },
+  // Peach Tab
+  tabCardPeachActive: {
+    backgroundColor: '#d97706',
+    borderColor: '#b45309',
+  },
+  tabCardPeachTint: {
+    backgroundColor: '#fffbeb',
+    borderColor: '#fde68a',
+  },
+  tabCardTextPeach: {
+    color: '#b45309',
+  },
+  // Red Tab
+  tabCardRedActive: {
+    backgroundColor: '#dc2626',
+    borderColor: '#b91c1c',
+  },
+  tabCardRedTint: {
+    backgroundColor: '#fef2f2',
+    borderColor: '#fecaca',
+  },
+  tabCardTextRed: {
+    color: '#dc2626',
+  },
+  loanCardWrapper: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 14,
+    marginBottom: 16,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  cardHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#008ecc', // Vivid Logo Sky Cyan
-    paddingLeft: 6,
-    paddingRight: 14,
-    paddingVertical: 7,
-    borderRadius: 22,
-    gap: 8,
+    gap: 10,
+    marginBottom: 14,
+  },
+  loanIconSquare: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  homeIconBox: {
+    backgroundColor: '#fef08a',
+  },
+  carIconBox: {
+    backgroundColor: '#e0f2fe',
+  },
+  loanTitleCol: {
+    flex: 1,
+  },
+  loanTitleText: {
+    fontSize: 16.5,
+    fontWeight: '900',
+    color: '#002e75',
+    marginBottom: 2,
+  },
+  appIdBadgePill: {
+    backgroundColor: '#f1f5f9',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+  },
+  appIdText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  inProgressYellowPill: {
+    backgroundColor: '#fef08a',
+    borderRadius: 20,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#fde047',
+  },
+  inProgressYellowPillText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#854d0e',
+  },
+  infoThreeColsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fafbfc',
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    marginBottom: 16,
+  },
+  infoColItem: {
+    flex: 1,
+    paddingHorizontal: 4,
+  },
+  infoColItemRM: {
+    flex: 1.15,
+    paddingHorizontal: 4,
+  },
+  colVerticalDivider: {
+    width: 1,
+    height: '80%',
+    backgroundColor: '#e2e8f0',
+  },
+  colHeaderMiniRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4,
+  },
+  colHeaderLabel: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#64748b',
+  },
+  bankValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  hdfcLogoBox: {
+    width: 14,
+    height: 14,
     position: 'relative',
-    overflow: 'hidden',
-    borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-    shadowColor: '#008ecc',
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#004aad',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hdfcSquareRed: {
+    width: 6,
+    height: 6,
+    backgroundColor: '#dc2626',
+  },
+  hdfcBlueHBar: {
+    position: 'absolute',
+    width: 10,
+    height: 2,
+    backgroundColor: '#004aad',
+  },
+  hdfcBlueVBar: {
+    position: 'absolute',
+    height: 10,
+    width: 2,
+    backgroundColor: '#004aad',
+  },
+  iciciLogoBox: {
+    width: 14,
+    height: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bankNameText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  moneyBagIconCircle: {
+    width: 15,
+    height: 15,
+    borderRadius: 7.5,
+    backgroundColor: '#fef3c7',
+    borderWidth: 1,
+    borderColor: '#f59e0b',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  moneyBagSymbol: {
+    fontSize: 8.5,
+    fontWeight: '900',
+    color: '#d97706',
+  },
+  loanAmountValue: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#002e75',
+  },
+  rmContactPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#f0fdf4',
+    paddingVertical: 2,
+    paddingHorizontal: 4,
+    borderRadius: 6,
+  },
+  rmPhoneCallCircle: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#16a34a',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rmPhoneText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#15803d',
+  },
+  stepperContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    paddingTop: 6,
+  },
+  nodeItem: {
+    alignItems: 'center',
+    width: 68,
+  },
+  greenCheckCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#16a34a',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  yellowActiveRing: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#eab308',
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  yellowActiveInnerDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#eab308',
+  },
+  grayOutlineCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#94a3b8',
+    backgroundColor: '#ffffff',
+    marginBottom: 6,
+  },
+  connectorLine: {
+    flex: 1,
+    height: 2.5,
+    marginTop: 9,
+    marginHorizontal: -6,
+  },
+  connectorLineGreen: {
+    backgroundColor: '#16a34a',
+  },
+  connectorLineGray: {
+    backgroundColor: '#cbd5e1',
+  },
+  milestoneLabel: {
+    fontSize: 10.5,
+    textAlign: 'center',
+    lineHeight: 13,
+  },
+  milestoneLabelDark: {
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  milestoneLabelGray: {
+    fontWeight: '500',
+    color: '#64748b',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 50,
+    paddingHorizontal: 20,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginTop: 10,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  emptySubtitle: {
+    fontSize: 12.5,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  bottomBarContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    gap: 8,
+  },
+  applyNewLoanBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#002e75',
+    borderRadius: 28,
+    paddingVertical: 13,
+    gap: 8,
+    shadowColor: '#002e75',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.35,
     shadowRadius: 5,
     elevation: 4,
   },
-  newBtnHalfSheen: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '48%',
-    backgroundColor: 'rgba(255, 255, 255, 0.35)',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-  },
-  newBtnIconCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+  applyPlusCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
-    elevation: 2,
   },
-  newBtnText: {
-    fontSize: 12.5,
-    fontWeight: '900',
+  applyNewLoanBtnText: {
+    fontSize: 15,
+    fontWeight: '800',
     color: '#ffffff',
     letterSpacing: 0.2,
   },
-  filterScroll: {
-    marginBottom: 14,
-  },
-  filterRow: {
+  topUpLoanBtn: {
     flexDirection: 'row',
-    gap: 8,
-  },
-  filterPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingLeft: 12,
-    paddingRight: 8,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: colors.white,
-    borderWidth: 1.2,
-    borderColor: '#e2e8f0',
-    gap: 6,
-  },
-  filterPillActive: {
-    backgroundColor: '#008ecc',
-    borderColor: '#008ecc',
-    shadowColor: '#008ecc',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  filterText: {
-    fontSize: 11.5,
-    fontWeight: '700',
-    color: '#64748b',
-  },
-  filterTextActive: {
-    color: '#ffffff',
-  },
-  filterCountBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 10,
-  },
-  filterCountText: {
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  list: {
-    gap: 14,
-  },
-  card: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    padding: 14,
-    position: 'relative',
-    overflow: 'hidden',
-    shadowColor: '#2d3091',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  cardAccentBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 3.5,
-  },
-  cardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  cardTopLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flex: 1,
-    marginRight: 8,
-  },
-  loanIconWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  titleInfo: {
-    flex: 1,
-  },
-  loanType: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#0f172a',
-    letterSpacing: -0.2,
-  },
-  idRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 2,
-  },
-  appIdBadge: {
-    backgroundColor: '#f1f5f9',
-    paddingHorizontal: 6,
-    paddingVertical: 1.5,
-    borderRadius: 4,
-  },
-  appId: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#475569',
-  },
-  submissionDateText: {
-    fontSize: 10,
-    color: '#94a3b8',
-    fontWeight: '600',
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
-    borderWidth: 1,
-    gap: 5,
-  },
-  statusBeaconDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  badgeText: {
-    fontSize: 10.5,
-    fontWeight: '800',
-  },
-  metricsBox: {
-    flexDirection: 'row',
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    paddingVertical: 9,
-    paddingHorizontal: 10,
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    marginTop: 12,
-    marginBottom: 10,
-  },
-  metricItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  metricDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: '#cbd5e1',
-  },
-  metaLabel: {
-    fontSize: 8.5,
-    fontWeight: '700',
-    color: '#64748b',
-    letterSpacing: 0.4,
-  },
-  metaVal: {
-    fontSize: 13,
-    fontWeight: '900',
-    color: '#0f172a',
-    marginTop: 2,
-  },
-  cardBottom: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 4,
-  },
-  nextActionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flex: 1,
-    marginRight: 8,
-  },
-  nextActionText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#0284c7',
-  },
-  viewActionPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#008ecc',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    gap: 3,
-    shadowColor: '#008ecc',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.25,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  viewText: {
-    fontSize: 10.5,
-    fontWeight: '800',
-    color: '#ffffff',
-  },
-  emptyCard: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
+    backgroundColor: '#fffbeb',
     borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    padding: 32,
-    alignItems: 'center',
-    marginTop: 20,
-    shadowColor: '#000',
+    borderColor: '#fde047',
+    borderRadius: 28,
+    paddingVertical: 12,
+    gap: 8,
+    shadowColor: '#d97706',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 2,
   },
-  emptyIconCircle: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: '#e6f6fc',
+  topUpCoinsIcon: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
   },
-  emptyTitle: {
+  topUpLoanBtnText: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#0f172a',
-    marginTop: 6,
-  },
-  emptySub: {
-    fontSize: 11.5,
-    color: colors.textMuted,
-    marginTop: 4,
-    textAlign: 'center',
+    color: '#002e75',
+    letterSpacing: 0.2,
   },
 });

@@ -38,8 +38,26 @@ class LoanService {
     const category = this.getCategoryById(params.loanType);
     const categoryTitle = category ? category.title : 'Loan';
 
+    const prefixMap: Record<LoanType, string> = {
+      home: 'HL',
+      car: 'CL',
+      personal: 'PL',
+      business: 'BL',
+      education: 'EL',
+      agriculture: 'AL',
+      mortgage: 'ML',
+      mudra: 'PMMY',
+    };
+    const prefix = prefixMap[params.loanType] || 'LP';
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const seq = String(Math.floor(10 + Math.random() * 900)).padStart(4, '0');
+    const generatedId = `${prefix}-${yyyy}${mm}${dd}-${seq}`;
+
     const newApp: LoanApplication = {
-      id: `LP-2026-APP-${Math.floor(1000 + Math.random() * 9000)}`,
+      id: generatedId,
       loanType: params.loanType,
       loanTypeName: categoryTitle,
       requestedAmount: params.requestedAmount,

@@ -43,6 +43,14 @@ import { ApplicationDetailScreen } from './src/components/screens/ApplicationDet
 import { ServicesScreen } from './src/components/screens/ServicesScreen';
 import { LoanDetailScreen } from './src/components/screens/LoanDetailScreen';
 import { LoanApplicationScreen } from './src/components/screens/LoanApplicationScreen';
+import { PersonalLoanApplyScreen } from './src/components/screens/PersonalLoanApplyScreen';
+import { HomeLoanApplyScreen } from './src/components/screens/HomeLoanApplyScreen';
+import { BusinessLoanApplyScreen } from './src/components/screens/BusinessLoanApplyScreen';
+import { CarLoanApplyScreen } from './src/components/screens/CarLoanApplyScreen';
+import { EducationLoanApplyScreen } from './src/components/screens/EducationLoanApplyScreen';
+import { AgricultureLoanApplyScreen } from './src/components/screens/AgricultureLoanApplyScreen';
+import { MortgageLoanApplyScreen } from './src/components/screens/MortgageLoanApplyScreen';
+import { MudraLoanApplyScreen } from './src/components/screens/MudraLoanApplyScreen';
 import { EmiCalculatorScreen } from './src/components/screens/EmiCalculatorScreen';
 import { EligibilityScreen } from './src/components/screens/EligibilityScreen';
 import { BalanceTransferScreen } from './src/components/screens/BalanceTransferScreen';
@@ -115,16 +123,18 @@ function MainApp() {
   }, [isNotificationOpen]);
 
   // Support Handlers
-  const handleOpenCall = () => {
-    Linking.openURL(`tel:${COMPANY_INFO.contactPhoneRaw}`).catch(() => {});
+  const handleOpenCall = (customPhone?: string) => {
+    const raw = customPhone ? customPhone.replace(/[^0-9]/g, '') : COMPANY_INFO.contactPhoneRaw;
+    Linking.openURL(`tel:${raw}`).catch(() => {});
   };
 
-  const handleOpenWhatsApp = () => {
+  const handleOpenWhatsApp = (customPhone?: string, customText?: string) => {
+    const phone = customPhone ? customPhone.replace(/[^0-9]/g, '') : `91${COMPANY_INFO.contactPhoneRaw}`;
     const text = encodeURIComponent(
-      `Hello Loan Point Nanded, I am inquiring about loans through your mobile app.`
+      customText || `Hello Loan Point Nanded, I am inquiring about loans through your mobile app.`
     );
-    Linking.openURL(`whatsapp://send?phone=91${COMPANY_INFO.contactPhoneRaw}&text=${text}`).catch(() => {
-      Linking.openURL(`https://api.whatsapp.com/send?phone=91${COMPANY_INFO.contactPhoneRaw}&text=${text}`);
+    Linking.openURL(`whatsapp://send?phone=${phone}&text=${text}`).catch(() => {
+      Linking.openURL(`https://api.whatsapp.com/send?phone=${phone}&text=${text}`);
     });
   };
 
@@ -282,19 +292,21 @@ function MainApp() {
         />
       ) : (
         <View style={styles.appContainer}>
-          {/* Mobile Top Header */}
-          <TopBar
-            title={getScreenTitle()}
-            showBack={!!activeSubScreen}
-            onBack={handleBack}
-            unreadCount={unreadNotifications}
-            onOpenNotifications={() => setIsNotificationOpen(true)}
-            onOpenProfile={() => {
-              setActiveSubScreen('profile_settings');
-            }}
-            userName={user?.name || 'Rahul'}
-            isHomeScreen={!activeSubScreen && currentTab === 'home'}
-          />
+          {/* Mobile Top Header (Hidden on custom Loan Apply pages to match dedicated design headers) */}
+          {activeSubScreen !== 'loan_apply' && (
+            <TopBar
+              title={getScreenTitle()}
+              showBack={!!activeSubScreen}
+              onBack={handleBack}
+              unreadCount={unreadNotifications}
+              onOpenNotifications={() => setIsNotificationOpen(true)}
+              onOpenProfile={() => {
+                setActiveSubScreen('profile_settings');
+              }}
+              userName={user?.name || 'Rahul'}
+              isHomeScreen={!activeSubScreen && currentTab === 'home'}
+            />
+          )}
 
           {/* Main Body View */}
           <View style={styles.mainView}>
@@ -315,20 +327,102 @@ function MainApp() {
             )}
 
             {activeSubScreen === 'loan_apply' && selectedCategory && (
-              <LoanApplicationScreen
-                category={selectedCategory}
-                user={user}
-                onCategoryChange={(cat) => setSelectedCategory(cat)}
-                onNavigateToProfile={() => {
-                  setActiveSubScreen('profile_settings');
-                }}
-                onSuccess={(newApp) => {
-                  setApplications(loanService.getApplications());
-                  setSelectedApplication(newApp);
-                  setActiveSubScreen('application_detail');
-                }}
-                onCancel={handleBack}
-              />
+              selectedCategory.id === 'personal' ? (
+                <PersonalLoanApplyScreen
+                  user={user}
+                  onSuccess={(newApp) => {
+                    setApplications(loanService.getApplications());
+                    setSelectedApplication(newApp);
+                    setActiveSubScreen('application_detail');
+                  }}
+                  onCancel={handleBack}
+                />
+              ) : selectedCategory.id === 'home' ? (
+                <HomeLoanApplyScreen
+                  user={user}
+                  onSuccess={(newApp) => {
+                    setApplications(loanService.getApplications());
+                    setSelectedApplication(newApp);
+                    setActiveSubScreen('application_detail');
+                  }}
+                  onCancel={handleBack}
+                />
+              ) : selectedCategory.id === 'business' ? (
+                <BusinessLoanApplyScreen
+                  user={user}
+                  onSuccess={(newApp) => {
+                    setApplications(loanService.getApplications());
+                    setSelectedApplication(newApp);
+                    setActiveSubScreen('application_detail');
+                  }}
+                  onCancel={handleBack}
+                />
+              ) : selectedCategory.id === 'car' ? (
+                <CarLoanApplyScreen
+                  user={user}
+                  onSuccess={(newApp) => {
+                    setApplications(loanService.getApplications());
+                    setSelectedApplication(newApp);
+                    setActiveSubScreen('application_detail');
+                  }}
+                  onCancel={handleBack}
+                />
+              ) : selectedCategory.id === 'education' ? (
+                <EducationLoanApplyScreen
+                  user={user}
+                  onSuccess={(newApp) => {
+                    setApplications(loanService.getApplications());
+                    setSelectedApplication(newApp);
+                    setActiveSubScreen('application_detail');
+                  }}
+                  onCancel={handleBack}
+                />
+              ) : selectedCategory.id === 'agriculture' ? (
+                <AgricultureLoanApplyScreen
+                  user={user}
+                  onSuccess={(newApp) => {
+                    setApplications(loanService.getApplications());
+                    setSelectedApplication(newApp);
+                    setActiveSubScreen('application_detail');
+                  }}
+                  onCancel={handleBack}
+                />
+              ) : selectedCategory.id === 'mortgage' ? (
+                <MortgageLoanApplyScreen
+                  user={user}
+                  onSuccess={(newApp) => {
+                    setApplications(loanService.getApplications());
+                    setSelectedApplication(newApp);
+                    setActiveSubScreen('application_detail');
+                  }}
+                  onCancel={handleBack}
+                />
+              ) : selectedCategory.id === 'mudra' ? (
+                <MudraLoanApplyScreen
+                  user={user}
+                  onSuccess={(newApp) => {
+                    setApplications(loanService.getApplications());
+                    setSelectedApplication(newApp);
+                    setActiveSubScreen('application_detail');
+                  }}
+                  onCancel={handleBack}
+                />
+              ) : (
+                <LoanApplicationScreen
+                  category={selectedCategory}
+                  user={user}
+                  onCategoryChange={(cat) => setSelectedCategory(cat)}
+                  onNavigateToProfile={() => {
+                    setActiveSubScreen('profile_settings');
+                  }}
+                  onSuccess={(newApp) => {
+                    setApplications(loanService.getApplications());
+                    setSelectedApplication(newApp);
+                    setActiveSubScreen('application_detail');
+                  }}
+                  onCancel={handleBack}
+                />
+              )
             )}
 
             {activeSubScreen === 'application_detail' && selectedApplication && (
@@ -487,10 +581,15 @@ function MainApp() {
                       setSelectedCategory(categories[0]);
                       setActiveSubScreen('loan_apply');
                     }}
+                    onTopUpLoan={() => {
+                      setActiveSubScreen('top_up_loan');
+                    }}
                     onUploadDocForApp={(app) => {
                       setSelectedApplication(app);
                       setActiveSubScreen('application_detail');
                     }}
+                    onOpenCall={(phone) => handleOpenCall(phone)}
+                    onOpenWhatsApp={(phone, text) => handleOpenWhatsApp(phone, text)}
                   />
                 )}
 

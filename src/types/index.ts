@@ -60,6 +60,7 @@ export interface LoanApplication {
   isDemoRecord: boolean;
   applicantName?: string;
   applicantMobile?: string;
+  bankName?: string;
 }
 
 export interface UserProfile {

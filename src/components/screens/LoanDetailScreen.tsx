@@ -345,6 +345,31 @@ export const LoanDetailScreen: React.FC<LoanDetailScreenProps> = ({
         </View>
       </View>
 
+      {/* Supermarket Header & Banking / NBFC Partners Banner */}
+      <View style={styles.supermarketCard}>
+        {/* Blue Top Header Strip */}
+        <View style={styles.supermarketHeader}>
+          <MaterialCommunityIcons name="cart-variant" size={28} color="#eab308" style={styles.supermarketCartIcon} />
+          <View style={styles.supermarketTextWrap}>
+            <Text style={styles.supermarketTitle}>
+              A Supermarket <Text style={styles.supermarketTitleHighlight}>for {category.title}</Text>
+            </Text>
+            <Text style={styles.supermarketSubtitle}>
+              Multiple Banks &amp; Top NBFCs – All Loan Options Under One Roof!
+            </Text>
+          </View>
+        </View>
+
+        {/* Banking and NBFC Partners Image */}
+        <View style={styles.supermarketImageWrap}>
+          <Image
+            source={require('../../../assets/bank logo/banking-partners.png')}
+            style={styles.partnerBannerImage}
+            resizeMode="contain"
+          />
+        </View>
+      </View>
+
       {/* 3. Section Title: Key Benefits */}
       <View style={styles.sectionTitleRow}>
         <View style={styles.yellowIndicatorBar} />
@@ -581,6 +606,62 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     marginTop: 2,
     textAlign: 'center',
+  },
+
+  // Supermarket Card & Banking Partners Banner
+  supermarketCard: {
+    width: '100%',
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#dbeafe',
+    overflow: 'hidden',
+    marginBottom: 18,
+    shadowColor: '#0284c7',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  supermarketHeader: {
+    backgroundColor: '#0256b8',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  supermarketCartIcon: {
+    marginRight: 10,
+  },
+  supermarketTextWrap: {
+    flex: 1,
+  },
+  supermarketTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#ffffff',
+    letterSpacing: 0.2,
+  },
+  supermarketTitleHighlight: {
+    color: '#facc15',
+    fontWeight: '900',
+  },
+  supermarketSubtitle: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: '#e0f2fe',
+    marginTop: 2,
+  },
+  supermarketImageWrap: {
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  partnerBannerImage: {
+    width: '100%',
+    height: 165,
   },
 
   // 3. Section Title
