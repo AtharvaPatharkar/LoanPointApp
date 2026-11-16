@@ -77,12 +77,12 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
     activeTab === 'in_progress'
       ? inProgressList
       : activeTab === 'disbursed'
-      ? disbursedList
-      : activeTab === 'top_up'
-      ? topUpList
-      : activeTab === 'rejected'
-      ? rejectedList
-      : [];
+        ? disbursedList
+        : activeTab === 'top_up'
+          ? topUpList
+          : activeTab === 'rejected'
+            ? rejectedList
+            : [];
 
   const getStageIndex = (app: LoanApplication): number => {
     if (app.status === 'Disbursed' || app.status === 'Approved') return 3;
@@ -418,7 +418,7 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
                             `You can reapply for this ${app.loanTypeName} on or after ${reapplyDate}. In the meantime, please contact your Relationship Manager for assistance.`,
                             [
                               { text: 'OK' },
-                              { text: 'Contact RM', onPress: () => handleCallRM('+91 98230 45678') },
+                              { text: 'Contact RM', onPress: () => handleCallRM('+91 9545555999') },
                             ]
                           );
                         }
@@ -468,7 +468,7 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
               </View>
               <TouchableOpacity
                 style={styles.contactRmBtn}
-                onPress={() => handleCallRM('+91 98230 45678')}
+                onPress={() => handleCallRM('+91 9545555999')}
                 activeOpacity={0.85}
               >
                 <Ionicons name="call" size={14} color="#ffffff" style={{ marginRight: 5 }} />
@@ -481,8 +481,8 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
           <View>
             {topUpList.map((app) => {
               const bankName = app.bankName || 'HDFC Bank';
-              const rmName = app.assignedManager?.name || 'Aasma Shaikh';
-              const rmPhone = app.assignedManager?.phone || '+91 98230 45678';
+              const rmName = app.assignedManager?.name || 'Arvind Patil';
+              const rmPhone = app.assignedManager?.phone || '+91 9545555999';
               const tenureTotal = app.tenureYears || '20 Years';
               const existingLoan = formatAmountINR(app.existingLoanAmount || 5000000);
               const topUpRequested = formatAmountINR(app.topUpRequestedAmount || 1500000);
@@ -687,8 +687,8 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
           <View>
             {disbursedList.map((app) => {
               const bankName = app.bankName || 'HDFC Bank';
-              const rmName = app.assignedManager?.name || 'Aasma Shaikh';
-              const rmPhone = app.assignedManager?.phone || '+91 98230 45678';
+              const rmName = app.assignedManager?.name || 'Arvind Patil';
+              const rmPhone = app.assignedManager?.phone || '+91 9545555999';
               const disbursementDate = app.disbursementDate || '20 Sep 2026';
               const tenure = app.tenureYears || (app.tenureMonths ? `${Math.round(app.tenureMonths / 12)} Years` : '20 Years');
               const interestRate = app.interestRate || '7.80% p.a.';
@@ -850,8 +850,8 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
             const stageIndex = getStageIndex(app);
             const isHome = app.loanType === 'home';
             const bankName = app.bankName || (isHome ? 'HDFC Bank' : 'ICICI Bank');
-            const rmName = app.assignedManager?.name || (isHome ? 'Aasma Shaikh' : 'Disha Bhure');
-            const rmPhone = app.assignedManager?.phone || (isHome ? '+91 98230 45678' : '+91 90216 78901');
+            const rmName = app.assignedManager?.name || (isHome ? 'Arvind Patil' : 'Disha Bhure');
+            const rmPhone = app.assignedManager?.phone || (isHome ? '+91 9545555999' : '+91 90216 78901');
 
             return (
               <TouchableOpacity

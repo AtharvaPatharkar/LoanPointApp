@@ -52,8 +52,8 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
   const balanceTenure = '18 Years';
   const currentEmi = '₹43,476';
 
-  const rmName = application?.assignedManager?.name || 'Aasma Shaikh';
-  const rmPhone = application?.assignedManager?.phone || '+91 98230 45678';
+  const rmName = application?.assignedManager?.name || 'Arvind Patil';
+  const rmPhone = application?.assignedManager?.phone || '+91 9545555999';
 
   // Screen View: 'form' | 'submitted' | 'track_status'
   const [screenView, setScreenView] = useState<'form' | 'submitted' | 'track_status'>('form');

@@ -72,7 +72,7 @@ export const MyInsuranceScreen: React.FC<MyInsuranceScreenProps> = ({
   const [mobileNumber, setMobileNumber] = useState<string>(user?.mobile || '');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  const expertPhone = '+91 98230 45678';
+  const expertPhone = '+91 9545555999';
 
   // EXACT Policies data matching reference image
   const policiesList: UserPolicyItem[] = [

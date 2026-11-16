@@ -59,7 +59,7 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
   const [showPolicyModal, setShowPolicyModal] = useState<boolean>(false);
   const [filterModalVisible, setFilterModalVisible] = useState<boolean>(false);
-  
+
   // Screen mode: 'form' | 'submitted_success' | 'view_my_referrals'
   const [screenMode, setScreenMode] = useState<'form' | 'submitted_success' | 'view_my_referrals'>('form');
 
@@ -77,7 +77,7 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
   const [currentSubmitted, setCurrentSubmitted] = useState<SubmittedReferral>({
     id: 'REF-20261112-0045',
     fullName: 'Rahul Deshmukh',
-    mobileNumber: '+91 98230 45678',
+    mobileNumber: '+91 9545555999',
     loanType: 'Home Loan',
     city: 'Nanded',
     submittedOn: '12 Nov 2026, 09:41 AM',
@@ -90,7 +90,7 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
     {
       id: 'REF-HL-01',
       fullName: 'Rahul Deshmukh',
-      mobileNumber: '+91 98230 45678',
+      mobileNumber: '+91 9545555999',
       city: 'Nanded',
       loanProduct: 'Home Loan',
       loanAmount: '₹50,00,000',
@@ -234,7 +234,7 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
     setTimeout(() => {
       const now = new Date();
       const day = now.getDate().toString().padStart(2, '0');
-      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const monthStr = months[now.getMonth()];
       const year = now.getFullYear();
       let hours = now.getHours();
@@ -634,8 +634,8 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
                       {item.status === 'Disbursed'
                         ? 'Your Earning:'
                         : item.status === 'Approved'
-                        ? 'Estimated Earning:'
-                        : 'Earning:'}{' '}
+                          ? 'Estimated Earning:'
+                          : 'Earning:'}{' '}
                     </Text>
                     {item.earning !== '—' ? (
                       <Text style={styles.earningValueRed}>
