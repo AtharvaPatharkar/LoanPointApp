@@ -14,6 +14,8 @@ import {
 import { Ionicons, MaterialCommunityIcons, FontAwesome5, Feather } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import { UserProfile, LoanApplication } from '../../types';
+import { BankLogo } from '../common/BankLogo';
+import { LoanIcon } from '../common/LoanIcon';
 
 interface TopUpLoanScreenProps {
   user?: UserProfile | null;
@@ -151,11 +153,15 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
 
           {/* 1. Home Loan – Top Up Summary Card */}
           <View style={styles.trackSummaryCard}>
-            {/* Header: House in Squircle + Home Loan - Top Up / Request ID + In Process Pill */}
+            {/* Header: Attractive Colourful Loan Logo + Home Loan - Top Up / Request ID + In Process Pill */}
             <View style={styles.trackCardHeaderRow}>
-              <View style={styles.homeIconBox}>
-                <Ionicons name="home-outline" size={26} color="#002e75" />
-              </View>
+              <LoanIcon
+                type={application?.loanType || 'home'}
+                name="Home Loan"
+                size={24}
+                containerSize={48}
+                borderRadius={12}
+              />
 
               <View style={styles.trackTitleCol}>
                 <Text style={styles.trackMainTitleText}>Home Loan – Top Up</Text>
@@ -175,7 +181,9 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
             <View style={styles.trackThreeMetricsRow}>
               {/* Col 1: Bank Name */}
               <View style={[styles.trackMetricCell, styles.cellBorderRight]}>
-                <Ionicons name="business-outline" size={24} color="#004aad" style={{ alignSelf: 'center', marginBottom: 2 }} />
+                <View style={{ alignSelf: 'center', marginBottom: 2 }}>
+                  <BankLogo bank={bankName} width={28} height={28} />
+                </View>
                 <Text style={styles.trackBankNameText}>{bankName}</Text>
               </View>
 
@@ -467,9 +475,12 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
               <View style={styles.summaryRow}>
                 {/* Cell 1: Loan Type */}
                 <View style={[styles.summaryCell, styles.cellBorderRight]}>
-                  <View style={styles.homeIconBoxSmall}>
-                    <Ionicons name="home-outline" size={22} color="#002e75" />
-                  </View>
+                  <LoanIcon
+                    type={application?.loanType || 'home'}
+                    size={20}
+                    containerSize={38}
+                    borderRadius={10}
+                  />
                   <View style={styles.summaryTextCol}>
                     <Text style={styles.summaryLabel}>Loan Type</Text>
                     <Text style={styles.summaryBoldText}>{loanTypeName}</Text>
@@ -495,7 +506,7 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
                 {/* Cell 3: Bank Name */}
                 <View style={[styles.summaryCell, styles.cellBorderRight]}>
                   <View style={styles.summaryIconWrap}>
-                    <Ionicons name="business-outline" size={24} color="#004aad" />
+                    <BankLogo bank={bankName} width={28} height={28} />
                   </View>
                   <View style={styles.summaryTextCol}>
                     <Text style={styles.summaryLabel}>Bank Name</Text>
@@ -664,9 +675,13 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
           </View>
 
           <View style={styles.existingLoanHeaderRow}>
-            <View style={styles.homeIconBox}>
-              <Ionicons name="home-outline" size={26} color="#002e75" />
-            </View>
+            <LoanIcon
+              type={application?.loanType || 'home'}
+              name={loanTypeName}
+              size={24}
+              containerSize={48}
+              borderRadius={12}
+            />
 
             <View style={styles.loanTitleCol}>
               <Text style={styles.loanTitleText}>{loanTypeName}</Text>
@@ -676,7 +691,9 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
             </View>
 
             <View style={styles.bankNameCol}>
-              <Ionicons name="business-outline" size={26} color="#004aad" style={{ alignSelf: 'center' }} />
+              <View style={{ alignSelf: 'center', marginBottom: 2 }}>
+                <BankLogo bank={bankName} width={30} height={30} />
+              </View>
               <Text style={styles.bankNameText}>{bankName}</Text>
             </View>
           </View>

@@ -16,6 +16,8 @@ import {
 } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import { LoanApplication } from '../../types';
+import { BankLogo } from '../common/BankLogo';
+import { LoanIcon } from '../common/LoanIcon';
 
 interface ApplicationsScreenProps {
   applications: LoanApplication[];
@@ -27,7 +29,7 @@ interface ApplicationsScreenProps {
   onOpenWhatsApp?: (phone: string, text?: string) => void;
 }
 
-type TabType = 'in_progress' | 'disbursed' | 'top_up' | 'rejected';
+type TabType = 'all' | 'in_progress' | 'disbursed' | 'top_up' | 'rejected';
 
 interface StepMilestone {
   key: string;
@@ -56,7 +58,7 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
   onOpenCall,
   onOpenWhatsApp,
 }) => {
-  const [activeTab, setActiveTab] = useState<TabType>('rejected');
+  const [activeTab, setActiveTab] = useState<TabType>('all');
 
   // Categorize applications
   const inProgressList = applications.filter(
@@ -74,15 +76,17 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
   const topUpCount = topUpList.length > 0 ? topUpList.length : 1;
 
   const currentList =
-    activeTab === 'in_progress'
-      ? inProgressList
-      : activeTab === 'disbursed'
-        ? disbursedList
-        : activeTab === 'top_up'
-          ? topUpList
-          : activeTab === 'rejected'
-            ? rejectedList
-            : [];
+    activeTab === 'all'
+      ? applications
+      : activeTab === 'in_progress'
+        ? inProgressList
+        : activeTab === 'disbursed'
+          ? disbursedList
+          : activeTab === 'top_up'
+            ? topUpList
+            : activeTab === 'rejected'
+              ? rejectedList
+              : [];
 
   const getStageIndex = (app: LoanApplication): number => {
     if (app.status === 'Disbursed' || app.status === 'Approved') return 3;
@@ -144,9 +148,44 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
           <Text style={styles.headerTitleText}>My Loans</Text>
         </View>
 
-        {/* 4 Custom Segmented Tabs matching exact colors & badges */}
-        <View style={styles.tabsGridRow}>
-          {/* 1. In Progress (Light Blue / Cyan Tint) */}
+        {/* 5 Custom Segmented Tabs (All Applied Loans, In Progress, Disbursed, Top Up, Rejected) */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabsGridRow}
+        >
+          {/* 1. All Loans (Navy Dark) */}
+          <TouchableOpacity
+            style={[
+              styles.tabCard,
+              activeTab === 'all'
+                ? styles.tabCardAllActive
+                : styles.tabCardAllDefault,
+            ]}
+            onPress={() => setActiveTab('all')}
+            activeOpacity={0.85}
+          >
+            <View style={styles.tabIconRow}>
+              <MaterialCommunityIcons
+                name="format-list-bulleted-square"
+                size={18}
+                color={activeTab === 'all' ? '#ffffff' : '#002e75'}
+              />
+            </View>
+            <Text
+              style={[
+                styles.tabCardText,
+                activeTab === 'all'
+                  ? styles.tabCardTextActive
+                  : styles.tabCardTextAll,
+              ]}
+              numberOfLines={1}
+            >
+              All Loans ({applications.length})
+            </Text>
+          </TouchableOpacity>
+
+          {/* 2. In Progress (Light Blue / Cyan Tint) */}
           <TouchableOpacity
             style={[
               styles.tabCard,
@@ -177,7 +216,7 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
             </Text>
           </TouchableOpacity>
 
-          {/* 2. Disbursed (Glossy Vibrant Green) */}
+          {/* 3. Disbursed (Glossy Vibrant Green) */}
           <TouchableOpacity
             style={[
               styles.tabCard,
@@ -208,7 +247,7 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
             </Text>
           </TouchableOpacity>
 
-          {/* 3. Top Up (Soft Warm Peach / Amber Tint) */}
+          {/* 4. Top Up (Soft Warm Peach / Amber Tint) */}
           <TouchableOpacity
             style={[
               styles.tabCard,
@@ -239,7 +278,7 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
             </Text>
           </TouchableOpacity>
 
-          {/* 4. Rejected (Vibrant Glossy Red with Golden Glow active state) */}
+          {/* 5. Rejected (Vibrant Glossy Red with Golden Glow active state) */}
           <TouchableOpacity
             style={[
               styles.tabCard,
@@ -269,7 +308,7 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
               Rejected ({rejectedList.length})
             </Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
 
         {/* ---------------- ACTIVE TAB CONTENT ---------------- */}
         {activeTab === 'rejected' ? (
@@ -296,20 +335,16 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
 
               return (
                 <View key={app.id} style={styles.rejectedCardWrapper}>
-                  {/* Row 1: Header (Icon in Squircle + Title/ID + Bank Name on right) */}
+                  {/* Row 1: Header (Attractive 3D Colourful Loan Image Logo + Title/ID + Bank Name on right) */}
                   <View style={styles.rejectedCardHeaderRow}>
-                    <View
-                      style={[
-                        styles.rejectedIconBox,
-                        isHome ? styles.rejectedHomeBox : styles.rejectedBriefcaseBox,
-                      ]}
-                    >
-                      {isHome ? (
-                        <Ionicons name="home-outline" size={26} color="#002e75" />
-                      ) : (
-                        <Ionicons name="briefcase-outline" size={24} color="#991b1b" />
-                      )}
-                    </View>
+                    <LoanIcon
+                      type={app.loanType}
+                      name={app.loanTypeName}
+                      useAssetImage={true}
+                      size={38}
+                      containerSize={52}
+                      borderRadius={14}
+                    />
 
                     <View style={styles.rejectedTitleCol}>
                       <Text style={styles.rejectedTitleText}>{app.loanTypeName}</Text>
@@ -322,21 +357,8 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
                     <View style={styles.rejectedBankCol}>
                       <Text style={styles.rejectedBankSubLabel}>Bank Name</Text>
                       <View style={styles.rejectedBankBrandRow}>
-                        {bankName.includes('ICICI') ? (
-                          <View style={styles.iciciBrandWrap}>
-                            <Ionicons name="flame" size={17} color="#c2410c" />
-                            <Text style={styles.iciciBrandText}>ICICI Bank</Text>
-                          </View>
-                        ) : (
-                          <View style={styles.hdfcBrandWrap}>
-                            <View style={styles.hdfcLogoBox}>
-                              <View style={styles.hdfcSquareRed} />
-                              <View style={styles.hdfcBlueHBar} />
-                              <View style={styles.hdfcBlueVBar} />
-                            </View>
-                            <Text style={styles.hdfcBrandText}>{bankName}</Text>
-                          </View>
-                        )}
+                        <BankLogo bank={bankName} width={22} height={22} />
+                        <Text style={styles.hdfcBrandText} numberOfLines={1}>{bankName}</Text>
                       </View>
                     </View>
                   </View>
@@ -492,11 +514,16 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
 
               return (
                 <View key={app.id} style={styles.topUpCard}>
-                  {/* Row 1: Header (Golden Home Box, Title + App ID, Golden Pill Button + Arrow) */}
+                  {/* Row 1: Header (Attractive 3D Colourful Loan Image Logo, Title + App ID, Golden Pill Button + Arrow) */}
                   <View style={styles.topUpHeaderRow}>
-                    <View style={styles.topUpHomeIconBox}>
-                      <Ionicons name="home-outline" size={26} color="#002e75" />
-                    </View>
+                    <LoanIcon
+                      type={app.loanType}
+                      name={app.loanTypeName}
+                      useAssetImage={true}
+                      size={38}
+                      containerSize={52}
+                      borderRadius={14}
+                    />
 
                     <View style={styles.topUpTitleCol}>
                       <Text style={styles.topUpTitleText}>{app.loanTypeName || 'Home Loan'}</Text>
@@ -528,11 +555,7 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
                           <Text style={styles.cellLabel}>Bank Name</Text>
                         </View>
                         <View style={styles.bankValueRow}>
-                          <View style={styles.hdfcLogoBox}>
-                            <View style={styles.hdfcSquareRed} />
-                            <View style={styles.hdfcBlueHBar} />
-                            <View style={styles.hdfcBlueVBar} />
-                          </View>
+                          <BankLogo bank={bankName} width={20} height={20} />
                           <Text style={styles.cellBoldValue} numberOfLines={1}>
                             {bankName}
                           </Text>
@@ -698,9 +721,14 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
               return (
                 <View key={app.id} style={styles.disbursedCard}>
                   <View style={styles.disbursedHeaderRow}>
-                    <View style={styles.disbursedHomeIconBox}>
-                      <Ionicons name="home-outline" size={26} color="#15803d" />
-                    </View>
+                    <LoanIcon
+                      type={app.loanType}
+                      name={app.loanTypeName}
+                      useAssetImage={true}
+                      size={38}
+                      containerSize={52}
+                      borderRadius={14}
+                    />
 
                     <View style={styles.disbursedTitleCol}>
                       <Text style={styles.disbursedTitleText}>{app.loanTypeName || 'Home Loan'}</Text>
@@ -723,11 +751,7 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
                           <Text style={styles.cellLabel}>Bank Name</Text>
                         </View>
                         <View style={styles.bankValueRow}>
-                          <View style={styles.hdfcLogoBox}>
-                            <View style={styles.hdfcSquareRed} />
-                            <View style={styles.hdfcBlueHBar} />
-                            <View style={styles.hdfcBlueVBar} />
-                          </View>
+                          <BankLogo bank={bankName} width={20} height={20} />
                           <Text style={styles.cellBoldValue} numberOfLines={1}>
                             {bankName}
                           </Text>
@@ -861,18 +885,14 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
                 activeOpacity={0.92}
               >
                 <View style={styles.cardHeaderRow}>
-                  <View
-                    style={[
-                      styles.loanIconSquare,
-                      isHome ? styles.homeIconBox : styles.carIconBox,
-                    ]}
-                  >
-                    {isHome ? (
-                      <Ionicons name="home-outline" size={24} color="#0f172a" />
-                    ) : (
-                      <Ionicons name="car-outline" size={24} color="#004aad" />
-                    )}
-                  </View>
+                  <LoanIcon
+                    type={app.loanType}
+                    name={app.loanTypeName}
+                    useAssetImage={true}
+                    size={38}
+                    containerSize={52}
+                    borderRadius={14}
+                  />
 
                   <View style={styles.loanTitleCol}>
                     <Text style={styles.loanTitleText}>{app.loanTypeName}</Text>
@@ -883,19 +903,29 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
 
                   <View
                     style={
-                      app.status === 'Rejected'
+                      app.status === 'Disbursed'
+                        ? styles.disbursedGreenPill
+                        : app.status === 'Rejected'
                         ? styles.rejectedRedPill
                         : styles.inProgressYellowPill
                     }
                   >
                     <Text
                       style={
-                        app.status === 'Rejected'
+                        app.status === 'Disbursed'
+                          ? styles.disbursedGreenPillText
+                          : app.status === 'Rejected'
                           ? styles.rejectedRedPillText
                           : styles.inProgressYellowPillText
                       }
                     >
-                      {app.status === 'Rejected' ? 'Rejected' : 'In Progress'}
+                      {app.status === 'Disbursed'
+                        ? 'Disbursed'
+                        : app.status === 'Rejected'
+                        ? 'Rejected'
+                        : app.isTopUp
+                        ? 'Top Up'
+                        : 'In Progress'}
                     </Text>
                   </View>
 
@@ -909,17 +939,7 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
                       <Text style={styles.colHeaderLabel}>Bank Name</Text>
                     </View>
                     <View style={styles.bankValueRow}>
-                      {bankName.includes('HDFC') ? (
-                        <View style={styles.hdfcLogoBox}>
-                          <View style={styles.hdfcSquareRed} />
-                          <View style={styles.hdfcBlueHBar} />
-                          <View style={styles.hdfcBlueVBar} />
-                        </View>
-                      ) : (
-                        <View style={styles.iciciLogoBox}>
-                          <Ionicons name="flame" size={15} color="#ea580c" />
-                        </View>
-                      )}
+                      <BankLogo bank={bankName} width={20} height={20} />
                       <Text style={styles.bankNameText} numberOfLines={1}>
                         {bankName}
                       </Text>
@@ -1135,11 +1155,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     marginBottom: 16,
+    paddingRight: 10,
   },
   tabCard: {
-    flex: 1,
+    minWidth: 110,
     paddingVertical: 10,
-    paddingHorizontal: 4,
+    paddingHorizontal: 12,
     borderRadius: 14,
     borderWidth: 1.5,
     alignItems: 'center',
@@ -1156,6 +1177,25 @@ const styles = StyleSheet.create({
   tabCardTextActive: {
     color: '#ffffff',
     fontWeight: '800',
+  },
+
+  // All Loans Tab (Navy Dark Blue)
+  tabCardAllDefault: {
+    backgroundColor: '#f1f5f9',
+    borderColor: '#cbd5e1',
+  },
+  tabCardAllActive: {
+    backgroundColor: '#002e75',
+    borderColor: '#38bdf8',
+    borderWidth: 2,
+    shadowColor: '#002e75',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  tabCardTextAll: {
+    color: '#002e75',
   },
 
   // In Progress Tab (Light Cyan)
@@ -1295,6 +1335,7 @@ const styles = StyleSheet.create({
   rejectedBankBrandRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
   },
   iciciBrandWrap: {
     flexDirection: 'row',
@@ -2058,6 +2099,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     color: '#b91c1c',
+  },
+  disbursedGreenPill: {
+    backgroundColor: '#dcfce7',
+    borderRadius: 20,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#86efac',
+  },
+  disbursedGreenPillText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#15803d',
   },
   infoThreeColsRow: {
     flexDirection: 'row',

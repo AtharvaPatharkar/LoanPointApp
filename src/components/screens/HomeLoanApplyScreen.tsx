@@ -24,6 +24,7 @@ import { UserProfile, LoanApplication } from '../../types';
 import { loanService } from '../../services/loanService';
 import { cityLocationService, CityResultItem } from '../../services/cityLocationService';
 import { calculateEMI, formatINR } from '../../utils/calculator';
+import { LoanIcon } from '../common/LoanIcon';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -344,41 +345,13 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* 2. Hero Section: Home Loan Application Banner */}
-        <View style={styles.heroBanner}>
-          <View style={styles.heroSunCircle} />
-
-          <View style={styles.heroContentLeft}>
-            <Text style={styles.heroTitle}>
-              Home Loan <Text style={styles.heroTitleYellow}>Application</Text>
-            </Text>
-            <Text style={styles.heroSubtitle}>
-              {submittedApp
-                ? 'Application Submitted Successfully!'
-                : currentStep === 5
-                ? 'Review & Submit Your Application'
-                : currentStep === 4
-                ? 'Upload Property & KYC Documents'
-                : currentStep === 3
-                ? 'Income & Employment Details'
-                : currentStep === 2
-                ? 'Property Cost & Type Details'
-                : 'Buy | Build | Renovate | Transfer (BT)'}
-            </Text>
-          </View>
-
-          <View style={styles.heroGraphicRight}>
-            <View style={styles.homePillBadge}>
-              <Ionicons name="sparkles" size={12} color="#ffd700" />
-              <Text style={styles.homePillText}>From 8.40%</Text>
-            </View>
-            <View style={styles.homeCircleFrame}>
-              <FontAwesome5 name="home" size={40} color="#ffffff" />
-            </View>
-            <View style={styles.keysBubble}>
-              <MaterialCommunityIcons name="key" size={14} color="#002e75" />
-            </View>
-          </View>
+        {/* 2. Hero Section: Top Banner with assets/inner-banner/home-inner.png */}
+        <View style={styles.heroBannerImageContainer}>
+          <Image
+            source={require('../../../assets/inner-banner/home-inner.png')}
+            style={styles.heroBannerImage}
+            resizeMode="contain"
+          />
         </View>
 
         {/* 3. 5-Step Tracker (Hidden on Post-Submit Success Screen) */}
@@ -1678,6 +1651,16 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 40,
+  },
+  heroBannerImageContainer: {
+    width: '100%',
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroBannerImage: {
+    width: SCREEN_WIDTH,
+    height: Math.round(SCREEN_WIDTH * (342 / 1024)),
   },
   heroBanner: {
     width: '100%',

@@ -23,7 +23,9 @@ import {
 import { UserProfile, LoanApplication } from '../../types';
 import { loanService } from '../../services/loanService';
 import { cityLocationService, CityResultItem } from '../../services/cityLocationService';
+import { BankLogo } from '../common/BankLogo';
 import { COMPANY_INFO } from '../../data/mockData';
+import { LoanIcon } from '../common/LoanIcon';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -344,41 +346,13 @@ export const AgricultureLoanApplyScreen: React.FC<AgricultureLoanApplyScreenProp
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* 2. Hero Section */}
-        <View style={styles.heroBanner}>
-          <View style={styles.heroSunCircle} />
-
-          <View style={styles.heroContentLeft}>
-            <Text style={styles.heroTitle}>
-              Agriculture Loan <Text style={styles.heroTitleYellow}>Application</Text>
-            </Text>
-            <Text style={styles.heroSubtitle}>
-              {submittedApp
-                ? 'Application Submitted Successfully!'
-                : currentStep === 5
-                ? 'Review & Submit Your Application'
-                : currentStep === 4
-                ? 'Upload 7/12 Extract, 8A & Land Papers'
-                : currentStep === 3
-                ? 'Loan Scheme & Repayment Terms'
-                : currentStep === 2
-                ? 'Land Holding, Crops & Irrigation'
-                : 'Kisan Credit Card (KCC), tractor loan & agricultural term finance'}
-            </Text>
-          </View>
-
-          <View style={styles.heroGraphicRight}>
-            <View style={styles.avatarPillBadge}>
-              <MaterialCommunityIcons name="sprout" size={14} color="#ffd700" />
-              <Text style={styles.avatarPillText}>Kisan</Text>
-            </View>
-            <View style={styles.avatarCircleFrame}>
-              <MaterialCommunityIcons name="tractor" size={42} color="#ffffff" />
-            </View>
-            <View style={styles.thumbsUpBubble}>
-              <Ionicons name="leaf" size={15} color="#002e75" />
-            </View>
-          </View>
+        {/* 2. Hero Section: Top Banner with assets/inner-banner/agriculture-inner.png */}
+        <View style={styles.heroBannerImageContainer}>
+          <Image
+            source={require('../../../assets/inner-banner/agriculture-inner.png')}
+            style={styles.heroBannerImage}
+            resizeMode="contain"
+          />
         </View>
 
         {/* 3. 5-Step Tracker */}
@@ -391,32 +365,25 @@ export const AgricultureLoanApplyScreen: React.FC<AgricultureLoanApplyScreenProp
                 return (
                   <React.Fragment key={st.num}>
                     <View style={styles.stepItem}>
-                      <View
-                        style={[
-                          styles.stepBadge,
-                          isActive && styles.stepBadgeActive,
-                          isCompleted && styles.stepBadgeCompleted,
-                        ]}
-                      >
-                        {isCompleted ? (
-                          <Ionicons name="checkmark-sharp" size={14} color="#ffffff" />
-                        ) : (
-                          <Text
-                            style={[
-                              styles.stepBadgeText,
-                              isActive && styles.stepBadgeTextActive,
-                            ]}
-                          >
+                      {isCompleted ? (
+                        <View style={[styles.stepCircle, styles.stepCircleCompleted]}>
+                          <Ionicons name="checkmark" size={16} color="#ffffff" />
+                        </View>
+                      ) : (
+                        <View style={[styles.stepCircle, isActive && styles.stepCircleActive]}>
+                          <Text style={isActive ? styles.stepCircleTextActive : styles.stepCircleText}>
                             {st.num}
                           </Text>
-                        )}
-                      </View>
+                        </View>
+                      )}
                       <Text
-                        style={[
-                          styles.stepLabel,
-                          isActive && styles.stepLabelActive,
-                          isCompleted && styles.stepLabelCompleted,
-                        ]}
+                        style={
+                          isActive
+                            ? styles.stepLabelActive
+                            : isCompleted
+                            ? styles.stepLabelCompleted
+                            : styles.stepLabel
+                        }
                         numberOfLines={1}
                       >
                         {st.label}
@@ -861,7 +828,11 @@ export const AgricultureLoanApplyScreen: React.FC<AgricultureLoanApplyScreenProp
                 activeOpacity={0.8}
               >
                 <View style={styles.inputIconBox}>
-                  <MaterialCommunityIcons name="bank" size={18} color="#64748b" />
+                  {primaryAgriBank ? (
+                    <BankLogo bank={primaryAgriBank} width={22} height={22} />
+                  ) : (
+                    <MaterialCommunityIcons name="bank" size={18} color="#64748b" />
+                  )}
                 </View>
                 <Text style={styles.dropdownPickerText}>{primaryAgriBank}</Text>
                 <Ionicons name="chevron-down" size={16} color="#64748b" />
@@ -1240,7 +1211,10 @@ export const AgricultureLoanApplyScreen: React.FC<AgricultureLoanApplyScreenProp
                     <Text style={styles.summaryLabel}>Agri Bank</Text>
                   </View>
                   <Text style={styles.summaryColon}>:</Text>
-                  <Text style={styles.summaryValue}>{primaryAgriBank}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'flex-end' }}>
+                    {primaryAgriBank ? <BankLogo bank={primaryAgriBank} width={18} height={18} /> : null}
+                    <Text style={styles.summaryValue}>{primaryAgriBank}</Text>
+                  </View>
                 </View>
 
                 <View style={styles.summaryRow}>
@@ -1828,13 +1802,17 @@ export const AgricultureLoanApplyScreen: React.FC<AgricultureLoanApplyScreenProp
               keyExtractor={(item) => item}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={styles.modalOptionItem}
+                  style={[styles.modalOptionItem, { flexDirection: 'row', alignItems: 'center', gap: 10 }]}
                   onPress={() => {
                     setPrimaryAgriBank(item);
                     setShowBankModal(false);
                   }}
                 >
-                  <Text style={styles.modalOptionText}>{item}</Text>
+                  <BankLogo bank={item} width={26} height={26} />
+                  <Text style={[styles.modalOptionText, { flex: 1 }]}>{item}</Text>
+                  {primaryAgriBank === item && (
+                    <Ionicons name="checkmark-circle" size={20} color="#004aad" />
+                  )}
                 </TouchableOpacity>
               )}
             />
@@ -1846,6 +1824,17 @@ export const AgricultureLoanApplyScreen: React.FC<AgricultureLoanApplyScreenProp
 };
 
 const styles = StyleSheet.create({
+  heroBannerImageContainer: {
+    width: '100%',
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroBannerImage: {
+    width: SCREEN_WIDTH,
+    height: Math.round(SCREEN_WIDTH * (341 / 1024)),
+  },
+
   screen: {
     flex: 1,
     backgroundColor: '#f8fafc',
@@ -1976,14 +1965,9 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   stepperContainer: {
+    paddingVertical: 18,
+    paddingHorizontal: 14,
     backgroundColor: '#ffffff',
-    marginHorizontal: 14,
-    marginTop: 12,
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
   },
   stepperTrack: {
     flexDirection: 'row',
@@ -1992,57 +1976,64 @@ const styles = StyleSheet.create({
   },
   stepItem: {
     alignItems: 'center',
-    flex: 1,
+    width: 58,
   },
-  stepBadge: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#f1f5f9',
-    alignItems: 'center',
-    justifyContent: 'center',
+  stepCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     borderWidth: 1.5,
     borderColor: '#cbd5e1',
-    marginBottom: 4,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 5,
   },
-  stepBadgeActive: {
-    backgroundColor: '#ffd700',
-    borderColor: '#eab308',
+  stepCircleActive: {
+    borderColor: '#f59e0b',
+    backgroundColor: '#fed7aa',
   },
-  stepBadgeCompleted: {
-    backgroundColor: '#16a34a',
-    borderColor: '#16a34a',
+  stepCircleCompleted: {
+    borderColor: '#10b981',
+    backgroundColor: '#10b981',
   },
-  stepBadgeText: {
+  stepCircleText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#64748b',
+    color: '#0f172a',
   },
-  stepBadgeTextActive: {
-    color: '#002e75',
+  stepCircleTextActive: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#000000',
   },
   stepLabel: {
     fontSize: 10,
     color: '#64748b',
-    fontWeight: '600',
+    fontWeight: '500',
     textAlign: 'center',
   },
   stepLabelActive: {
-    color: '#002e75',
+    fontSize: 10,
+    color: '#000000',
     fontWeight: '800',
+    textAlign: 'center',
   },
   stepLabelCompleted: {
-    color: '#16a34a',
+    fontSize: 10,
+    color: '#000000',
+    fontWeight: '700',
+    textAlign: 'center',
   },
   stepLine: {
-    height: 2,
-    flex: 0.6,
-    backgroundColor: '#e2e8f0',
-    marginHorizontal: -4,
+    flex: 1,
+    height: 1.5,
+    backgroundColor: '#cbd5e1',
+    marginHorizontal: 1,
     marginBottom: 16,
   },
   stepLineActive: {
-    backgroundColor: '#16a34a',
+    backgroundColor: '#10b981',
   },
   errorBox: {
     flexDirection: 'row',

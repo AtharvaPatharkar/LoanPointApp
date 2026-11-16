@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   StyleSheet,
+  Dimensions,
   View,
   Text,
   TextInput,
@@ -9,6 +10,7 @@ import {
   Platform,
   Alert,
   Modal,
+  Image,
 } from 'react-native';
 import {
   Ionicons,
@@ -35,6 +37,7 @@ interface InsuranceCategoryCard {
   buttonColor: string;
   borderColor: string;
   bgColor: string;
+  iconBg?: string;
 }
 
 export interface UserPolicyItem {
@@ -49,6 +52,8 @@ export interface UserPolicyItem {
   validityLabel: string;
   validityDate: string;
 }
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export const MyInsuranceScreen: React.FC<MyInsuranceScreenProps> = ({
   user,
@@ -73,6 +78,25 @@ export const MyInsuranceScreen: React.FC<MyInsuranceScreenProps> = ({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const expertPhone = '+91 9545555999';
+
+  const getBannerSource = (typeTitle: string) => {
+    const t = typeTitle.toLowerCase();
+    if (t.includes('health')) {
+      return require('../../../assets/insurance/health-insurance.png');
+    } else if (t.includes('personal') || t.includes('accident')) {
+      return require('../../../assets/insurance/personal-accident.png');
+    } else if (t.includes('life') || t.includes('term')) {
+      return require('../../../assets/insurance/term-life.png');
+    } else if (t.includes('motor') || t.includes('vehicle') || t.includes('car') || t.includes('bike')) {
+      return require('../../../assets/insurance/motor-vehicle.png');
+    } else if (t.includes('home') || t.includes('property')) {
+      return require('../../../assets/insurance/home-property.png');
+    } else if (t.includes('travel')) {
+      return require('../../../assets/insurance/travel-insurance.png');
+    }
+    return require('../../../assets/insurance/health-insurance.png');
+  };
+
 
   // EXACT Policies data matching reference image
   const policiesList: UserPolicyItem[] = [
@@ -588,55 +612,13 @@ export const MyInsuranceScreen: React.FC<MyInsuranceScreenProps> = ({
             <Text style={styles.headerTitleText}>{selectedInsuranceType}</Text>
           </View>
 
-          {/* 1. Hero Banner: Request an Insurance Quote + Avatar + Family Shield */}
-          <View style={styles.heroBannerCard}>
-            <View style={[styles.heroSpark, styles.spark1]} />
-            <View style={[styles.heroSpark, styles.spark2]} />
-            <View style={[styles.heroSpark, styles.spark3]} />
-
-            {/* Left Avatar Thumbs-Up Illustration */}
-            <View style={styles.heroAvatarWrap}>
-              <View style={styles.avatarCircleGlow}>
-                <Ionicons name="person" size={44} color="#002e75" />
-              </View>
-              <View style={styles.thumbsUpBadge}>
-                <Ionicons name="thumbs-up" size={15} color="#d97706" />
-              </View>
-            </View>
-
-            {/* Center Titles Banner: Request an Insurance Quote */}
-            <View style={styles.heroCenterContent}>
-              <Text style={styles.heroRequestTitle}>
-                Request{'\n'}a {selectedInsuranceType}{'\n'}Quote
-              </Text>
-              <View style={styles.quoteAccentWave} />
-            </View>
-
-            {/* Right Family Shield Frame Illustration */}
-            <View style={styles.familyShieldFrameWrap}>
-              <View style={styles.shieldGoldOuter}>
-                <View style={styles.shieldInnerWhite}>
-                  <View style={styles.familyAvatarsGroup}>
-                    <View style={styles.parentsRow}>
-                      <View style={styles.parentAvatarPink}>
-                        <Ionicons name="person" size={20} color="#db2777" />
-                      </View>
-                      <View style={styles.parentAvatarBlue}>
-                        <Ionicons name="person" size={22} color="#002e75" />
-                      </View>
-                    </View>
-                    <View style={styles.kidsRow}>
-                      <View style={styles.kidAvatarYellow}>
-                        <Ionicons name="person" size={14} color="#b45309" />
-                      </View>
-                      <View style={styles.kidAvatarGreen}>
-                        <Ionicons name="person" size={14} color="#15803d" />
-                      </View>
-                    </View>
-                  </View>
-                </View>
-              </View>
-            </View>
+          {/* 1. Hero Banner: Type-Specific Insurance Banner from assets/insurance */}
+          <View style={styles.insuranceBannerContainer}>
+            <Image
+              source={getBannerSource(selectedInsuranceType)}
+              style={styles.insuranceBannerImage}
+              resizeMode="contain"
+            />
           </View>
 
           {/* 2. Insurance Request Details Card */}
@@ -773,84 +755,43 @@ export const MyInsuranceScreen: React.FC<MyInsuranceScreenProps> = ({
           <Text style={styles.headerTitleText}>My Insurance</Text>
         </View>
 
-        {/* 1. Hero Banner: Secure Yourself & Your Family with the Right Insurance! */}
-        <View style={styles.heroBannerCard}>
-          <View style={[styles.heroSpark, styles.spark1]} />
-          <View style={[styles.heroSpark, styles.spark2]} />
-          <View style={[styles.heroSpark, styles.spark3]} />
-
-          <View style={styles.heroAvatarWrap}>
-            <View style={styles.avatarCircleGlow}>
-              <Ionicons name="person" size={44} color="#002e75" />
-            </View>
-            <View style={styles.thumbsUpBadge}>
-              <Ionicons name="thumbs-up" size={15} color="#d97706" />
-            </View>
-          </View>
-
-          <View style={styles.heroCenterContent}>
-            <Text style={styles.heroMainTitle}>
-              Secure{'\n'}Yourself &{'\n'}Your Family
-            </Text>
-
-            <View style={styles.goldRibbonBanner}>
-              <Text style={styles.goldRibbonSubtitle}>with the Right</Text>
-              <Text style={styles.goldRibbonMainText}>Insurance!</Text>
-            </View>
-          </View>
-
-          <View style={styles.familyShieldFrameWrap}>
-            <View style={styles.shieldGoldOuter}>
-              <View style={styles.shieldInnerWhite}>
-                <View style={styles.familyAvatarsGroup}>
-                  <View style={styles.parentsRow}>
-                    <View style={styles.parentAvatarPink}>
-                      <Ionicons name="person" size={20} color="#db2777" />
-                    </View>
-                    <View style={styles.parentAvatarBlue}>
-                      <Ionicons name="person" size={22} color="#002e75" />
-                    </View>
-                  </View>
-                  <View style={styles.kidsRow}>
-                    <View style={styles.kidAvatarYellow}>
-                      <Ionicons name="person" size={14} color="#b45309" />
-                    </View>
-                    <View style={styles.kidAvatarGreen}>
-                      <Ionicons name="person" size={14} color="#15803d" />
-                    </View>
-                  </View>
-                </View>
-              </View>
-            </View>
-          </View>
+        {/* 1. Hero Banner: Main Insurance Banner from assets/insurance */}
+        <View style={styles.insuranceBannerContainer}>
+          <Image
+            source={require('../../../assets/insurance/insurance-main-banner.png')}
+            style={styles.insuranceBannerImage}
+            resizeMode="contain"
+          />
         </View>
 
         {/* 2. 6-Grid Insurance Products (2 Columns) */}
         <View style={styles.productsGrid}>
           {insuranceCategories.map((item) => (
             <View key={item.id} style={[styles.productCard, { borderColor: item.borderColor }]}>
-              <View style={styles.productCardHeaderRow}>
-                <View style={styles.productIconWrap}>
-                  {item.iconType === 'material' ? (
-                    <MaterialCommunityIcons name={item.iconName as any} size={30} color={item.iconColor} />
-                  ) : item.iconType === 'fontawesome' ? (
-                    <FontAwesome5 name={item.iconName as any} size={26} color={item.iconColor} />
-                  ) : (
-                    <Ionicons name={item.iconName as any} size={28} color={item.iconColor} />
-                  )}
+              <View style={styles.productCardTopContent}>
+                <View style={styles.productCardHeaderRow}>
+                  <View style={[styles.productIconWrap, { backgroundColor: item.iconBg || item.bgColor || "#f8fafc", borderColor: item.borderColor }]}>
+                    {item.iconType === 'material' ? (
+                      <MaterialCommunityIcons name={item.iconName as any} size={24} color={item.iconColor} />
+                    ) : item.iconType === 'fontawesome' ? (
+                      <FontAwesome5 name={item.iconName as any} size={20} color={item.iconColor} />
+                    ) : (
+                      <Ionicons name={item.iconName as any} size={22} color={item.iconColor} />
+                    )}
+                  </View>
+                  <Text style={styles.productTitleText} numberOfLines={2}>{item.title}</Text>
                 </View>
-                <Text style={styles.productTitleText}>{item.title}</Text>
-              </View>
 
-              <Text style={styles.productSubtitleText}>{item.subtitle}</Text>
+                <Text style={styles.productSubtitleText} numberOfLines={3}>{item.subtitle}</Text>
+              </View>
 
               <TouchableOpacity
                 style={[styles.exploreBtn, { backgroundColor: item.buttonColor }]}
                 onPress={() => handleExploreProduct(item.id, item.title)}
                 activeOpacity={0.85}
               >
-                <Text style={styles.exploreBtnText}>Explore</Text>
-                <Ionicons name="play" size={11} color="#ffffff" style={{ marginLeft: 4 }} />
+                <Text style={styles.exploreBtnText}>Get Quote</Text>
+                <Ionicons name="arrow-forward" size={13} color="#ffffff" style={{ marginLeft: 4 }} />
               </TouchableOpacity>
             </View>
           ))}
@@ -956,6 +897,18 @@ export const MyInsuranceScreen: React.FC<MyInsuranceScreenProps> = ({
 };
 
 const styles = StyleSheet.create({
+  insuranceBannerContainer: {
+    width: '100%',
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  insuranceBannerImage: {
+    width: SCREEN_WIDTH,
+    height: Math.round(SCREEN_WIDTH * (341 / 1024)),
+  },
+
   screenWrapper: {
     flex: 1,
     backgroundColor: '#f8fafc',
@@ -1194,37 +1147,39 @@ const styles = StyleSheet.create({
   },
 
   // Policy Item Box Card
-  policyCardBox: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    borderWidth: 1.5,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  policyCardLeftCol: {
-    flex: 1.4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
   policyTypeIconSquare: {
-    width: 50,
-    height: 50,
-    borderRadius: 12,
+    width: 46,
+    height: 46,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 12,
   },
   policyCardInfoCol: {
     flex: 1,
+  },
+
+  policyCardBox: {
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    borderWidth: 1.5,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    shadowColor: '#002e75',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  policyCardLeftCol: {
+    flex: 1.5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 8,
   },
   policyCardTitle: {
     fontSize: 13.5,
@@ -1604,17 +1559,14 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   formRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
   },
   fieldLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1.1,
+    marginBottom: 8,
   },
   fieldLabelText: {
     fontSize: 13.5,
@@ -1631,13 +1583,13 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   fixedTypeContainer: {
-    flex: 1.4,
+    width: '100%',
     backgroundColor: '#e0f2fe',
     borderRadius: 12,
     borderWidth: 1.5,
     borderColor: '#bae6fd',
-    paddingHorizontal: 12,
-    height: 44,
+    paddingHorizontal: 14,
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -1656,13 +1608,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   textInputBox: {
-    flex: 1.4,
+    width: '100%',
     backgroundColor: '#f8fafc',
     borderRadius: 12,
     borderWidth: 1.5,
     borderColor: '#cbd5e1',
-    paddingHorizontal: 12,
-    height: 44,
+    paddingHorizontal: 14,
+    height: 48,
     justifyContent: 'center',
   },
   textInputField: {
@@ -1821,63 +1773,75 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   productCard: {
-    width: '31.8%',
+    width: '48.5%',
     backgroundColor: '#ffffff',
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1.5,
-    paddingVertical: 10,
-    paddingHorizontal: 6,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
     alignItems: 'center',
     justifyContent: 'space-between',
-    minHeight: 154,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1.5,
+    minHeight: 200,
+    marginBottom: 10,
+    shadowColor: '#002e75',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  productCardTopContent: {
+    width: '100%',
+    alignItems: 'center',
+    flex: 1,
   },
   productCardHeaderRow: {
     alignItems: 'center',
     marginBottom: 4,
   },
   productIconWrap: {
-    height: 34,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#f8fafc',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   productTitleText: {
-    fontSize: 12.5,
-    fontWeight: '900',
+    fontSize: 14,
+    fontWeight: '800',
     color: '#002e75',
     textAlign: 'center',
-    lineHeight: 15,
+    lineHeight: 18,
   },
   productSubtitleText: {
-    fontSize: 9.5,
-    fontWeight: '600',
-    color: '#475569',
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#64748b',
     textAlign: 'center',
-    lineHeight: 12,
-    marginBottom: 8,
+    lineHeight: 15,
+    marginTop: 4,
+    marginBottom: 10,
     flex: 1,
   },
   exploreBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 5,
-    paddingHorizontal: 12,
-    borderRadius: 14,
-    width: '90%',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    width: '100%',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 1.5 },
     shadowOpacity: 0.2,
-    shadowRadius: 2,
+    shadowRadius: 3,
     elevation: 2,
   },
   exploreBtnText: {
-    fontSize: 11,
+    fontSize: 12.5,
     fontWeight: '800',
     color: '#ffffff',
   },

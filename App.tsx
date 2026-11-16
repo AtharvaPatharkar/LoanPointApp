@@ -630,7 +630,8 @@ function MainApp() {
               currentTab={currentTab}
               onSelectTab={(tab) => {
                 if (tab === 'apply') {
-                  setSelectedCategory(categories[0]);
+                  const personalCat = categories.find((c) => c.id === 'personal') || loanService.getCategoryById('personal') || categories[0];
+                  setSelectedCategory(personalCat);
                   setActiveSubScreen('loan_apply');
                 } else {
                   setCurrentTab(tab);

@@ -23,8 +23,10 @@ import {
 import { UserProfile, LoanApplication } from '../../types';
 import { loanService } from '../../services/loanService';
 import { cityLocationService, CityResultItem } from '../../services/cityLocationService';
+import { BankLogo } from '../common/BankLogo';
 import { calculateEMI, formatINR } from '../../utils/calculator';
 import { COMPANY_INFO } from '../../data/mockData';
+import { LoanIcon } from '../common/LoanIcon';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -474,41 +476,13 @@ export const PersonalLoanApplyScreen: React.FC<PersonalLoanApplyScreenProps> = (
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* 2. Hero Section */}
-        <View style={styles.heroBanner}>
-          <View style={styles.heroSunCircle} />
-
-          <View style={styles.heroContentLeft}>
-            <Text style={styles.heroTitle}>
-              Personal Loan <Text style={styles.heroTitleYellow}>Application</Text>
-            </Text>
-            <Text style={styles.heroSubtitle}>
-              {submittedApp
-                ? 'Application Submitted Successfully!'
-                : currentStep === 5
-                ? 'Review & Submit Your Application'
-                : currentStep === 4
-                ? 'Upload KYC & Income Documents'
-                : currentStep === 3
-                ? 'Customize Your Loan Details'
-                : currentStep === 2
-                ? 'Employment & Income Details'
-                : 'Fill basic details to get best loan offer'}
-            </Text>
-          </View>
-
-          <View style={styles.heroGraphicRight}>
-            <View style={styles.avatarPillBadge}>
-              <MaterialCommunityIcons name="shield-check" size={14} color="#ffd700" />
-              <Text style={styles.avatarPillText}>Verified</Text>
-            </View>
-            <View style={styles.avatarCircleFrame}>
-              <FontAwesome5 name="user-tie" size={48} color="#ffffff" />
-            </View>
-            <View style={styles.thumbsUpBubble}>
-              <Ionicons name="thumbs-up" size={15} color="#002e75" />
-            </View>
-          </View>
+        {/* 2. Hero Section: Top Banner with assets/inner-banner/personal-inner.png */}
+        <View style={styles.heroBannerImageContainer}>
+          <Image
+            source={require('../../../assets/inner-banner/personal-inner.png')}
+            style={styles.heroBannerImage}
+            resizeMode="contain"
+          />
         </View>
 
         {/* 3. 5-Step Tracker (Hidden on Post-Submit Success Screen to match reference design) */}
@@ -902,9 +876,14 @@ export const PersonalLoanApplyScreen: React.FC<PersonalLoanApplyScreenProps> = (
                     onPress={() => setShowBankModal(true)}
                     activeOpacity={0.75}
                   >
-                    <Text style={styles.dropdownText} numberOfLines={1}>
-                      {salaryBankAccount || 'Select Bank'}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 8 }}>
+                      {salaryBankAccount ? (
+                        <BankLogo bank={salaryBankAccount} width={22} height={22} />
+                      ) : null}
+                      <Text style={styles.dropdownText} numberOfLines={1}>
+                        {salaryBankAccount || 'Select Bank'}
+                      </Text>
+                    </View>
                     <Ionicons name="chevron-down" size={16} color="#0f172a" />
                   </TouchableOpacity>
                 </View>
@@ -1479,7 +1458,10 @@ export const PersonalLoanApplyScreen: React.FC<PersonalLoanApplyScreenProps> = (
                         <Text style={styles.summaryLabel}>Salary Bank</Text>
                       </View>
                       <Text style={styles.summaryColon}>:</Text>
-                      <Text style={styles.summaryValue}>{salaryBankAccount || 'Primary Bank'}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        {salaryBankAccount ? <BankLogo bank={salaryBankAccount} width={18} height={18} /> : null}
+                        <Text style={styles.summaryValue}>{salaryBankAccount || 'Primary Bank'}</Text>
+                      </View>
                     </View>
 
                     <View style={styles.summaryRow}>
@@ -2086,14 +2068,17 @@ export const PersonalLoanApplyScreen: React.FC<PersonalLoanApplyScreenProps> = (
                     setShowBankModal(false);
                   }}
                 >
-                  <Text
-                    style={[
-                      styles.modalOptionText,
-                      salaryBankAccount === item && styles.modalOptionTextSelected,
-                    ]}
-                  >
-                    {item}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10 }}>
+                    <BankLogo bank={item} width={26} height={26} />
+                    <Text
+                      style={[
+                        styles.modalOptionText,
+                        salaryBankAccount === item && styles.modalOptionTextSelected,
+                      ]}
+                    >
+                      {item}
+                    </Text>
+                  </View>
                   {salaryBankAccount === item && (
                     <Ionicons name="checkmark-circle" size={20} color="#004aad" />
                   )}
@@ -2310,6 +2295,16 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 40,
+  },
+  heroBannerImageContainer: {
+    width: '100%',
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroBannerImage: {
+    width: SCREEN_WIDTH,
+    height: Math.round(SCREEN_WIDTH * (647 / 2048)),
   },
   heroBanner: {
     width: '100%',

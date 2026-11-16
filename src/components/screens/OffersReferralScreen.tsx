@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   StyleSheet,
+  Dimensions,
   View,
   Text,
   TextInput,
@@ -10,6 +11,7 @@ import {
   Alert,
   Modal,
   Platform,
+  Image,
 } from 'react-native';
 import {
   Ionicons,
@@ -19,6 +21,7 @@ import {
 } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import { UserProfile } from '../../types';
+import { LoanIcon } from '../common/LoanIcon';
 
 interface OffersReferralScreenProps {
   user?: UserProfile | null;
@@ -49,6 +52,8 @@ interface SubmittedReferral {
   status: 'Referral Submitted' | 'Login / Application' | 'Loan Approval' | 'Disbursement & Earning';
   estimatedCommission: string;
 }
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
   user,
@@ -148,12 +153,12 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
   ]);
 
   const loanOptions = [
-    { label: 'Home Loan', rate: 'Up to 1.5%', icon: 'home-outline' },
-    { label: 'Business Loan', rate: 'Up to 1.5%', icon: 'briefcase-outline' },
-    { label: 'Personal Loan', rate: 'Up to 1.5%', icon: 'person-outline' },
-    { label: 'Loan Against Property', rate: 'Up to 1.25%', icon: 'business-outline' },
-    { label: 'Car Loan', rate: 'Up to 1.0%', icon: 'car-outline' },
-    { label: 'Education Loan', rate: 'Up to 1.0%', icon: 'school-outline' },
+    { label: 'Home Loan', rate: 'Up to 1.5%', icon: 'home-outline', product: 'Home Loan' },
+    { label: 'Business Loan', rate: 'Up to 1.5%', icon: 'briefcase-outline', product: 'Business Loan' },
+    { label: 'Personal Loan', rate: 'Up to 1.5%', icon: 'person-outline', product: 'Personal Loan' },
+    { label: 'Loan Against Property', rate: 'Up to 1.25%', icon: 'business-outline', product: 'Mortgage Loan' },
+    { label: 'Car Loan', rate: 'Up to 1.0%', icon: 'car-outline', product: 'Car Loan' },
+    { label: 'Education Loan', rate: 'Up to 1.0%', icon: 'school-outline', product: 'Education Loan' },
   ];
 
   // Referral link
@@ -280,40 +285,18 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
     }, 600);
   };
 
-  // Helper for loan icon in list
+  // Helper for loan icon in list using attractive colourful LoanIcon
   const renderProductIcon = (product: string) => {
-    switch (product) {
-      case 'Home Loan':
-        return (
-          <View style={[styles.loanProdCircle, { backgroundColor: '#e0f2fe' }]}>
-            <Ionicons name="home-outline" size={20} color="#0284c7" />
-          </View>
-        );
-      case 'Personal Loan':
-        return (
-          <View style={[styles.loanProdCircle, { backgroundColor: '#f3e8ff' }]}>
-            <MaterialCommunityIcons name="hand-coin-outline" size={20} color="#9333ea" />
-          </View>
-        );
-      case 'Business Loan':
-        return (
-          <View style={[styles.loanProdCircle, { backgroundColor: '#fef3c7' }]}>
-            <Ionicons name="briefcase-outline" size={20} color="#d97706" />
-          </View>
-        );
-      case 'Car Loan':
-        return (
-          <View style={[styles.loanProdCircle, { backgroundColor: '#e0f2fe' }]}>
-            <Ionicons name="car-outline" size={20} color="#0284c7" />
-          </View>
-        );
-      default:
-        return (
-          <View style={[styles.loanProdCircle, { backgroundColor: '#f1f5f9' }]}>
-            <Ionicons name="business-outline" size={20} color="#475569" />
-          </View>
-        );
-    }
+    return (
+      <LoanIcon
+        type={product}
+        name={product}
+        size={18}
+        containerSize={36}
+        borderRadius={18}
+        style={{ marginRight: 2 }}
+      />
+    );
   };
 
   // Helper for avatar colors
@@ -426,37 +409,32 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
 
           {/* Golden Ribbon Banner: Earn up to 1.5% of Disbursal Amount* + Recurring Income */}
           <View style={styles.bannerPotentialCard}>
-            {/* Left 3D Coin Stack Graphic */}
+            {/* Left 3D Coin Stack Graphic / 3D Icon */}
             <View style={styles.bannerCoinsStack}>
-              <View style={styles.coinStackCylinderSmall}>
-                <Text style={styles.coinTextSmall}>₹</Text>
-              </View>
-              <View style={[styles.coinStackCylinderSmall, { marginTop: -8 }]}>
-                <Text style={styles.coinTextSmall}>₹</Text>
-              </View>
-              <View style={styles.tiltedCoinSmall}>
-                <Text style={styles.coinTextSmall}>₹</Text>
+              <View style={styles.coinBadgeContainer}>
+                <Ionicons name="sparkles" size={14} color="#fde047" style={styles.sparkleFloating} />
+                <MaterialCommunityIcons name="hand-coin" size={28} color="#fde047" />
               </View>
             </View>
 
             {/* Center Content Text */}
             <View style={styles.bannerCenterContent}>
-              <Text style={styles.bannerMainHeading}>
+              <Text style={styles.bannerMainHeading} numberOfLines={2}>
                 Earn up to <Text style={styles.bannerHighlightYellow}>1.5%</Text> of Disbursal Amount*
               </Text>
-              <Text style={styles.bannerSubHeading}>
+              <Text style={styles.bannerSubHeading} numberOfLines={1}>
                 + Recurring Income on Eligible Loan Top-Ups!
               </Text>
             </View>
 
             {/* Right Upward Trend Growth Chart Graphic */}
             <View style={styles.growthChartWrap}>
-              <Ionicons name="trending-up" size={32} color="#fde047" />
+              <Ionicons name="trending-up" size={26} color="#fde047" />
               <View style={styles.chartBarsMiniRow}>
-                <View style={[styles.chartBar, { height: 8 }]} />
-                <View style={[styles.chartBar, { height: 14 }]} />
-                <View style={[styles.chartBar, { height: 20 }]} />
-                <View style={[styles.chartBar, { height: 26 }]} />
+                <View style={[styles.chartBar, { height: 7 }]} />
+                <View style={[styles.chartBar, { height: 12 }]} />
+                <View style={[styles.chartBar, { height: 18 }]} />
+                <View style={[styles.chartBar, { height: 24 }]} />
               </View>
             </View>
           </View>
@@ -825,27 +803,25 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
 
           {/* Hero Banner: Avatar Thumbs-Up + Green Checkmark + Referral Submitted Successfully! */}
           <View style={styles.successHeroBanner}>
-            <View style={[styles.successSpark, { top: 8, left: '38%', transform: [{ rotate: '-25deg' }] }]} />
-            <View style={[styles.successSpark, { top: 4, left: '48%', transform: [{ rotate: '0deg' }] }]} />
-            <View style={[styles.successSpark, { top: 8, left: '58%', transform: [{ rotate: '25deg' }] }]} />
-
             {/* Left Professional Avatar with Thumbs Up */}
             <View style={styles.successAvatarWrap}>
-              <View style={styles.successAvatarCircle}>
-                <Ionicons name="person" size={44} color="#002e75" />
-              </View>
+              <Image
+                source={require('../../../assets/logo/customer-sagar.png')}
+                style={styles.successCustomerAvatarImage}
+                resizeMode="cover"
+              />
               <View style={styles.successThumbsBadge}>
-                <Ionicons name="thumbs-up" size={16} color="#d97706" />
+                <Ionicons name="thumbs-up" size={14} color="#d97706" />
               </View>
             </View>
 
             {/* Center Checkmark & Headline */}
             <View style={styles.successHeroTextWrap}>
               <View style={styles.successBigCheckCircle}>
-                <Ionicons name="checkmark" size={32} color="#ffffff" />
+                <Ionicons name="checkmark" size={24} color="#ffffff" />
               </View>
 
-              <Text style={styles.successHeroTitle}>
+              <Text style={styles.successHeroTitle} numberOfLines={2}>
                 Referral Submitted{'\n'}Successfully!
               </Text>
             </View>
@@ -999,13 +975,7 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
           <View style={styles.earningPotentialCard}>
             <View style={styles.moneyBagWrap}>
               <View style={styles.moneyBagBody}>
-                <View style={styles.moneyBagNeck} />
-                <Text style={styles.moneyBagSymbol}>₹</Text>
-              </View>
-              <View style={styles.miniCoinStack}>
-                <View style={styles.miniCoin}><Text style={styles.miniCoinText}>₹</Text></View>
-                <View style={[styles.miniCoin, { marginTop: -6 }]}><Text style={styles.miniCoinText}>₹</Text></View>
-                <View style={[styles.miniCoin, { marginTop: -6 }]}><Text style={styles.miniCoinText}>₹</Text></View>
+                <MaterialCommunityIcons name="sack-percent" size={36} color="#d97706" />
               </View>
             </View>
 
@@ -1101,39 +1071,13 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
           </TouchableOpacity>
         </View>
 
-        {/* 1. Hero Banner: Refer Your Friends & Family & Earn in Lakhs! */}
-        <View style={styles.heroBannerCard}>
-          <View style={[styles.heroSpark, styles.heroSparkTopLeft]} />
-          <View style={[styles.heroSpark, styles.heroSparkTopMid]} />
-          <View style={[styles.heroSpark, styles.heroSparkTopRight]} />
-
-          <View style={styles.heroAvatarWrap}>
-            <View style={styles.avatarCircleGlow}>
-              <Ionicons name="person" size={42} color="#002e75" />
-            </View>
-            <View style={styles.thumbsUpBadge}>
-              <Ionicons name="thumbs-up" size={16} color="#d97706" />
-            </View>
-          </View>
-
-          <View style={styles.heroCenterContent}>
-            <Text style={styles.heroMainTitle}>
-              Refer Your{'\n'}Friends & Family
-            </Text>
-
-            <View style={styles.goldRibbonBanner}>
-              <Text style={styles.goldRibbonText}>& Earn in Lakhs!</Text>
-            </View>
-          </View>
-
-          <View style={styles.heroGiftBoxWrap}>
-            <View style={styles.giftBoxCube}>
-              <View style={styles.giftRibbonV} />
-              <View style={styles.giftRibbonH} />
-              <View style={styles.giftBowLeft} />
-              <View style={styles.giftBowRight} />
-            </View>
-          </View>
+        {/* 1. Hero Banner: Refer & Earn Banner from assets/refer-earn */}
+        <View style={styles.referBannerContainer}>
+          <Image
+            source={require('../../../assets/refer-earn/refer-earn-banner.png')}
+            style={styles.referBannerImage}
+            resizeMode="contain"
+          />
         </View>
 
         {/* Recurring Income Highlight Badge */}
@@ -1209,24 +1153,9 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
             </View>
 
             <View style={styles.coinsStackWrap}>
-              <View style={[styles.coinSpark, styles.spark1]} />
-              <View style={[styles.coinSpark, styles.spark2]} />
-              <View style={[styles.coinSpark, styles.spark3]} />
-
-              <View style={styles.coinPillBase}>
-                <View style={styles.coinStackCylinder}>
-                  <Text style={styles.coinSymbolText}>₹</Text>
-                </View>
-                <View style={[styles.coinStackCylinder, { marginTop: -12 }]}>
-                  <Text style={styles.coinSymbolText}>₹</Text>
-                </View>
-                <View style={[styles.coinStackCylinder, { marginTop: -12 }]}>
-                  <Text style={styles.coinSymbolText}>₹</Text>
-                </View>
-              </View>
-
-              <View style={styles.tiltedCoin}>
-                <Text style={styles.tiltedCoinSymbol}>₹</Text>
+              <View style={styles.reward3dCoinCircle}>
+                <Ionicons name="sparkles" size={16} color="#f59e0b" style={styles.sparkleFloating} />
+                <MaterialCommunityIcons name="currency-inr" size={32} color="#b45309" />
               </View>
             </View>
           </View>
@@ -1303,11 +1232,13 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
                     onPress={() => setSelectedLoan(opt.label)}
                     activeOpacity={0.8}
                   >
-                    <Ionicons
-                      name={opt.icon as any}
-                      size={15}
-                      color={isSelected ? '#ffffff' : '#002e75'}
-                      style={{ marginRight: 5 }}
+                    <LoanIcon
+                      type={opt.product}
+                      size={18}
+                      containerSize={26}
+                      borderRadius={13}
+                      useAssetImage={true}
+                      style={{ marginRight: 6 }}
                     />
                     <Text
                       style={[
@@ -1486,6 +1417,18 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
 };
 
 const styles = StyleSheet.create({
+  referBannerContainer: {
+    width: '100%',
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  referBannerImage: {
+    width: SCREEN_WIDTH,
+    height: Math.round(SCREEN_WIDTH * (341 / 1024)),
+  },
+
   screenWrapper: {
     flex: 1,
     backgroundColor: '#f8fafc',
@@ -1659,10 +1602,26 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   bannerCoinsStack: {
-    width: 44,
+    width: 42,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  coinBadgeContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(253, 224, 71, 0.2)',
+    borderWidth: 1.5,
+    borderColor: '#fde047',
+    alignItems: 'center',
+    justifyContent: 'center',
     position: 'relative',
-    marginRight: 6,
+  },
+  sparkleFloating: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
   },
   coinStackCylinderSmall: {
     width: 34,
@@ -1718,6 +1677,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 4,
+    marginLeft: 4,
   },
   chartBarsMiniRow: {
     flexDirection: 'row',
@@ -2127,38 +2087,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 10,
-    position: 'relative',
-    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: '#38bdf8',
     shadowColor: '#002e75',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
     shadowRadius: 6,
     elevation: 4,
   },
-  successSpark: {
-    position: 'absolute',
-    width: 3,
-    height: 12,
-    borderRadius: 1.5,
-    backgroundColor: '#38bdf8',
-  },
   successAvatarWrap: {
-    width: 74,
-    height: 74,
+    width: 68,
+    height: 68,
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
+    marginRight: 12,
   },
-  successAvatarCircle: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: '#f0f9ff',
+  successCustomerAvatarImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     borderWidth: 2.5,
     borderColor: '#38bdf8',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#ffffff',
   },
   successThumbsBadge: {
     position: 'absolute',
@@ -2168,8 +2119,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#d97706',
     borderRadius: 13,
-    width: 26,
-    height: 26,
+    width: 24,
+    height: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2177,28 +2128,28 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   successBigCheckCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#22c55e',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
+    borderWidth: 2.5,
     borderColor: '#86efac',
     shadowColor: '#22c55e',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 5,
-    elevation: 4,
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 3,
   },
   successHeroTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '900',
     color: '#ffffff',
-    lineHeight: 23,
+    lineHeight: 22,
     flex: 1,
   },
 
@@ -2750,58 +2701,32 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     borderWidth: 1.5,
     borderColor: '#bae6fd',
-    paddingVertical: 18,
+    paddingVertical: 14,
     paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 10,
-    position: 'relative',
-    overflow: 'hidden',
     shadowColor: '#004aad',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 5,
     elevation: 2,
   },
-  heroSpark: {
-    position: 'absolute',
-    width: 3,
-    height: 10,
-    borderRadius: 1.5,
-    backgroundColor: '#fbbf24',
-  },
-  heroSparkTopLeft: {
-    left: '42%',
-    top: 8,
-    transform: [{ rotate: '-30deg' }],
-  },
-  heroSparkTopMid: {
-    left: '52%',
-    top: 4,
-    transform: [{ rotate: '0deg' }],
-  },
-  heroSparkTopRight: {
-    left: '62%',
-    top: 8,
-    transform: [{ rotate: '30deg' }],
-  },
   heroAvatarWrap: {
-    width: 72,
-    height: 72,
+    width: 66,
+    height: 66,
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarCircleGlow: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
-    backgroundColor: '#e0f2fe',
-    borderWidth: 2.5,
+  heroCustomerAvatarImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 2,
     borderColor: '#0284c7',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#ffffff',
   },
   thumbsUpBadge: {
     position: 'absolute',
@@ -2810,9 +2735,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#fef3c7',
     borderWidth: 2,
     borderColor: '#d97706',
-    borderRadius: 14,
-    width: 26,
-    height: 26,
+    borderRadius: 12,
+    width: 24,
+    height: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2820,90 +2745,55 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: 8,
   },
   heroMainTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '900',
     color: '#002e75',
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 6,
+    lineHeight: 20,
+    marginBottom: 5,
   },
   goldRibbonBanner: {
     backgroundColor: '#f59e0b',
     paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingVertical: 4,
     borderRadius: 8,
     borderWidth: 1.5,
     borderColor: '#d97706',
     shadowColor: '#b45309',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.25,
+    shadowRadius: 2,
+    elevation: 2,
   },
   goldRibbonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '900',
     color: '#78350f',
     letterSpacing: 0.2,
   },
   heroGiftBoxWrap: {
-    width: 64,
-    height: 64,
+    width: 54,
+    height: 54,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  giftBoxCube: {
-    width: 52,
+  heroGiftCircle: {
+    width: 50,
     height: 50,
-    backgroundColor: '#0284c7',
-    borderRadius: 8,
-    position: 'relative',
+    borderRadius: 25,
+    backgroundColor: '#fef3c7',
     borderWidth: 1.5,
-    borderColor: '#0369a1',
+    borderColor: '#f59e0b',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: '#d97706',
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 3,
-    elevation: 3,
-  },
-  giftRibbonV: {
-    position: 'absolute',
-    width: 10,
-    height: '100%',
-    backgroundColor: '#fbbf24',
-  },
-  giftRibbonH: {
-    position: 'absolute',
-    height: 10,
-    width: '100%',
-    backgroundColor: '#fbbf24',
-  },
-  giftBowLeft: {
-    position: 'absolute',
-    top: -8,
-    left: 14,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 2.5,
-    borderColor: '#fbbf24',
-    transform: [{ rotate: '-35deg' }],
-  },
-  giftBowRight: {
-    position: 'absolute',
-    top: -8,
-    right: 14,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 2.5,
-    borderColor: '#fbbf24',
-    transform: [{ rotate: '35deg' }],
+    elevation: 2,
   },
 
   // Recurring Income Banner
@@ -3102,82 +2992,26 @@ const styles = StyleSheet.create({
     color: '#92400e',
   },
   coinsStackWrap: {
-    width: 76,
-    height: 70,
+    width: 60,
+    height: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reward3dCoinCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#fef3c7',
+    borderWidth: 2,
+    borderColor: '#f59e0b',
+    alignItems: 'center',
+    justifyContent: 'center',
     position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  coinSpark: {
-    position: 'absolute',
-    width: 2.5,
-    height: 9,
-    borderRadius: 1.5,
-    backgroundColor: '#f59e0b',
-  },
-  spark1: {
-    top: 2,
-    left: 20,
-    transform: [{ rotate: '-25deg' }],
-  },
-  spark2: {
-    top: -2,
-    left: 38,
-    transform: [{ rotate: '0deg' }],
-  },
-  spark3: {
-    top: 4,
-    right: 18,
-    transform: [{ rotate: '30deg' }],
-  },
-  coinPillBase: {
-    width: 44,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  coinStackCylinder: {
-    width: 44,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#fbbf24',
-    borderWidth: 2,
-    borderColor: '#d97706',
-    alignItems: 'center',
-    justifyContent: 'center',
     shadowColor: '#b45309',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.3,
-    shadowRadius: 1,
-    elevation: 2,
-  },
-  coinSymbolText: {
-    fontSize: 11,
-    fontWeight: '900',
-    color: '#78350f',
-  },
-  tiltedCoin: {
-    position: 'absolute',
-    right: 2,
-    bottom: 6,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#f59e0b',
-    borderWidth: 2,
-    borderColor: '#b45309',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transform: [{ rotate: '15deg' }],
-    shadowColor: '#000',
-    shadowOffset: { width: 1, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
     elevation: 3,
-  },
-  tiltedCoinSymbol: {
-    fontSize: 12,
-    fontWeight: '900',
-    color: '#78350f',
   },
 
   // Referral Direct Form Card

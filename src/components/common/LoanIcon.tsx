@@ -1,140 +1,245 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Image, ImageSourcePropType, ViewStyle } from 'react-native';
 import {
   Ionicons,
   MaterialCommunityIcons,
   FontAwesome5,
 } from '@expo/vector-icons';
+import { LoanType } from '../../types';
 
-interface LoanIconProps {
-  name: string;
-  size?: number;
-  color?: string;
-  containerBg?: string;
+export interface LoanIconProps {
+  /** Loan type identifier ('home' | 'personal' | 'business' | 'car' | etc.) or legacy iconName */
+  type?: LoanType | string;
+  name?: string;
+  size?: number; // Size of the icon or asset image (default 26)
+  containerSize?: number; // Size of background container box (default auto based on size)
+  color?: string; // Optional icon tint/color
+  containerBg?: string; // Optional container background
+  borderRadius?: number; // Optional container border radius
+  useAssetImage?: boolean; // When true, uses attractive high-res 3D graphic asset from exploreAllLoanProducts
+  style?: ViewStyle;
 }
 
-interface IconConfig {
+export interface LoanTypeVisualMeta {
+  id: LoanType;
+  title: string;
+  shortName: string;
+  gradientBg: string;
+  softBg: string;
+  borderColor: string;
+  primaryColor: string;
+  accentColor: string;
   iconFamily: 'Ionicons' | 'MaterialCommunityIcons' | 'FontAwesome5';
   iconName: string;
-  fillColor: string;
-  shadowColor: string;
+  imageSource: ImageSourcePropType;
+  badgeTag: string;
+  badgeColor: string;
 }
 
-/**
- * Rich Color-Filled Real Icons for all Loan Types:
- * - Personal Loan: Vivid Cyan Sky (#008ECC) with solid account user
- * - Business Loan: Deep Royal Indigo (#2D3091) with office corporate building
- * - Home Loan: Crimson Scarlet Red (#EE1C25) with residential real home
- * - Mortgage Loan (LAP): Slate Petrol Teal (#075665) with secure bank landmark
- * - Car Loan: Vivid Dynamic Sky Blue (#0284C7) with passenger automobile
- * - Education Loan: Berry Magenta (#C5168D) with graduate mortarboard cap
- * - Agriculture Loan: Growth Farm Emerald Green (#16A34A) with agricultural plant sprout
- * - Mudra Loan (PMMY): Vibrant Prosperity Gold (#D97706) with currency coins
- */
-const ICON_MAP: Record<string, IconConfig> = {
-  // 1. Personal Loan: Solid user account with check / badge
-  UserCheck: {
-    iconFamily: 'MaterialCommunityIcons',
-    iconName: 'account-check',
-    fillColor: '#008ecc',
-    shadowColor: '#008ecc',
-  },
-  // 2. Business Loan: Solid office skyscraper / corporate enterprise
-  Building2: {
-    iconFamily: 'MaterialCommunityIcons',
-    iconName: 'office-building',
-    fillColor: '#2d3091',
-    shadowColor: '#2d3091',
-  },
-  // 3. Home Loan: Solid residential house with chimney
-  Home: {
-    iconFamily: 'Ionicons',
+export const LOAN_TYPE_VISUALS: Record<LoanType, LoanTypeVisualMeta> = {
+  home: {
+    id: 'home',
+    title: 'Home Loan',
+    shortName: 'Home',
+    gradientBg: '#fee2e2',
+    softBg: '#fff5f5',
+    borderColor: '#fecdd3',
+    primaryColor: '#e11d48', // Vivid Rose Crimson
+    accentColor: '#be123c',
+    iconFamily: 'FontAwesome5',
     iconName: 'home',
-    fillColor: '#ee1c25',
-    shadowColor: '#ee1c25',
+    imageSource: require('../../../assets/exploreAllLoanProducts/homeloan.png'),
+    badgeTag: 'Lowest 8.40%',
+    badgeColor: '#e11d48',
   },
-  // 4. Mortgage Loan (LAP): Solid bank / property asset pillar
-  Landmark: {
+  personal: {
+    id: 'personal',
+    title: 'Personal Loan',
+    shortName: 'Personal',
+    gradientBg: '#fef3c7',
+    softBg: '#fffbeb',
+    borderColor: '#fde68a',
+    primaryColor: '#d97706', // Prosperity Warm Gold
+    accentColor: '#b45309',
+    iconFamily: 'FontAwesome5',
+    iconName: 'hand-holding-usd',
+    imageSource: require('../../../assets/exploreAllLoanProducts/personalloan.png'),
+    badgeTag: 'Instant Approval',
+    badgeColor: '#10b981',
+  },
+  business: {
+    id: 'business',
+    title: 'Business Loan',
+    shortName: 'Business',
+    gradientBg: '#fee2e2',
+    softBg: '#fffaf5',
+    borderColor: '#ffedd5',
+    primaryColor: '#dc2626', // Vibrant Scarlet Red
+    accentColor: '#991b1b',
+    iconFamily: 'FontAwesome5',
+    iconName: 'store',
+    imageSource: require('../../../assets/exploreAllLoanProducts/businessloan.png'),
+    badgeTag: 'Collateral Free',
+    badgeColor: '#dc2626',
+  },
+  car: {
+    id: 'car',
+    title: 'Car Loan',
+    shortName: 'Car',
+    gradientBg: '#dbeafe',
+    softBg: '#f0f7ff',
+    borderColor: '#bfdbfe',
+    primaryColor: '#2563eb', // Vivid Royal Cobalt Blue
+    accentColor: '#1d4ed8',
+    iconFamily: 'FontAwesome5',
+    iconName: 'car',
+    imageSource: require('../../../assets/exploreAllLoanProducts/carloan.png'),
+    badgeTag: '90% On-Road',
+    badgeColor: '#2563eb',
+  },
+  education: {
+    id: 'education',
+    title: 'Education Loan',
+    shortName: 'Education',
+    gradientBg: '#e0f2fe',
+    softBg: '#f0f9ff',
+    borderColor: '#bae6fd',
+    primaryColor: '#0284c7', // Dynamic Cyan Sky Blue
+    accentColor: '#0369a1',
+    iconFamily: 'FontAwesome5',
+    iconName: 'graduation-cap',
+    imageSource: require('../../../assets/exploreAllLoanProducts/educationloan.png'),
+    badgeTag: 'Zero Margin',
+    badgeColor: '#0284c7',
+  },
+  agriculture: {
+    id: 'agriculture',
+    title: 'Agriculture Loan',
+    shortName: 'Agri',
+    gradientBg: '#dcfce7',
+    softBg: '#f4fbf7',
+    borderColor: '#bbf7d0',
+    primaryColor: '#16a34a', // Verdant Emerald Green
+    accentColor: '#15803d',
+    iconFamily: 'FontAwesome5',
+    iconName: 'seedling',
+    imageSource: require('../../../assets/exploreAllLoanProducts/agriculatureloan.png'),
+    badgeTag: 'Govt Subsidy',
+    badgeColor: '#16a34a',
+  },
+  mortgage: {
+    id: 'mortgage',
+    title: 'Mortgage Loan (LAP)',
+    shortName: 'Mortgage',
+    gradientBg: '#ccfbf1',
+    softBg: '#f0fdfa',
+    borderColor: '#99f6e4',
+    primaryColor: '#0d9488', // Petrol Teal Green
+    accentColor: '#0f766e',
     iconFamily: 'MaterialCommunityIcons',
     iconName: 'bank',
-    fillColor: '#075665',
-    shadowColor: '#075665',
+    imageSource: require('../../../assets/exploreAllLoanProducts/mortgageloan.png'),
+    badgeTag: 'Up to ₹10 Cr',
+    badgeColor: '#0d9488',
   },
-  // 5. Car Loan: Solid car automobile
-  Car: {
-    iconFamily: 'Ionicons',
-    iconName: 'car-sport',
-    fillColor: '#0284c7',
-    shadowColor: '#0284c7',
-  },
-  // 6. Education Loan: Solid university mortarboard degree
-  GraduationCap: {
-    iconFamily: 'Ionicons',
-    iconName: 'school',
-    fillColor: '#c5168d',
-    shadowColor: '#c5168d',
-  },
-  // 7. Agriculture Loan: Solid crop plant sprout / agriculture
-  Sprout: {
-    iconFamily: 'MaterialCommunityIcons',
-    iconName: 'sprout',
-    fillColor: '#16a34a',
-    shadowColor: '#16a34a',
-  },
-  Wheat: {
-    iconFamily: 'MaterialCommunityIcons',
-    iconName: 'barley',
-    fillColor: '#16a34a',
-    shadowColor: '#16a34a',
-  },
-  // 8. Mudra Loan (PMMY): Solid golden wealth coins
-  Coins: {
+  mudra: {
+    id: 'mudra',
+    title: 'Mudra Loan (PMMY)',
+    shortName: 'Mudra',
+    gradientBg: '#fef9c3',
+    softBg: '#fffdf5',
+    borderColor: '#fef08a',
+    primaryColor: '#ca8a04', // Golden Amber
+    accentColor: '#a16207',
     iconFamily: 'FontAwesome5',
     iconName: 'coins',
-    fillColor: '#d97706',
-    shadowColor: '#d97706',
-  },
-  Briefcase: {
-    iconFamily: 'MaterialCommunityIcons',
-    iconName: 'briefcase',
-    fillColor: '#2d3091',
-    shadowColor: '#2d3091',
+    imageSource: require('../../../assets/exploreAllLoanProducts/mudraloan.png'),
+    badgeTag: 'PMMY Govt',
+    badgeColor: '#ca8a04',
   },
 };
 
+/** Normalize any incoming key/string to a standard LoanType */
+export function normalizeLoanType(raw?: string | LoanType | null): LoanType {
+  if (!raw) return 'home';
+  const val = String(raw).toLowerCase().trim();
+  if (val.includes('home') || val === 'hl') return 'home';
+  if (val.includes('personal') || val.includes('wallet') || val.includes('user') || val === 'pl') return 'personal';
+  if (val.includes('business') || val.includes('trade') || val.includes('msme') || val === 'bl') return 'business';
+  if (val.includes('car') || val.includes('auto') || val.includes('vehicle') || val === 'cl') return 'car';
+  if (val.includes('edu') || val.includes('study') || val.includes('school') || val.includes('grad') || val === 'el') return 'education';
+  if (val.includes('agri') || val.includes('farm') || val.includes('kisan') || val.includes('crop') || val === 'al') return 'agriculture';
+  if (val.includes('mort') || val.includes('lap') || val.includes('property') || val === 'ml') return 'mortgage';
+  if (val.includes('mudra') || val.includes('pmmy') || val.includes('shishu')) return 'mudra';
+  return 'home';
+}
+
+/**
+ * Universal Attractive Colourful Loan Logo Component
+ * Renders across all screens (My Loans, Home, Explore Services, Detail, Application, Top-Up, Referrals)
+ */
 export const LoanIcon: React.FC<LoanIconProps> = ({
+  type,
   name,
-  size = 22,
+  size = 24,
+  containerSize,
   color,
   containerBg,
+  borderRadius,
+  useAssetImage = false,
+  style,
 }) => {
-  const config = ICON_MAP[name] || {
-    iconFamily: 'Ionicons',
-    iconName: 'cash',
-    fillColor: '#008ecc',
-    shadowColor: '#008ecc',
-  };
+  const resolvedType = normalizeLoanType(type || name);
+  const meta = LOAN_TYPE_VISUALS[resolvedType] || LOAN_TYPE_VISUALS.home;
 
-  const activeColor = color || '#ffffff';
-  const activeBg = containerBg || config.fillColor;
+  const boxSize = containerSize || Math.round(size * 1.85);
+  const rounded = borderRadius !== undefined ? borderRadius : Math.round(boxSize * 0.28);
+  const activeBg = containerBg || meta.softBg;
+  const iconColor = color || meta.primaryColor;
 
-  const renderIcon = () => {
-    switch (config.iconFamily) {
+  if (useAssetImage) {
+    return (
+      <View
+        style={[
+          styles.container,
+          {
+            width: boxSize,
+            height: boxSize,
+            borderRadius: rounded,
+            backgroundColor: activeBg,
+            borderColor: meta.borderColor,
+            borderWidth: 1,
+            shadowColor: meta.primaryColor,
+          },
+          style,
+        ]}
+      >
+        <Image
+          source={meta.imageSource}
+          style={{ width: size, height: size }}
+          resizeMode="contain"
+        />
+      </View>
+    );
+  }
+
+  const renderVector = () => {
+    switch (meta.iconFamily) {
       case 'MaterialCommunityIcons':
         return (
           <MaterialCommunityIcons
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            name={config.iconName as any}
+            name={meta.iconName as any}
             size={size}
-            color={activeColor}
+            color={iconColor}
           />
         );
       case 'FontAwesome5':
         return (
           <FontAwesome5
-            name={config.iconName}
-            size={Math.max(14, size - 2)}
-            color={activeColor}
+            name={meta.iconName}
+            size={size}
+            color={iconColor}
           />
         );
       case 'Ionicons':
@@ -142,9 +247,9 @@ export const LoanIcon: React.FC<LoanIconProps> = ({
         return (
           <Ionicons
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            name={config.iconName as any}
+            name={meta.iconName as any}
             size={size}
-            color={activeColor}
+            color={iconColor}
           />
         );
     }
@@ -155,25 +260,28 @@ export const LoanIcon: React.FC<LoanIconProps> = ({
       style={[
         styles.container,
         {
+          width: boxSize,
+          height: boxSize,
+          borderRadius: rounded,
           backgroundColor: activeBg,
-          shadowColor: config.shadowColor,
+          borderColor: meta.borderColor,
+          borderWidth: 1.2,
+          shadowColor: meta.primaryColor,
         },
+        style,
       ]}
     >
-      {renderIcon()}
+      {renderVector()}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.16,
+    shadowOpacity: 0.12,
     shadowRadius: 4,
     elevation: 3,
   },

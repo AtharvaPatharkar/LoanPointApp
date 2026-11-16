@@ -23,8 +23,10 @@ import {
 import { UserProfile, LoanApplication } from '../../types';
 import { loanService } from '../../services/loanService';
 import { cityLocationService, CityResultItem } from '../../services/cityLocationService';
+import { BankLogo } from '../common/BankLogo';
 import { formatINR } from '../../utils/calculator';
 import { COMPANY_INFO } from '../../data/mockData';
+import { LoanIcon } from '../common/LoanIcon';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -388,41 +390,13 @@ export const BusinessLoanApplyScreen: React.FC<BusinessLoanApplyScreenProps> = (
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* 2. Hero Section */}
-        <View style={styles.heroBanner}>
-          <View style={styles.heroSunCircle} />
-
-          <View style={styles.heroContentLeft}>
-            <Text style={styles.heroTitle}>
-              Business Loan <Text style={styles.heroTitleYellow}>Application</Text>
-            </Text>
-            <Text style={styles.heroSubtitle}>
-              {submittedApp
-                ? 'Application Submitted Successfully!'
-                : currentStep === 5
-                ? 'Review & Submit Your Application'
-                : currentStep === 4
-                ? 'Upload Business & Financial Documents'
-                : currentStep === 3
-                ? 'Financial & Loan Requirements'
-                : currentStep === 2
-                ? 'Tell us about your Enterprise / Firm'
-                : 'Empower your business with unsecured & secured MSME loans'}
-            </Text>
-          </View>
-
-          <View style={styles.heroGraphicRight}>
-            <View style={styles.avatarPillBadge}>
-              <MaterialCommunityIcons name="briefcase-check" size={14} color="#ffd700" />
-              <Text style={styles.avatarPillText}>MSME</Text>
-            </View>
-            <View style={styles.avatarCircleFrame}>
-              <MaterialCommunityIcons name="domain" size={46} color="#ffffff" />
-            </View>
-            <View style={styles.thumbsUpBubble}>
-              <Ionicons name="trending-up" size={16} color="#002e75" />
-            </View>
-          </View>
+        {/* 2. Hero Section: Top Banner with assets/inner-banner/business-inner.png */}
+        <View style={styles.heroBannerImageContainer}>
+          <Image
+            source={require('../../../assets/inner-banner/business-inner.png')}
+            style={styles.heroBannerImage}
+            resizeMode="contain"
+          />
         </View>
 
         {/* 3. 5-Step Tracker */}
@@ -435,32 +409,25 @@ export const BusinessLoanApplyScreen: React.FC<BusinessLoanApplyScreenProps> = (
                 return (
                   <React.Fragment key={st.num}>
                     <View style={styles.stepItem}>
-                      <View
-                        style={[
-                          styles.stepBadge,
-                          isActive && styles.stepBadgeActive,
-                          isCompleted && styles.stepBadgeCompleted,
-                        ]}
-                      >
-                        {isCompleted ? (
-                          <Ionicons name="checkmark-sharp" size={14} color="#ffffff" />
-                        ) : (
-                          <Text
-                            style={[
-                              styles.stepBadgeText,
-                              isActive && styles.stepBadgeTextActive,
-                            ]}
-                          >
+                      {isCompleted ? (
+                        <View style={[styles.stepCircle, styles.stepCircleCompleted]}>
+                          <Ionicons name="checkmark" size={16} color="#ffffff" />
+                        </View>
+                      ) : (
+                        <View style={[styles.stepCircle, isActive && styles.stepCircleActive]}>
+                          <Text style={isActive ? styles.stepCircleTextActive : styles.stepCircleText}>
                             {st.num}
                           </Text>
-                        )}
-                      </View>
+                        </View>
+                      )}
                       <Text
-                        style={[
-                          styles.stepLabel,
-                          isActive && styles.stepLabelActive,
-                          isCompleted && styles.stepLabelCompleted,
-                        ]}
+                        style={
+                          isActive
+                            ? styles.stepLabelActive
+                            : isCompleted
+                            ? styles.stepLabelCompleted
+                            : styles.stepLabel
+                        }
                         numberOfLines={1}
                       >
                         {st.label}
@@ -491,151 +458,146 @@ export const BusinessLoanApplyScreen: React.FC<BusinessLoanApplyScreenProps> = (
 
         {/* ---------------- STEP 1: Basic Details ---------------- */}
         {currentStep === 1 && !submittedApp && (
-          <View style={styles.cardContainer}>
-            <View style={styles.stepHeaderRow}>
-              <View style={styles.stepHeaderIconBox}>
-                <Ionicons name="person" size={20} color="#002e75" />
-              </View>
-              <View style={styles.stepHeaderTextCol}>
-                <Text style={styles.stepHeaderTitle}>Step 1 – Basic Details</Text>
-                <Text style={styles.stepHeaderSubtitle}>Tell us about yourself / key promoter</Text>
-              </View>
-            </View>
-
-            {/* Full Name */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>
-                Full Name (As on PAN Card) <Text style={styles.asterisk}>*</Text>
-              </Text>
-              <View style={styles.inputWrapper}>
-                <View style={styles.inputIconBox}>
-                  <Ionicons name="person-outline" size={20} color="#64748b" />
+          <>
+            <View style={styles.formCard}>
+              {/* Full Name */}
+              <View style={styles.inputGroup}>
+                <View style={styles.inputIconCol}>
+                  <Feather name="user" size={24} color="#0f172a" />
                 </View>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Enter your full name"
-                  placeholderTextColor="#94a3b8"
-                  value={fullName}
-                  onChangeText={setFullName}
-                />
-              </View>
-            </View>
-
-            {/* Mobile Number */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>
-                Mobile Number <Text style={styles.asterisk}>*</Text>
-              </Text>
-              <View style={styles.inputWrapper}>
-                <View style={styles.inputIconBox}>
-                  <Ionicons name="call-outline" size={20} color="#64748b" />
-                </View>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Enter 10-digit mobile number"
-                  placeholderTextColor="#94a3b8"
-                  keyboardType="phone-pad"
-                  maxLength={10}
-                  value={mobileNumber}
-                  onChangeText={setMobileNumber}
-                />
-              </View>
-            </View>
-
-            {/* Email ID */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Email ID (Optional)</Text>
-              <View style={styles.inputWrapper}>
-                <View style={styles.inputIconBox}>
-                  <Ionicons name="mail-outline" size={20} color="#64748b" />
-                </View>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Enter your business email"
-                  placeholderTextColor="#94a3b8"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  value={emailId}
-                  onChangeText={setEmailId}
-                />
-              </View>
-            </View>
-
-            {/* DOB & City Row */}
-            <View style={styles.rowTwoCols}>
-              <View style={[styles.fieldGroup, { flex: 1, marginRight: 8 }]}>
-                <Text style={styles.fieldLabel}>Date of Birth <Text style={styles.asterisk}>*</Text></Text>
-                <View style={styles.inputWrapper}>
-                  <View style={styles.inputIconBox}>
-                    <Ionicons name="calendar-outline" size={18} color="#64748b" />
-                  </View>
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="DD/MM/YYYY"
-                    placeholderTextColor="#94a3b8"
-                    value={dob}
-                    onChangeText={setDob}
-                  />
-                </View>
-              </View>
-
-              <View style={[styles.fieldGroup, { flex: 1, marginLeft: 8 }]}>
-                <Text style={styles.fieldLabel}>City <Text style={styles.asterisk}>*</Text></Text>
-                <TouchableOpacity
-                  style={styles.dropdownPickerBox}
-                  onPress={() => setShowCityModal(true)}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.inputIconBox}>
-                    <Ionicons name="location-outline" size={18} color="#64748b" />
-                  </View>
-                  <Text style={styles.dropdownPickerText} numberOfLines={1}>
-                    {city || 'Select City'}
+                <View style={styles.inputRightCol}>
+                  <Text style={styles.fieldLabel}>
+                    Full Name (As on PAN Card) <Text style={styles.requiredStar}>*</Text>
                   </Text>
-                  <Ionicons name="chevron-down" size={16} color="#64748b" />
-                </TouchableOpacity>
+                  <View style={styles.inputBox}>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="Enter your full name"
+                      placeholderTextColor="#94a3b8"
+                      value={fullName}
+                      onChangeText={setFullName}
+                    />
+                  </View>
+                </View>
               </View>
-            </View>
 
-            {/* Safety badge */}
-            <View style={styles.safetyStrip}>
-              <View style={styles.safetyIconBox}>
-                <Ionicons name="shield-checkmark" size={18} color="#16a34a" />
+              {/* Mobile Number */}
+              <View style={styles.inputGroup}>
+                <View style={styles.inputIconCol}>
+                  <Feather name="phone" size={24} color="#0f172a" />
+                </View>
+                <View style={styles.inputRightCol}>
+                  <Text style={styles.fieldLabel}>
+                    Mobile Number <Text style={styles.requiredStar}>*</Text>
+                  </Text>
+                  <View style={styles.inputBox}>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="Enter 10-digit mobile number"
+                      placeholderTextColor="#94a3b8"
+                      keyboardType="phone-pad"
+                      maxLength={10}
+                      value={mobileNumber}
+                      onChangeText={setMobileNumber}
+                    />
+                  </View>
+                </View>
               </View>
-              <View style={styles.safetyTextBox}>
-                <Text style={styles.safetyTitle}>Your information is 100% safe & secure</Text>
-                <Text style={styles.safetyDesc}>We use your details only for loan evaluation with RBI regulated partners.</Text>
+
+              {/* Email ID */}
+              <View style={styles.inputGroup}>
+                <View style={styles.inputIconCol}>
+                  <Feather name="mail" size={24} color="#0f172a" />
+                </View>
+                <View style={styles.inputRightCol}>
+                  <Text style={styles.fieldLabel}>Email ID (Optional)</Text>
+                  <View style={styles.inputBox}>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="Enter your business email"
+                      placeholderTextColor="#94a3b8"
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      value={emailId}
+                      onChangeText={setEmailId}
+                    />
+                  </View>
+                </View>
+              </View>
+
+              {/* DOB & City Row */}
+              <View style={styles.twoColRow}>
+                <View style={styles.halfColGroup}>
+                  <View style={styles.twoColIconCol}>
+                    <Ionicons name="calendar-outline" size={24} color="#0f172a" />
+                  </View>
+                  <View style={styles.twoColRight}>
+                    <Text style={styles.fieldLabel} numberOfLines={1}>
+                      Date of Birth <Text style={styles.requiredStar}>*</Text>
+                    </Text>
+                    <View style={styles.inputBox}>
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="DD/MM/YYYY"
+                        placeholderTextColor="#94a3b8"
+                        value={dob}
+                        onChangeText={setDob}
+                      />
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.halfColGroup}>
+                  <View style={styles.twoColIconCol}>
+                    <Ionicons name="location-outline" size={24} color="#0f172a" />
+                  </View>
+                  <View style={styles.twoColRight}>
+                    <Text style={styles.fieldLabel} numberOfLines={1}>
+                      City <Text style={styles.requiredStar}>*</Text>
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.dropdownBox}
+                      onPress={() => setShowCityModal(true)}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={styles.dropdownText} numberOfLines={1}>
+                        {city || 'Select City'}
+                      </Text>
+                      <Ionicons name="chevron-down" size={16} color="#0f172a" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
               </View>
             </View>
 
             {/* Consent Checkbox */}
-            <TouchableOpacity
-              style={styles.consentRow}
-              onPress={() => setIsAgreedStep1(!isAgreedStep1)}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.checkboxBox, isAgreedStep1 && styles.checkboxBoxChecked]}>
-                {isAgreedStep1 && <Ionicons name="checkmark" size={14} color="#ffffff" />}
-              </View>
-              <Text style={styles.consentText}>
+            <View style={styles.checkboxContainer}>
+              <TouchableOpacity
+                style={styles.checkboxTouch}
+                onPress={() => setIsAgreedStep1(!isAgreedStep1)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.customBox, isAgreedStep1 && styles.customBoxChecked]}>
+                  {isAgreedStep1 && <Ionicons name="checkmark" size={16} color="#004aad" />}
+                </View>
+              </TouchableOpacity>
+              <Text style={styles.agreementText}>
                 I authorize Loan Point & its MSME lending partners to contact me and check credit profile. I accept{' '}
-                <Text style={styles.consentLink}>Terms & Conditions</Text> and{' '}
-                <Text style={styles.consentLink}>Privacy Policy</Text>.
+                <Text style={styles.linkText}>Terms & Conditions</Text> and{' '}
+                <Text style={styles.linkText}>Privacy Policy</Text>.
               </Text>
-            </TouchableOpacity>
+            </View>
 
             {/* Continue Button */}
-            <View style={styles.buttonRow}>
-              <TouchableOpacity
-                style={styles.continueButton}
-                onPress={handleStep1Continue}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.continueButtonText}>Continue to Business Details</Text>
-                <Ionicons name="arrow-forward" size={18} color="#002e75" />
-              </TouchableOpacity>
-            </View>
-          </View>
+            <TouchableOpacity
+              style={styles.continueButton}
+              onPress={handleStep1Continue}
+              activeOpacity={0.88}
+            >
+              <Text style={styles.continueText}>Continue</Text>
+              <Ionicons name="arrow-forward" size={20} color="#000000" style={styles.continueArrow} />
+            </TouchableOpacity>
+          </>
         )}
 
         {/* ---------------- STEP 2: Business Details ---------------- */}
@@ -910,7 +872,11 @@ export const BusinessLoanApplyScreen: React.FC<BusinessLoanApplyScreenProps> = (
                 activeOpacity={0.8}
               >
                 <View style={styles.inputIconBox}>
-                  <MaterialCommunityIcons name="bank" size={20} color="#64748b" />
+                  {primaryBank ? (
+                    <BankLogo bank={primaryBank} width={22} height={22} />
+                  ) : (
+                    <MaterialCommunityIcons name="bank" size={20} color="#64748b" />
+                  )}
                 </View>
                 <Text style={styles.dropdownPickerText}>{primaryBank}</Text>
                 <Ionicons name="chevron-down" size={16} color="#64748b" />
@@ -1320,7 +1286,10 @@ export const BusinessLoanApplyScreen: React.FC<BusinessLoanApplyScreenProps> = (
                     <Text style={styles.summaryLabel}>Operating Bank</Text>
                   </View>
                   <Text style={styles.summaryColon}>:</Text>
-                  <Text style={styles.summaryValue}>{primaryBank}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'flex-end' }}>
+                    {primaryBank ? <BankLogo bank={primaryBank} width={18} height={18} /> : null}
+                    <Text style={styles.summaryValue}>{primaryBank}</Text>
+                  </View>
                 </View>
 
                 <View style={styles.summaryRow}>
@@ -1911,13 +1880,17 @@ export const BusinessLoanApplyScreen: React.FC<BusinessLoanApplyScreenProps> = (
               keyExtractor={(item) => item}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={styles.modalOptionItem}
+                  style={[styles.modalOptionItem, { flexDirection: 'row', alignItems: 'center', gap: 10 }]}
                   onPress={() => {
                     setPrimaryBank(item);
                     setShowBankModal(false);
                   }}
                 >
-                  <Text style={styles.modalOptionText}>{item}</Text>
+                  <BankLogo bank={item} width={26} height={26} />
+                  <Text style={[styles.modalOptionText, { flex: 1 }]}>{item}</Text>
+                  {primaryBank === item && (
+                    <Ionicons name="checkmark-circle" size={20} color="#004aad" />
+                  )}
                 </TouchableOpacity>
               )}
             />
@@ -2021,6 +1994,227 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 40,
   },
+  heroBannerImageContainer: {
+    width: '100%',
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroBannerImage: {
+    width: SCREEN_WIDTH,
+    height: Math.round(SCREEN_WIDTH * (341 / 1024)),
+  },
+  // Personal loan style form cards & inputs
+  formCard: {
+    marginHorizontal: 16,
+    marginBottom: 14,
+    backgroundColor: '#f8fafc',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 16,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  inputGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  inputIconCol: {
+    width: 38,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    marginTop: 18,
+  },
+  inputRightCol: {
+    flex: 1,
+  },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#000000',
+    marginBottom: 5,
+  },
+  requiredStar: {
+    color: '#ef4444',
+  },
+  inputBox: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 44,
+    justifyContent: 'center',
+  },
+  twoColRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  halfColGroup: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  twoColIconCol: {
+    width: 32,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    marginTop: 18,
+  },
+  twoColRight: {
+    flex: 1,
+  },
+  dropdownBox: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    height: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dropdownText: {
+    fontSize: 13,
+    color: '#0f172a',
+    fontWeight: '500',
+    flex: 1,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginHorizontal: 16,
+    marginBottom: 18,
+    paddingHorizontal: 4,
+  },
+  checkboxTouch: {
+    marginTop: 2,
+    marginRight: 10,
+  },
+  customBox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: '#94a3b8',
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  customBoxChecked: {
+    borderColor: '#004aad',
+  },
+  agreementText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#334155',
+    lineHeight: 17,
+  },
+  linkText: {
+    color: '#004aad',
+    textDecorationLine: 'underline',
+  },
+  continueButton: {
+    marginHorizontal: 16,
+    height: 52,
+    backgroundColor: '#ffd700',
+    borderRadius: 26,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  continueText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#000000',
+    marginRight: 8,
+  },
+  continueArrow: {
+    marginTop: 2,
+  },
+  stepperContainer: {
+    paddingVertical: 18,
+    paddingHorizontal: 14,
+    backgroundColor: '#ffffff',
+  },
+  legacyStepperTrack: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  stepItem: {
+    alignItems: 'center',
+    width: 58,
+  },
+  stepCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#cbd5e1',
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 5,
+  },
+  stepCircleActive: {
+    borderColor: '#f59e0b',
+    backgroundColor: '#fed7aa',
+  },
+  stepCircleCompleted: {
+    borderColor: '#10b981',
+    backgroundColor: '#10b981',
+  },
+  stepCircleText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  stepCircleTextActive: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#000000',
+  },
+  legacyStepLabel: {
+    fontSize: 10,
+    color: '#64748b',
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  stepLabelActive: {
+    fontSize: 10,
+    color: '#000000',
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  stepLabelCompleted: {
+    fontSize: 10,
+    color: '#000000',
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  stepLine: {
+    flex: 1,
+    height: 1.5,
+    backgroundColor: '#cbd5e1',
+    marginHorizontal: 1,
+    marginBottom: 16,
+  },
+  stepLineActive: {
+    backgroundColor: '#10b981',
+  },
   heroBanner: {
     backgroundColor: '#002e75',
     marginHorizontal: 14,
@@ -2116,7 +2310,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     elevation: 3,
   },
-  stepperContainer: {
+  legacyStepperContainer: {
     backgroundColor: '#ffffff',
     marginHorizontal: 14,
     marginTop: 12,
@@ -2131,7 +2325,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  stepItem: {
+  legacyStepItem: {
     alignItems: 'center',
     flex: 1,
   },
@@ -2168,21 +2362,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-  stepLabelActive: {
+  legacyStepLabelActive: {
     color: '#002e75',
     fontWeight: '800',
   },
-  stepLabelCompleted: {
+  legacyStepLabelCompleted: {
     color: '#16a34a',
   },
-  stepLine: {
+  legacyStepLine: {
     height: 2,
     flex: 0.6,
     backgroundColor: '#e2e8f0',
     marginHorizontal: -4,
     marginBottom: 16,
   },
-  stepLineActive: {
+  legacyStepLineActive: {
     backgroundColor: '#16a34a',
   },
   errorBox: {
@@ -2250,7 +2444,7 @@ const styles = StyleSheet.create({
   fieldGroup: {
     marginBottom: 14,
   },
-  fieldLabel: {
+  legacyFieldLabel: {
     fontSize: 12,
     fontWeight: '700',
     color: '#334155',
@@ -2397,7 +2591,7 @@ const styles = StyleSheet.create({
   buttonRow: {
     marginTop: 6,
   },
-  continueButton: {
+  legacyContinueButton: {
     backgroundColor: '#ffd700',
     flexDirection: 'row',
     alignItems: 'center',
@@ -3226,3 +3420,5 @@ const styles = StyleSheet.create({
     lineHeight: 15,
   },
 });
+
+

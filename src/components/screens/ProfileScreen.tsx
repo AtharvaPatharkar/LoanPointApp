@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
+  Dimensions,
+  Image,
   View,
   Text,
   TouchableOpacity,
@@ -38,6 +40,8 @@ interface ProfileScreenProps {
   onNavigate: (screen: string) => void;
   onResetDemoData: () => void;
 }
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   user,
@@ -204,6 +208,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+      {/* Top Banner: Your Profile & Account from assets/profile */}
+      <View style={styles.profileBannerContainer}>
+        <Image
+          source={require('../../../assets/profile/profile-banner.png')}
+          style={styles.profileBannerImage}
+          resizeMode="contain"
+        />
+      </View>
       {/* 1. Profile Summary Spotlight Hero Card */}
       <View style={styles.headerHeroCard}>
         <View style={styles.heroGlowCircle} />
@@ -1113,6 +1125,18 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 };
 
 const styles = StyleSheet.create({
+  profileBannerContainer: {
+    width: '100%',
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  profileBannerImage: {
+    width: SCREEN_WIDTH,
+    height: Math.round(SCREEN_WIDTH * (341 / 1024)),
+  },
+
   container: {
     padding: 16,
     paddingBottom: 40,
@@ -1135,7 +1159,7 @@ const styles = StyleSheet.create({
   headerHeroCard: {
     position: 'relative',
     overflow: 'hidden',
-    backgroundColor: colors.cardNavyFrom,
+    backgroundColor: "#002e75", borderWidth: 1.5, borderColor: "#004aad",
     borderRadius: 18,
     padding: 20,
     shadowColor: colors.cardNavyFrom,
@@ -1236,9 +1260,9 @@ const styles = StyleSheet.create({
   editProfileBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    backgroundColor: '#ffd700',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
+    borderColor: '#eab308',
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 9,

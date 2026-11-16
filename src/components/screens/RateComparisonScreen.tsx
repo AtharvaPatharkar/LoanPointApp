@@ -4,6 +4,9 @@ import { Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-ico
 import { BANK_RATE_COMPARISONS } from '../../data/mockData';
 import { LoanType } from '../../types';
 import { colors } from '../../theme/colors';
+import { BankLogo } from '../common/BankLogo';
+import { getBankByNameOrId } from '../../constants/banks';
+import { LoanIcon, LOAN_TYPE_VISUALS } from '../common/LoanIcon';
 
 interface RateComparisonScreenProps {
   onApplyForLoan: (loanType: LoanType) => void;
@@ -17,42 +20,44 @@ export const RateComparisonScreen: React.FC<RateComparisonScreenProps> = ({
   const filterTabs: {
     id: LoanType;
     label: string;
-    icon: string;
-    iconType: 'ion' | 'mci' | 'fa5';
     activeColor: string;
     lightColor: string;
   }[] = [
     {
       id: 'home',
       label: 'Home Loan',
-      icon: 'home-variant',
-      iconType: 'mci',
-      activeColor: '#008ecc', // Brand Cyan
-      lightColor: '#e0f2fe',
+      activeColor: LOAN_TYPE_VISUALS.home.primaryColor,
+      lightColor: LOAN_TYPE_VISUALS.home.softBg,
     },
     {
       id: 'personal',
       label: 'Personal Loan',
-      icon: 'wallet',
-      iconType: 'fa5',
-      activeColor: '#ee1c25', // Logo Crimson Red
-      lightColor: '#fee2e2',
+      activeColor: LOAN_TYPE_VISUALS.personal.primaryColor,
+      lightColor: LOAN_TYPE_VISUALS.personal.softBg,
     },
     {
       id: 'business',
       label: 'Business Loan',
-      icon: 'storefront',
-      iconType: 'ion',
-      activeColor: '#d97706', // Warm Amber Gold
-      lightColor: '#fef3c7',
+      activeColor: LOAN_TYPE_VISUALS.business.primaryColor,
+      lightColor: LOAN_TYPE_VISUALS.business.softBg,
+    },
+    {
+      id: 'car',
+      label: 'Car Loan',
+      activeColor: LOAN_TYPE_VISUALS.car.primaryColor,
+      lightColor: LOAN_TYPE_VISUALS.car.softBg,
+    },
+    {
+      id: 'education',
+      label: 'Education Loan',
+      activeColor: LOAN_TYPE_VISUALS.education.primaryColor,
+      lightColor: LOAN_TYPE_VISUALS.education.softBg,
     },
     {
       id: 'mortgage',
       label: 'Mortgage (LAP)',
-      icon: 'office-building',
-      iconType: 'mci',
-      activeColor: '#2d3091', // Royal Indigo Navy
-      lightColor: '#e0e7ff',
+      activeColor: LOAN_TYPE_VISUALS.mortgage.primaryColor,
+      lightColor: LOAN_TYPE_VISUALS.mortgage.softBg,
     },
   ];
 
@@ -171,25 +176,13 @@ export const RateComparisonScreen: React.FC<RateComparisonScreenProps> = ({
                     },
                   ]}
                 >
-                  {tab.iconType === 'mci' ? (
-                    <MaterialCommunityIcons
-                      name={tab.icon as any}
-                      size={14}
-                      color={isActive ? '#ffffff' : tab.activeColor}
-                    />
-                  ) : tab.iconType === 'fa5' ? (
-                    <FontAwesome5
-                      name={tab.icon as any}
-                      size={11}
-                      color={isActive ? '#ffffff' : tab.activeColor}
-                    />
-                  ) : (
-                    <Ionicons
-                      name={tab.icon as any}
-                      size={13}
-                      color={isActive ? '#ffffff' : tab.activeColor}
-                    />
-                  )}
+                  <LoanIcon
+                    type={tab.id}
+                    size={12}
+                    containerSize={20}
+                    color={isActive ? '#ffffff' : tab.activeColor}
+                    containerBg="transparent"
+                  />
                 </View>
                 <Text
                   style={[
@@ -217,16 +210,23 @@ export const RateComparisonScreen: React.FC<RateComparisonScreenProps> = ({
         ) : (
           filteredRates.map((bank, idx) => {
             const branding = getBankBranding(bank.lenderName, bank.isPublicSector);
+            const matchedBank = getBankByNameOrId(bank.lenderName);
             return (
               <View key={idx} style={styles.bankCard}>
                 <View style={styles.bankHeaderRow}>
                   <View style={styles.bankIdentityWrap}>
-                    {/* Colorful Bank Logo Badge */}
-                    <View style={[styles.bankAvatar, { backgroundColor: branding.bg }]}>
-                      <Text style={[styles.bankAvatarText, { color: branding.text }]}>
-                        {branding.short}
-                      </Text>
-                    </View>
+                    {/* Authentic Bank Logo Badge */}
+                    {matchedBank ? (
+                      <View style={styles.bankLogoWrap}>
+                        <BankLogo bank={bank.lenderName} width={36} height={36} />
+                      </View>
+                    ) : (
+                      <View style={[styles.bankAvatar, { backgroundColor: branding.bg }]}>
+                        <Text style={[styles.bankAvatarText, { color: branding.text }]}>
+                          {branding.short}
+                        </Text>
+                      </View>
+                    )}
 
                     <View style={{ flex: 1 }}>
                       <View style={styles.bankTitleRow}>
@@ -491,6 +491,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
+  },
+  bankLogoWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+    overflow: 'hidden',
   },
   bankAvatar: {
     width: 44,

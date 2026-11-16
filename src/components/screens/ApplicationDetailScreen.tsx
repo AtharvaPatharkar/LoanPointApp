@@ -16,6 +16,8 @@ import { formatINR } from '../../utils/calculator';
 import { loanService } from '../../services/loanService';
 import { COMPANY_INFO } from '../../data/mockData';
 import { colors } from '../../theme/colors';
+import { BankLogo } from '../common/BankLogo';
+import { LoanIcon } from '../common/LoanIcon';
 
 interface ApplicationDetailScreenProps {
   application: LoanApplication;
@@ -98,17 +100,32 @@ Office: Shop 57, Alibhai Tower, Shivaji Nagar, Nanded
       {/* Top Banner Card */}
       <View style={styles.card}>
         <View style={styles.bannerHeaderRow}>
-          <View>
-            <View style={styles.idRow}>
-              <Text style={styles.appIdText}>{currentApp.id}</Text>
-              <View style={styles.demoBadge}>
-                <Text style={styles.demoBadgeText}>DEMO RECORD</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', flex: 1, gap: 12 }}>
+            <LoanIcon
+              type={currentApp.loanType}
+              name={currentApp.loanTypeName}
+              size={28}
+              containerSize={52}
+              borderRadius={14}
+            />
+            <View style={{ flex: 1 }}>
+              <View style={styles.idRow}>
+                <Text style={styles.appIdText}>{currentApp.id}</Text>
+                <View style={styles.demoBadge}>
+                  <Text style={styles.demoBadgeText}>DEMO RECORD</Text>
+                </View>
               </View>
+              <Text style={styles.loanHeading}>{currentApp.loanTypeName}</Text>
+              {currentApp.bankName ? (
+                <View style={styles.bankTagRow}>
+                  <BankLogo bank={currentApp.bankName} width={20} height={20} />
+                  <Text style={styles.bankTagText}>{currentApp.bankName}</Text>
+                </View>
+              ) : null}
+              <Text style={styles.datesSub}>
+                Submitted on {currentApp.submissionDate} · Updated {currentApp.statusUpdatedDate}
+              </Text>
             </View>
-            <Text style={styles.loanHeading}>{currentApp.loanTypeName}</Text>
-            <Text style={styles.datesSub}>
-              Submitted on {currentApp.submissionDate} · Updated {currentApp.statusUpdatedDate}
-            </Text>
           </View>
 
           <View style={styles.amountCol}>
@@ -331,6 +348,18 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.text,
     marginTop: 2,
+  },
+  bankTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  bankTagText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#004aad',
   },
   datesSub: {
     fontSize: 10,

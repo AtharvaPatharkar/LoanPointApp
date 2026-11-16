@@ -15,6 +15,7 @@ import {
 } from '@expo/vector-icons';
 import { UserProfile, LoanCategory, LoanType } from '../../types';
 import { googleReviewsService, GooglePlaceReviewData } from '../../services/googleReviewsService';
+import { LoanIcon } from '../common/LoanIcon';
 
 interface HomeScreenProps {
   user?: UserProfile | null;
@@ -131,7 +132,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* 4. Five Loan Product Cards Row with Solid Vibrant Filled Icons */}
+      {/* 4. Five Loan Product Cards Row with Attractive Colourful Real Loan Logos */}
       <View style={styles.loanProductsRow}>
         {/* Product 1: Home Loan */}
         <TouchableOpacity
@@ -139,9 +140,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           onPress={() => onSelectCategory('home')}
           activeOpacity={0.8}
         >
-          <View style={[styles.prodIconCircle, { backgroundColor: '#e11d48' }]}>
-            <FontAwesome5 name="home" size={18} color="#ffffff" />
-          </View>
+          <LoanIcon
+            type="home"
+            useAssetImage={true}
+            size={36}
+            containerSize={46}
+            borderRadius={23}
+            style={{ marginBottom: 6 }}
+          />
           <Text style={styles.loanProductText}>Home{'\n'}Loan</Text>
         </TouchableOpacity>
 
@@ -151,9 +157,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           onPress={() => onSelectCategory('personal')}
           activeOpacity={0.8}
         >
-          <View style={[styles.prodIconCircle, { backgroundColor: '#ca8a04' }]}>
-            <FontAwesome5 name="hand-holding-usd" size={17} color="#ffffff" />
-          </View>
+          <LoanIcon
+            type="personal"
+            useAssetImage={true}
+            size={36}
+            containerSize={46}
+            borderRadius={23}
+            style={{ marginBottom: 6 }}
+          />
           <Text style={styles.loanProductText}>Personal{'\n'}Loan</Text>
         </TouchableOpacity>
 
@@ -163,9 +174,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           onPress={() => onSelectCategory('business')}
           activeOpacity={0.8}
         >
-          <View style={[styles.prodIconCircle, { backgroundColor: '#dc2626' }]}>
-            <FontAwesome5 name="store" size={16} color="#ffffff" />
-          </View>
+          <LoanIcon
+            type="business"
+            useAssetImage={true}
+            size={36}
+            containerSize={46}
+            borderRadius={23}
+            style={{ marginBottom: 6 }}
+          />
           <Text style={styles.loanProductText}>Business{'\n'}Loan</Text>
         </TouchableOpacity>
 
@@ -175,9 +191,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           onPress={() => onSelectCategory('car')}
           activeOpacity={0.8}
         >
-          <View style={[styles.prodIconCircle, { backgroundColor: '#2563eb' }]}>
-            <FontAwesome5 name="car" size={17} color="#ffffff" />
-          </View>
+          <LoanIcon
+            type="car"
+            useAssetImage={true}
+            size={36}
+            containerSize={46}
+            borderRadius={23}
+            style={{ marginBottom: 6 }}
+          />
           <Text style={styles.loanProductText}>Car{'\n'}Loan</Text>
         </TouchableOpacity>
 
@@ -187,9 +208,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           onPress={() => onSelectCategory('education')}
           activeOpacity={0.8}
         >
-          <View style={[styles.prodIconCircle, { backgroundColor: '#0284c7' }]}>
-            <FontAwesome5 name="graduation-cap" size={17} color="#ffffff" />
-          </View>
+          <LoanIcon
+            type="education"
+            useAssetImage={true}
+            size={36}
+            containerSize={46}
+            borderRadius={23}
+            style={{ marginBottom: 6 }}
+          />
           <Text style={styles.loanProductText}>Education{'\n'}Loan</Text>
         </TouchableOpacity>
       </View>
@@ -200,11 +226,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <View style={styles.reviewsTopStrip}>
           {/* Left: Gold Laurel Wreath + Google G Logo + Title */}
           <View style={styles.stripLeft}>
-            <Image
-              source={require('../../../assets/logo/laurel-wreath-left.png')}
-              style={styles.laurelImage}
-              resizeMode="contain"
-            />
             <View style={styles.stripGoogleIconCircle}>
               <Ionicons name="logo-google" size={18} color="#ea4335" />
             </View>
@@ -235,11 +256,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               </Text>
               <Text style={styles.stripRatingSub}>Average Rating</Text>
             </View>
-            <Image
-              source={require('../../../assets/logo/laurel-wreath-right.png')}
-              style={styles.laurelImage}
-              resizeMode="contain"
-            />
           </View>
         </View>
 

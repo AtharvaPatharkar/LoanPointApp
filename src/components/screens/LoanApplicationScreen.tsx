@@ -526,14 +526,14 @@ export const LoanApplicationScreen: React.FC<LoanApplicationScreenProps> = ({
                   onPress={() => handleSelectCategory(cat)}
                   activeOpacity={0.82}
                 >
-                  {/* 3D Isometric FinTech Icon with Specular Platform Sheen */}
+                  {/* Attractive 3D Colourful Loan Image Logo Tile */}
                   <View style={styles.catIconWrap3D}>
-                    <IsometricTile
-                      type={meta.type}
-                      size={54}
-                      badgeTag={meta.badgeTag}
-                      badgeColor={meta.badgeColor}
-                      animated={isSelected}
+                    <LoanIcon
+                      type={cat.id}
+                      useAssetImage={true}
+                      size={48}
+                      containerSize={64}
+                      borderRadius={20}
                     />
                   </View>
 
