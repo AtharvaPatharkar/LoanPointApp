@@ -30,32 +30,18 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
   onSkipToDemo,
   initialReferralCode = '',
 }) => {
-  // Start on Login first by default (and after logout)
+  // Start on unified WhatsApp Login
   const [authMode, setAuthMode] = useState<AuthMode>('login');
-  const [mobileNumber, setMobileNumber] = useState<string>('9545555999');
-  const [otpCode, setOtpCode] = useState<string>('123456');
-  const [adminPin, setAdminPin] = useState<string>('9545');
+  const [mobileNumber, setMobileNumber] = useState<string>('');
+  const [otpCode, setOtpCode] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
 
   // Quick mobile validation
-  const isMobileValid = mobileNumber.replace(/\D/g, '').length === 10;
-
-  const handleAdminLogin = () => {
-    setErrorMessage(null);
-    if (!adminPin.trim()) {
-      setErrorMessage('Please enter Admin Security PIN');
-      return;
-    }
-
-    try {
-      const res = authService.loginAdmin(adminPin.trim());
-      onAuthSuccess(res.user);
-    } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : 'Invalid Admin PIN');
-    }
-  };
+  const cleanMobile = mobileNumber.replace(/\D/g, '');
+  const isMobileValid = cleanMobile.length === 10;
+  const isAdminNumber = cleanMobile === '9545555999';
 
   const handleRequestOtp = async () => {
     setErrorMessage(null);
@@ -66,7 +52,8 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
 
     setIsLoading(true);
     try {
-      await authService.requestOtp(mobileNumber);
+      await authService.requestOtp(cleanMobile);
+      setOtpCode('');
       setAuthMode('otp');
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : 'Failed to send OTP');
@@ -122,80 +109,27 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
         <Text style={styles.brandTitle}>{COMPANY_INFO.name}</Text>
         <Text style={styles.brandSub}>
           {authMode === 'login'
-            ? 'Customer Login'
-            : authMode === 'admin'
-            ? 'Admin Portal'
-            : 'Verify OTP'}
+            ? 'Unified Secure Login'
+            : 'Verify WhatsApp OTP'}
         </Text>
         <Text style={styles.brandTagline}>
           Fast, easy & transparent loans in Nanded & Marathwada
         </Text>
       </View>
 
-      {/* Mode Switcher Tabs (Customer Login vs Admin Access) */}
-      {(authMode === 'login' || authMode === 'admin') && (
-        <View style={styles.authTabRow}>
-          <TouchableOpacity
-            style={[styles.authTab, authMode === 'login' && styles.authTabActive]}
-            onPress={() => {
-              setErrorMessage(null);
-              setAuthMode('login');
-            }}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name="person"
-              size={15}
-              color={authMode === 'login' ? colors.primary : '#64748b'}
-            />
-            <Text
-              style={[
-                styles.authTabText,
-                authMode === 'login' && styles.authTabTextActive,
-              ]}
-            >
-              Customer
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.authTab, authMode === 'admin' && styles.authTabActiveAdmin]}
-            onPress={() => {
-              setErrorMessage(null);
-              setAuthMode('admin');
-            }}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name="shield-checkmark"
-              size={15}
-              color={authMode === 'admin' ? '#0f172a' : '#64748b'}
-            />
-            <Text
-              style={[
-                styles.authTabText,
-                authMode === 'admin' && styles.authTabTextActiveAdmin,
-              ]}
-            >
-              Admin / Staff
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* 2. LOGIN SCREEN (NO Referral Code section here - referral is only on Registration) */}
+      {/* 2. LOGIN SCREEN (Unified Login for Admin & Customers) */}
       {authMode === 'login' && (
         <View style={styles.formCard}>
           <View style={styles.cardHeader}>
             <View style={styles.cardBadge}>
               <Ionicons name="log-in" size={15} color={colors.primary} />
-              <Text style={styles.cardBadgeText}>CUSTOMER LOGIN</Text>
+              <Text style={styles.cardBadgeText}>ACCOUNT LOGIN</Text>
             </View>
           </View>
 
           <View style={styles.channelBadge}>
             <Ionicons name="logo-whatsapp" size={15} color="#059669" />
-            <Text style={styles.channelBadgeText}>WhatsApp Instant OTP Login</Text>
+            <Text style={styles.channelBadgeText}>WhatsApp Instant OTP</Text>
           </View>
 
           {/* Registration Success Banner */}
@@ -216,7 +150,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
 
           {/* Mobile Number Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Registered Mobile Number</Text>
+            <Text style={styles.inputLabel}>Enter 10-Digit Mobile Number</Text>
             <View style={[styles.inputWrapper, isMobileValid && styles.inputWrapperActive]}>
               <View style={styles.countryCodeBadge}>
                 <Text style={styles.countryCodeText}>+91</Text>
@@ -227,7 +161,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
                 value={mobileNumber}
                 onChangeText={(text) => setMobileNumber(text.replace(/\D/g, '').slice(0, 10))}
                 maxLength={10}
-                placeholder="9545555999"
+                placeholder="Enter 10-digit mobile number"
                 placeholderTextColor="#94a3b8"
               />
               {isMobileValid && <Ionicons name="checkmark-circle" size={18} color="#16a34a" />}
@@ -252,8 +186,11 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
               <ActivityIndicator color="#ffffff" />
             ) : (
               <>
-                <Ionicons name="logo-whatsapp" size={18} color="#ffffff" />
-                <Text style={styles.primaryBtnText}>Send WhatsApp Login OTP</Text>
+                <View style={styles.primaryBtnIconWrap}>
+                  <Ionicons name="logo-whatsapp" size={19} color="#ffffff" />
+                </View>
+                <Text style={styles.primaryBtnText}>Get WhatsApp OTP</Text>
+                <Ionicons name="arrow-forward" size={17} color="#ffffff" />
               </>
             )}
           </TouchableOpacity>
@@ -266,83 +203,12 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
               onPress={() => setAuthMode('signup')}
               activeOpacity={0.8}
             >
-              <Ionicons name="person-add-outline" size={16} color={colors.primary} />
-              <Text style={styles.registerBtnText}>Register New Account</Text>
+              <View style={styles.registerBtnIconWrap}>
+                <Ionicons name="person-add" size={16} color="#004aad" />
+              </View>
+              <Text style={styles.registerBtnText}>Create / Register New Account</Text>
             </TouchableOpacity>
           </View>
-        </View>
-      )}
-
-      {/* 2B. ADMIN LOGIN SCREEN */}
-      {authMode === 'admin' && (
-        <View style={styles.formCard}>
-          <View style={styles.cardHeader}>
-            <View style={[styles.cardBadge, { backgroundColor: colors.surfaceSubtle }]}>
-              <Ionicons name="shield-checkmark" size={15} color={colors.indigoNavy} />
-              <Text style={[styles.cardBadgeText, { color: colors.indigoNavy }]}>
-                BRANCH ADMIN & STAFF
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.adminBanner}>
-            <Ionicons name="lock-closed" size={16} color={colors.primary} />
-            <Text style={styles.adminBannerText}>
-              Authorized Loan Point administrators only. Manage applications, sanction status & CRM pipeline.
-            </Text>
-          </View>
-
-          <View style={styles.demoOtpBox}>
-            <Ionicons name="key-outline" size={16} color="#059669" />
-            <Text style={styles.demoOtpText}>
-              Master Admin Access PIN: <Text style={{ fontWeight: '800' }}>9545</Text>
-            </Text>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Admin Access Security PIN</Text>
-            <View style={[styles.inputWrapper, adminPin.length >= 4 && styles.inputWrapperActive]}>
-              <Ionicons name="key" size={18} color="#64748b" style={{ marginRight: 8 }} />
-              <TextInput
-                style={styles.textInput}
-                keyboardType="numeric"
-                secureTextEntry
-                value={adminPin}
-                onChangeText={setAdminPin}
-                maxLength={6}
-                placeholder="Enter 4-digit Admin PIN"
-                placeholderTextColor="#94a3b8"
-              />
-            </View>
-          </View>
-
-          {errorMessage && (
-            <View style={styles.errorBox}>
-              <Ionicons name="alert-circle" size={16} color="#dc2626" />
-              <Text style={styles.errorText}>{errorMessage}</Text>
-            </View>
-          )}
-
-          <TouchableOpacity
-            style={[styles.primaryBtn, { backgroundColor: '#0f172a' }]}
-            onPress={handleAdminLogin}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="shield-checkmark-outline" size={18} color="#ffffff" />
-            <Text style={styles.primaryBtnText}>Access Admin Console</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.resendBtn}
-            onPress={() => {
-              setErrorMessage(null);
-              setAuthMode('login');
-            }}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="arrow-back" size={14} color={colors.primary} />
-            <Text style={styles.resendBtnText}>Back to Customer Login</Text>
-          </TouchableOpacity>
         </View>
       )}
 
@@ -363,17 +229,10 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
             <Text style={styles.channelBadgeText}>WhatsApp Verification</Text>
           </View>
 
-          <Text style={styles.otpTitle}>Verify 6-Digit OTP</Text>
+          <Text style={styles.otpTitle}>Verify WhatsApp OTP</Text>
           <Text style={styles.otpSubtitle}>
-            We've sent a one-time code to WhatsApp number <Text style={{ fontWeight: '700', color: '#0f172a' }}>+91 {mobileNumber}</Text>
+            We've sent a verification code to WhatsApp number <Text style={{ fontWeight: '700', color: '#0f172a' }}>+91 {mobileNumber}</Text>
           </Text>
-
-          <View style={styles.demoOtpBox}>
-            <Ionicons name="information-circle" size={16} color="#059669" />
-            <Text style={styles.demoOtpText}>
-              Demo OTP Code: <Text style={{ fontWeight: '800' }}>123456</Text>
-            </Text>
-          </View>
 
           <TextInput
             style={styles.otpInputField}
@@ -381,7 +240,8 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
             value={otpCode}
             onChangeText={setOtpCode}
             maxLength={6}
-            placeholder="123456"
+            placeholder="Enter OTP"
+            placeholderTextColor="#94a3b8"
             autoFocus
           />
 
@@ -393,17 +253,19 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
           )}
 
           <TouchableOpacity
-            style={styles.primaryBtn}
+            style={[styles.verifyOtpBtn, (isLoading || otpCode.length < 4) && styles.primaryBtnDisabled]}
             onPress={handleVerifyOtp}
-            disabled={isLoading || otpCode.length < 6}
+            disabled={isLoading || otpCode.length < 4}
             activeOpacity={0.85}
           >
             {isLoading ? (
               <ActivityIndicator color="#ffffff" />
             ) : (
               <>
-                <Text style={styles.primaryBtnText}>Verify & Continue to Account</Text>
-                <Ionicons name="checkmark-circle" size={18} color="#ffffff" />
+                <Text style={styles.primaryBtnText}>
+                  {isAdminNumber ? 'Verify & Open Admin Portal' : 'Verify & Open My Account'}
+                </Text>
+                <Ionicons name="shield-checkmark" size={18} color="#ffffff" />
               </>
             )}
           </TouchableOpacity>
@@ -555,7 +417,7 @@ const styles = StyleSheet.create({
     paddingVertical: Platform.OS === 'ios' ? 12 : 8,
   },
   inputWrapperActive: {
-    borderColor: 'colors.primary',
+    borderColor: colors.primary,
     backgroundColor: '#ffffff',
   },
   countryCodeBadge: {
@@ -592,7 +454,7 @@ const styles = StyleSheet.create({
   referralToggleText: {
     fontSize: 12,
     fontWeight: '700',
-    color: 'colors.primary',
+    color: colors.primary,
   },
   referralInputBox: {
     backgroundColor: '#f8fafc',
@@ -634,7 +496,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: 1,
-    color: 'colors.primary',
+    color: colors.primary,
   },
   errorBox: {
     flexDirection: 'row',
@@ -657,55 +519,103 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    gap: 8,
-    marginTop: 6,
-    shadowColor: colors.primary,
+    backgroundColor: '#059669', // Vibrant emerald green for WhatsApp action
+    borderRadius: 14,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    gap: 10,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#047857',
+    shadowColor: '#059669',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 4,
+  },
+  primaryBtnIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verifyOtpBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#004aad', // Professional deep trust royal blue
+    borderRadius: 14,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    gap: 10,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#003680',
+    shadowColor: '#004aad',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
   },
   primaryBtnDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
+    backgroundColor: '#94a3b8',
+    borderColor: '#cbd5e1',
+    shadowOpacity: 0,
+    elevation: 0,
   },
   primaryBtnText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '800',
     color: '#ffffff',
+    letterSpacing: 0.3,
   },
   registerPromptBox: {
-    marginTop: 20,
-    paddingTop: 16,
+    marginTop: 22,
+    paddingTop: 18,
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
+    borderTopColor: '#e2e8f0',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   registerPromptText: {
     fontSize: 13,
-    color: '#64748b',
-    fontWeight: '500',
+    color: '#475569',
+    fontWeight: '600',
   },
   registerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    backgroundColor: colors.primaryLight,
-    borderWidth: 1.5,
-    borderColor: colors.primaryBorder,
-    borderRadius: 12,
-    paddingVertical: 12,
+    gap: 8,
+    backgroundColor: '#ffffff',
+    borderWidth: 1.8,
+    borderColor: '#004aad',
+    borderRadius: 14,
+    paddingVertical: 13,
     paddingHorizontal: 20,
     width: '100%',
+    shadowColor: '#004aad',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  registerBtnIconWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   registerBtnText: {
     fontSize: 14,
     fontWeight: '800',
-    color: colors.primary,
+    color: '#004aad',
+    letterSpacing: 0.2,
   },
   switchRow: {
     flexDirection: 'row',

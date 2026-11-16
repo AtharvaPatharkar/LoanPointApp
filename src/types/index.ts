@@ -57,7 +57,7 @@ export interface LoanApplication {
   submittedDocuments: string[];
   nextAction: string;
   remarks?: string;
-  isDemoRecord: boolean;
+  isDemoRecord?: boolean;
   applicantName?: string;
   applicantMobile?: string;
   bankName?: string;
@@ -182,4 +182,60 @@ export interface BankRateComparison {
   maxTenureYears: number;
   isPublicSector: boolean;
   note: string;
+}
+
+export type InsuranceType =
+  | 'health'
+  | 'life'
+  | 'motor'
+  | 'personal_accident'
+  | 'home_property'
+  | 'travel';
+
+export type InsuranceStatus =
+  | 'Request Received'
+  | 'Quote Shared'
+  | 'Inspection Scheduled'
+  | 'Documents Verified'
+  | 'Policy Issued'
+  | 'Rejected';
+
+export interface InsuranceApplication {
+  id: string; // e.g. "INS-2026-9812"
+  userId?: string | null;
+  applicantName: string;
+  mobile: string;
+  insuranceType: InsuranceType | string;
+  insuranceTypeName?: string;
+  details?: Record<string, any>;
+  status: InsuranceStatus | string;
+  statusUpdatedAt: string;
+  remarks?: string;
+  nextAction?: string;
+  createdAt: string;
+}
+
+export type ReferralStatus =
+  | 'Referral Submitted'
+  | 'Login / Application'
+  | 'Loan Approval'
+  | 'Disbursed'
+  | 'Rejected';
+
+export interface ReferralLead {
+  id: string; // e.g. "REF-202611-1042"
+  referrerUserId?: string | null;
+  referrerMobile: string;
+  friendName: string;
+  friendMobile: string;
+  loanProduct: string;
+  city: string;
+  loanAmount: number;
+  status: ReferralStatus | string;
+  payoutAmount: number;
+  payoutStatus: 'Pending' | 'Approved' | 'Paid' | 'Rejected' | string;
+  remarks?: string;
+  nextAction?: string;
+  statusUpdatedAt: string;
+  createdAt: string;
 }

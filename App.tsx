@@ -81,6 +81,7 @@ function MainApp() {
   );
   const [currentTab, setCurrentTab] = useState<TabType>('home');
   const [activeSubScreen, setActiveSubScreen] = useState<string | null>(null);
+  const [subScreenHistory, setSubScreenHistory] = useState<string[]>([]);
   const [showCompleteProfileModal, setShowCompleteProfileModal] = useState<boolean>(false);
 
   // Entities
@@ -117,10 +118,16 @@ function MainApp() {
     checkInitialLink();
   }, []);
 
-  // Sync notifications count
+  // Load live applications for current authenticated user from Neon DB
   useEffect(() => {
-    setUnreadNotifications(notificationService.getUnreadCount());
-  }, [isNotificationOpen]);
+    if (user?.mobile && user.role !== 'admin') {
+      loanService.fetchApplicationsForMobile(user.mobile).then((apps) => {
+        if (apps && apps.length > 0) {
+          setApplications(apps);
+        }
+      });
+    }
+  }, [user?.mobile, currentTab, activeSubScreen]);
 
   // Support Handlers
   const handleOpenCall = (customPhone?: string) => {
@@ -139,28 +146,38 @@ function MainApp() {
   };
 
   // Navigation Handlers
+  const goToSubScreen = (screen: string | null) => {
+    if (screen === null) {
+      setActiveSubScreen(null);
+      setSubScreenHistory([]);
+      return;
+    }
+    setSubScreenHistory((prev) => (activeSubScreen ? [...prev, activeSubScreen] : prev));
+    setActiveSubScreen(screen);
+  };
+
   const handleSelectCategory = (id: LoanType) => {
     const cat = loanService.getCategoryById(id);
     if (cat) {
       setSelectedCategory(cat);
-      setActiveSubScreen('loan_detail');
+      goToSubScreen('loan_detail');
     }
   };
 
   const handleNavigate = (screen: string, params?: Record<string, unknown>) => {
     if (screen === 'home' || screen === 'applications' || screen === 'apply' || screen === 'insurance' || screen === 'refer') {
       if (screen === 'apply') {
-        setSelectedCategory(categories[0]);
-        setActiveSubScreen('loan_apply');
+        goToSubScreen('services');
         return;
       }
       setCurrentTab(screen as TabType);
       setActiveSubScreen(null);
+      setSubScreenHistory([]);
       return;
     }
 
     if (screen === 'profile') {
-      setActiveSubScreen('profile_settings');
+      goToSubScreen('profile_settings');
       return;
     }
 
@@ -168,7 +185,7 @@ function MainApp() {
       const type = (params?.loanType as LoanType) || 'personal';
       const cat = loanService.getCategoryById(type) || categories[0];
       setSelectedCategory(cat);
-      setActiveSubScreen('loan_apply');
+      goToSubScreen('loan_apply');
       return;
     }
 
@@ -176,18 +193,26 @@ function MainApp() {
       const appId = params?.applicationId as string;
       const app = applications.find((a) => a.id === appId) || applications[0];
       setSelectedApplication(app);
-      setActiveSubScreen('application_detail');
+      goToSubScreen('application_detail');
       return;
     }
 
     // Normalize hyphen-separated routes to underscore format if needed
     const normalizedScreen = screen === 'balance-transfer' ? 'balance_transfer' : screen;
-    setActiveSubScreen(normalizedScreen);
+    goToSubScreen(normalizedScreen);
   };
 
   const handleBack = () => {
+    // When inside any loan application form (e.g. Home, Personal, Business, etc.), step back to that loan's detail / information page
     if (activeSubScreen === 'loan_apply' && selectedCategory) {
       setActiveSubScreen('loan_detail');
+      return;
+    }
+    // If we have screen history stack (e.g. Services/All Loans -> Loan Detail), pop back to previous sub-screen
+    if (subScreenHistory.length > 0) {
+      const prevScreen = subScreenHistory[subScreenHistory.length - 1];
+      setSubScreenHistory((prev) => prev.slice(0, -1));
+      setActiveSubScreen(prevScreen);
       return;
     }
     setActiveSubScreen(null);
@@ -315,11 +340,11 @@ function MainApp() {
                 category={selectedCategory}
                 onApplyNow={(cat) => {
                   setSelectedCategory(cat);
-                  setActiveSubScreen('loan_apply');
+                  goToSubScreen('loan_apply');
                 }}
                 onOpenCalculator={(cat) => {
                   setSelectedCategory(cat);
-                  setActiveSubScreen('emi_calculator');
+                  goToSubScreen('emi_calculator');
                 }}
                 onOpenWhatsApp={handleOpenWhatsApp}
                 onBack={handleBack}
@@ -585,8 +610,7 @@ function MainApp() {
                       setActiveSubScreen('application_detail');
                     }}
                     onApplyNew={() => {
-                      setSelectedCategory(categories[0]);
-                      setActiveSubScreen('loan_apply');
+                      setActiveSubScreen('services');
                     }}
                     onTopUpLoan={() => {
                       setActiveSubScreen('top_up_loan');
@@ -630,12 +654,11 @@ function MainApp() {
               currentTab={currentTab}
               onSelectTab={(tab) => {
                 if (tab === 'apply') {
-                  const personalCat = categories.find((c) => c.id === 'personal') || loanService.getCategoryById('personal') || categories[0];
-                  setSelectedCategory(personalCat);
-                  setActiveSubScreen('loan_apply');
+                  setActiveSubScreen('services');
                 } else {
                   setCurrentTab(tab);
                   setActiveSubScreen(null);
+                  setSubScreenHistory([]);
                 }
               }}
               pendingDocsCount={pendingDocsCount}
@@ -655,8 +678,8 @@ function MainApp() {
             user={user}
             onCompleteNow={() => {
               setShowCompleteProfileModal(false);
-              // Direct navigation to Documents & KYC screen
-              setActiveSubScreen('documents');
+              // Direct navigation to 3-step Profile Completion screen
+              setActiveSubScreen('profile_settings');
             }}
             onDismiss={() => setShowCompleteProfileModal(false)}
           />

@@ -56,7 +56,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
 
   // OTP Verification state after form entry
   const [isOtpStep, setIsOtpStep] = useState<boolean>(false);
-  const [otpCode, setOtpCode] = useState<string>('123456');
+  const [otpCode, setOtpCode] = useState<string>('');
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -228,7 +228,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
             </View>
             <View style={styles.successDetailRow}>
               <Text style={styles.successDetailLabel}>Customer ID</Text>
-              <Text style={[styles.successDetailValue, { color: 'colors.primary', fontWeight: '800' }]}>
+              <Text style={[styles.successDetailValue, { color: colors.primary, fontWeight: '800' }]}>
                 {registrationSuccessUser.id}
               </Text>
             </View>
@@ -268,7 +268,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
               <Text style={styles.requiredTag}>Required</Text>
             </View>
             <View style={[styles.inputWrapper, isNameValid && styles.inputWrapperActive]}>
-              <Ionicons name="person-outline" size={18} color={isNameValid ? 'colors.primary' : '#94a3b8'} style={styles.inputIcon} />
+              <Ionicons name="person-outline" size={18} color={isNameValid ? colors.primary : '#94a3b8'} style={styles.inputIcon} />
               <TextInput
                 style={styles.textInput}
                 placeholder="e.g. Rahul V. Sharma"
@@ -292,7 +292,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
               </View>
               <TextInput
                 style={styles.textInput}
-                placeholder="9545555999"
+                placeholder="Enter 10-digit mobile number"
                 placeholderTextColor="#94a3b8"
                 keyboardType="phone-pad"
                 maxLength={10}
@@ -321,7 +321,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
               <Ionicons
                 name="mail-outline"
                 size={18}
-                color={isEmailEntered && !isEmailValid ? '#dc2626' : isEmailValid && isEmailEntered ? 'colors.primary' : '#94a3b8'}
+                color={isEmailEntered && !isEmailValid ? '#dc2626' : isEmailValid && isEmailEntered ? colors.primary : '#94a3b8'}
                 style={styles.inputIcon}
               />
               <TextInput
@@ -393,7 +393,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
               <Ionicons
                 name="location-outline"
                 size={18}
-                color={isCityWrong ? '#dc2626' : city.length > 0 ? 'colors.primary' : '#94a3b8'}
+                color={isCityWrong ? '#dc2626' : city.length > 0 ? colors.primary : '#94a3b8'}
                 style={styles.inputIcon}
               />
               <TextInput
@@ -435,7 +435,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                 <Ionicons
                   name={showCityPicker ? 'chevron-up' : 'chevron-down'}
                   size={14}
-                  color={isCityWrong ? '#dc2626' : 'colors.primary'}
+                  color={isCityWrong ? '#dc2626' : colors.primary}
                 />
               </TouchableOpacity>
             </View>
@@ -632,7 +632,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                       <Ionicons
                         name={item.icon as any}
                         size={18}
-                        color={isSelected ? 'colors.primary' : '#64748b'}
+                        color={isSelected ? colors.primary : '#64748b'}
                         style={{ marginRight: 10 }}
                       />
                       <View style={{ flex: 1 }}>
@@ -756,8 +756,10 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
               <ActivityIndicator color={colors.white} />
             ) : (
               <>
+                <View style={styles.primaryBtnIconWrap}>
+                  <Ionicons name="arrow-forward" size={17} color="#ffffff" />
+                </View>
                 <Text style={styles.primaryBtnText}>Continue & Verify WhatsApp OTP</Text>
-                <Ionicons name="arrow-forward" size={18} color={colors.white} />
               </>
             )}
           </TouchableOpacity>
@@ -792,20 +794,14 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
             We've sent a verification code to WhatsApp number <Text style={{ fontWeight: '700', color: '#0f172a' }}>+91 {mobileNumber}</Text>
           </Text>
 
-          <View style={styles.demoOtpBox}>
-            <Ionicons name="information-circle" size={16} color="#059669" />
-            <Text style={styles.demoOtpText}>
-              Demo OTP: <Text style={{ fontWeight: '800' }}>123456</Text>
-            </Text>
-          </View>
-
           <TextInput
             style={styles.otpInputField}
             keyboardType="numeric"
             value={otpCode}
             onChangeText={setOtpCode}
             maxLength={6}
-            placeholder="123456"
+            placeholder="Enter OTP"
+            placeholderTextColor="#94a3b8"
             autoFocus
           />
 
@@ -817,7 +813,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
           )}
 
           <TouchableOpacity
-            style={styles.primaryBtn}
+            style={[styles.verifyOtpBtn, (isLoading || otpCode.length < 6) && styles.primaryBtnDisabled]}
             onPress={handleVerifyAndCompleteSignUp}
             disabled={isLoading || otpCode.length < 6}
             activeOpacity={0.85}
@@ -826,8 +822,10 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
               <ActivityIndicator color={colors.white} />
             ) : (
               <>
+                <View style={styles.primaryBtnIconWrap}>
+                  <Ionicons name="checkmark-circle" size={18} color="#ffffff" />
+                </View>
                 <Text style={styles.primaryBtnText}>Verify & Create Account</Text>
-                <Ionicons name="checkmark-circle" size={18} color={colors.white} />
               </>
             )}
           </TouchableOpacity>
@@ -867,7 +865,7 @@ const styles = StyleSheet.create({
   brandSub: {
     fontSize: 16,
     fontWeight: '700',
-    color: 'colors.primary',
+    color: colors.primary,
     marginTop: 2,
   },
   brandTagline: {
@@ -974,7 +972,7 @@ const styles = StyleSheet.create({
   cardBadgeText: {
     fontSize: 11,
     fontWeight: '800',
-    color: 'colors.primary',
+    color: colors.primary,
     letterSpacing: 0.5,
   },
   inputGroup: {
@@ -1016,7 +1014,7 @@ const styles = StyleSheet.create({
     paddingVertical: Platform.OS === 'ios' ? 12 : 8,
   },
   inputWrapperActive: {
-    borderColor: 'colors.primary',
+    borderColor: colors.primary,
     backgroundColor: '#ffffff',
   },
   inputIcon: {
@@ -1067,7 +1065,7 @@ const styles = StyleSheet.create({
   selectCityBtnText: {
     fontSize: 12,
     fontWeight: '700',
-    color: 'colors.primary',
+    color: colors.primary,
   },
   cityErrorAlert: {
     flexDirection: 'row',
@@ -1150,7 +1148,7 @@ const styles = StyleSheet.create({
     borderColor: '#bfdbfe',
     marginTop: 8,
     overflow: 'hidden',
-    shadowColor: 'colors.primary',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -1245,7 +1243,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   dropdownSelectBoxActive: {
-    borderColor: 'colors.primary',
+    borderColor: colors.primary,
     backgroundColor: '#f8faff',
   },
   dropdownLeftWrap: {
@@ -1266,7 +1264,7 @@ const styles = StyleSheet.create({
     borderColor: '#bfdbfe',
     marginTop: 8,
     overflow: 'hidden',
-    shadowColor: 'colors.primary',
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
@@ -1324,8 +1322,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   checkboxActive: {
-    backgroundColor: 'colors.primary',
-    borderColor: 'colors.primary',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   termsText: {
     flex: 1,
@@ -1334,7 +1332,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   termsLink: {
-    color: 'colors.primary',
+    color: colors.primary,
     fontWeight: '700',
   },
   errorBox: {
@@ -1358,24 +1356,58 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'colors.primary',
-    borderRadius: 12,
-    paddingVertical: 14,
-    gap: 8,
-    marginTop: 6,
-    shadowColor: 'colors.primary',
+    backgroundColor: '#004aad', // Professional high-contrast banking royal blue
+    borderRadius: 14,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    gap: 10,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#003680',
+    shadowColor: '#004aad',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.35,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 4,
+  },
+  verifyOtpBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#16a34a', // Trust-building verification emerald green
+    borderRadius: 14,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    gap: 10,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#15803d',
+    shadowColor: '#16a34a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  primaryBtnIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   primaryBtnDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
+    backgroundColor: '#94a3b8',
+    borderColor: '#cbd5e1',
+    shadowOpacity: 0,
+    elevation: 0,
   },
   primaryBtnText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '800',
     color: '#ffffff',
+    letterSpacing: 0.3,
   },
   switchRow: {
     flexDirection: 'row',
@@ -1390,7 +1422,7 @@ const styles = StyleSheet.create({
   switchLink: {
     fontSize: 13,
     fontWeight: '800',
-    color: 'colors.primary',
+    color: colors.primary,
   },
   backBtn: {
     flexDirection: 'row',
@@ -1474,7 +1506,7 @@ const styles = StyleSheet.create({
   currencySymbolText: {
     fontSize: 16,
     fontWeight: '800',
-    color: 'colors.primary',
+    color: colors.primary,
     marginRight: 8,
   },
   domainSuggestContainer: {
@@ -1508,7 +1540,7 @@ const styles = StyleSheet.create({
   domainChipAt: {
     fontSize: 12,
     fontWeight: '800',
-    color: 'colors.primary',
+    color: colors.primary,
     marginRight: 2,
   },
   domainChipText: {

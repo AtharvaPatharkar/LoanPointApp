@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -9,10 +9,12 @@ import {
   Modal,
   Alert,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LoanApplication, ApplicationStatus, UserProfile } from '../../types';
+import { LoanApplication, ApplicationStatus, UserProfile, InsuranceApplication, InsuranceStatus, ReferralLead, ReferralStatus } from '../../types';
 import { loanService } from '../../services/loanService';
+import { dbSyncService } from '../../services/dbSyncService';
 import { COMPANY_INFO } from '../../data/mockData';
 import { colors } from '../../theme/colors';
 
@@ -32,14 +34,44 @@ const ALL_STATUSES: ApplicationStatus[] = [
   'Rejected',
 ];
 
+const ALL_INSURANCE_STATUSES: InsuranceStatus[] = [
+  'Request Received',
+  'Quote Shared',
+  'Inspection Scheduled',
+  'Documents Verified',
+  'Policy Issued',
+  'Rejected',
+];
+
+const ALL_REFERRAL_STATUSES: ReferralStatus[] = [
+  'Referral Submitted',
+  'Login / Application',
+  'Loan Approval',
+  'Disbursed',
+  'Rejected',
+];
+
 export const AdminScreen: React.FC<AdminScreenProps> = ({
   currentUser,
   onLogout,
   onSwitchToCustomerView,
 }) => {
+  const [activeAdminTab, setActiveAdminTab] = useState<'loans' | 'insurance' | 'referrals'>('loans');
+  const [referralLeads, setReferralLeads] = useState<ReferralLead[]>([]);
+  const [selectedRefFilter, setSelectedRefFilter] = useState<string>('All');
+  const [editingRefLead, setEditingRefLead] = useState<ReferralLead | null>(null);
+  const [newRefStatus, setNewRefStatus] = useState<string>('Referral Submitted');
+  const [adminRefRemarks, setAdminRefRemarks] = useState<string>('');
+  const [nextRefActionNote, setNextRefActionNote] = useState<string>('');
+  const [refPayoutAmount, setRefPayoutAmount] = useState<string>('0');
+  const [refPayoutStatus, setRefPayoutStatus] = useState<string>('Pending');
+  const [refSaveSuccessMsg, setRefSaveSuccessMsg] = useState<string | null>(null);
   const [applications, setApplications] = useState<LoanApplication[]>(loanService.getApplications());
+  const [insuranceApps, setInsuranceApps] = useState<InsuranceApplication[]>([]);
   const [selectedFilter, setSelectedFilter] = useState<string>('All');
+  const [selectedInsFilter, setSelectedInsFilter] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isLoadingDb, setIsLoadingDb] = useState<boolean>(false);
 
   // Status Update Modal State
   const [editingApp, setEditingApp] = useState<LoanApplication | null>(null);
@@ -48,10 +80,41 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
   const [nextActionNote, setNextActionNote] = useState<string>('');
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
 
-  // Refresh application list
-  const refreshList = () => {
-    setApplications(loanService.getApplications());
+  // Status Update Modal State for Insurance
+  const [editingInsApp, setEditingInsApp] = useState<InsuranceApplication | null>(null);
+  const [newInsStatus, setNewInsStatus] = useState<string>('Request Received');
+  const [adminInsRemarks, setAdminInsRemarks] = useState<string>('');
+  const [nextInsActionNote, setNextInsActionNote] = useState<string>('');
+  const [insSaveSuccessMsg, setInsSaveSuccessMsg] = useState<string | null>(null);
+
+  // Refresh application list from Neon Postgres DB
+  const refreshList = async () => {
+    setIsLoadingDb(true);
+    try {
+      const [dbApps, dbIns, dbRefs] = await Promise.all([
+        dbSyncService.getAllApplications(),
+        dbSyncService.getAllInsuranceApplications(),
+        dbSyncService.getAllReferralLeads(),
+      ]);
+
+      if (dbApps && dbApps.length > 0) {
+        setApplications(dbApps);
+      } else {
+        setApplications(loanService.getApplications());
+      }
+
+      setInsuranceApps(dbIns || []);
+      setReferralLeads(dbRefs || []);
+    } catch {
+      setApplications(loanService.getApplications());
+    } finally {
+      setIsLoadingDb(false);
+    }
   };
+
+  useEffect(() => {
+    refreshList();
+  }, []);
 
   // Open edit modal
   const handleOpenEdit = (app: LoanApplication) => {
@@ -62,18 +125,47 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
     setSaveSuccessMsg(null);
   };
 
+  const handleOpenInsEdit = (app: InsuranceApplication) => {
+    setEditingInsApp(app);
+    setNewInsStatus(app.status);
+    setAdminInsRemarks(app.remarks || '');
+    setNextInsActionNote(app.nextAction || '');
+    setInsSaveSuccessMsg(null);
+  };
+
   // Save changes
-  const handleSaveStatus = () => {
+  const handleSaveStatus = async () => {
     if (!editingApp) return;
 
     try {
+      const nowFormatted = new Date().toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      });
+
+      // Update in-memory loan service
       loanService.updateApplicationStatus(
         editingApp.id,
         newStatus,
         adminRemarks,
-        nextActionNote
+        nextActionNote,
+        nowFormatted
       );
-      refreshList();
+
+      // Save directly to Neon Lakebase Postgres with exact timestamp and reason
+      await dbSyncService.updateApplicationStatus(
+        editingApp.id,
+        newStatus,
+        adminRemarks,
+        nextActionNote,
+        nowFormatted
+      );
+
+      await refreshList();
       setSaveSuccessMsg(`Application ${editingApp.id} updated to "${newStatus}"!`);
       setTimeout(() => {
         setEditingApp(null);
@@ -81,6 +173,65 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
       }, 900);
     } catch {
       Alert.alert('Error', 'Failed to update application');
+    }
+  };
+
+  const handleSaveInsStatus = async () => {
+    if (!editingInsApp) return;
+    try {
+      const nowIso = new Date().toISOString();
+      await dbSyncService.updateInsuranceApplicationStatus(
+        editingInsApp.id,
+        newInsStatus,
+        adminInsRemarks,
+        nextInsActionNote,
+        nowIso
+      );
+      await refreshList();
+      setInsSaveSuccessMsg(`Insurance ${editingInsApp.id} updated to "${newInsStatus}"!`);
+      setTimeout(() => {
+        setEditingInsApp(null);
+        setInsSaveSuccessMsg(null);
+      }, 1200);
+    } catch (err) {
+      console.error('Failed to update insurance status:', err);
+      Alert.alert('Error', 'Failed to update insurance status');
+    }
+  };
+
+  const handleOpenRefEdit = (ref: ReferralLead) => {
+    setEditingRefLead(ref);
+    setNewRefStatus(ref.status);
+    setAdminRefRemarks(ref.remarks || '');
+    setNextRefActionNote(ref.nextAction || '');
+    setRefPayoutAmount(ref.payoutAmount ? ref.payoutAmount.toString() : '0');
+    setRefPayoutStatus(ref.payoutStatus || 'Pending');
+    setRefSaveSuccessMsg(null);
+  };
+
+  const handleSaveRefStatus = async () => {
+    if (!editingRefLead) return;
+    try {
+      const nowIso = new Date().toISOString();
+      const numPayout = parseFloat(refPayoutAmount) || 0;
+      await dbSyncService.updateReferralLeadStatus(
+        editingRefLead.id,
+        newRefStatus,
+        adminRefRemarks,
+        nextRefActionNote,
+        numPayout,
+        refPayoutStatus,
+        nowIso
+      );
+      await refreshList();
+      setRefSaveSuccessMsg(`Referral ${editingRefLead.id} updated to "${newRefStatus}"!`);
+      setTimeout(() => {
+        setEditingRefLead(null);
+        setRefSaveSuccessMsg(null);
+      }, 1200);
+    } catch (err) {
+      console.error('Failed to update referral status:', err);
+      Alert.alert('Error', 'Failed to update referral status');
     }
   };
 
@@ -96,6 +247,70 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
       `Hello, this is Loan Point Admin regarding your ${app.loanTypeName} application (${app.id}). Current status: ${app.status}.`
     );
     Linking.openURL(`https://wa.me/91${targetPhone.replace(/\D/g, '').slice(-10)}?text=${msg}`).catch(() => {});
+  };
+
+  // Insurance Filtering
+  const filteredInsuranceApps = insuranceApps.filter((app) => {
+    const matchesFilter =
+      selectedInsFilter === 'All' ? true : app.status === selectedInsFilter;
+    const query = searchQuery.toLowerCase().trim();
+    const matchesQuery =
+      query === '' ||
+      app.id.toLowerCase().includes(query) ||
+      (app.insuranceTypeName && app.insuranceTypeName.toLowerCase().includes(query)) ||
+      app.insuranceType.toLowerCase().includes(query) ||
+      (app.applicantName && app.applicantName.toLowerCase().includes(query)) ||
+      (app.mobile && app.mobile.includes(query));
+
+    return matchesFilter && matchesQuery;
+  });
+
+  const getInsuranceBadgeStyle = (status: string) => {
+    switch (status) {
+      case 'Policy Issued':
+        return { bg: '#ecfdf5', text: '#15803d', border: '#86efac' };
+      case 'Rejected':
+        return { bg: '#fef2f2', text: '#dc2626', border: '#fca5a5' };
+      case 'Quote Shared':
+        return { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' };
+      case 'Inspection Scheduled':
+        return { bg: '#fffbeb', text: '#d97706', border: '#fde68a' };
+      case 'Documents Verified':
+        return { bg: '#f0fdf4', text: '#16a34a', border: '#bbf7d0' };
+      default:
+        return { bg: '#f1f5f9', text: '#475569', border: '#cbd5e1' };
+    }
+  };
+
+  // Referral Filtering
+  const filteredReferralLeads = referralLeads.filter((ref) => {
+    const matchesFilter =
+      selectedRefFilter === 'All' ? true : ref.status === selectedRefFilter;
+    const query = searchQuery.toLowerCase().trim();
+    const matchesQuery =
+      query === '' ||
+      ref.id.toLowerCase().includes(query) ||
+      ref.friendName.toLowerCase().includes(query) ||
+      ref.friendMobile.includes(query) ||
+      ref.loanProduct.toLowerCase().includes(query) ||
+      ref.referrerMobile.includes(query);
+
+    return matchesFilter && matchesQuery;
+  });
+
+  const getReferralBadgeStyle = (status: string) => {
+    switch (status) {
+      case 'Disbursed':
+        return { bg: '#ecfdf5', text: '#15803d', border: '#86efac' };
+      case 'Loan Approval':
+        return { bg: '#fffbeb', text: '#d97706', border: '#fde68a' };
+      case 'Login / Application':
+        return { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' };
+      case 'Rejected':
+        return { bg: '#fef2f2', text: '#dc2626', border: '#fca5a5' };
+      default:
+        return { bg: '#f1f5f9', text: '#475569', border: '#cbd5e1' };
+    }
   };
 
   // Filtering
@@ -176,6 +391,99 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
           Welcome, {currentUser?.name || 'Loan Point Branch Administrator'}
         </Text>
         <Text style={styles.headerSub}>Loan Point Nanded Central Application Management</Text>
+
+        {/* Top Module Segmented Tabs: Loan Applications vs Insurance Requests */}
+        <View style={{ flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 10, padding: 4, marginTop: 12 }}>
+          <TouchableOpacity
+            style={{
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingVertical: 8,
+              borderRadius: 8,
+              backgroundColor: activeAdminTab === 'loans' ? '#ffffff' : 'transparent',
+              gap: 6,
+            }}
+            onPress={() => setActiveAdminTab('loans')}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name="cash"
+              size={16}
+              color={activeAdminTab === 'loans' ? '#004aad' : '#ffffff'}
+            />
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: '700',
+                color: activeAdminTab === 'loans' ? '#004aad' : '#ffffff',
+              }}
+            >
+              Loan Applications ({applications.length})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={{
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingVertical: 8,
+              borderRadius: 8,
+              backgroundColor: activeAdminTab === 'insurance' ? '#ffffff' : 'transparent',
+              gap: 6,
+            }}
+            onPress={() => setActiveAdminTab('insurance')}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name="shield-checkmark"
+              size={16}
+              color={activeAdminTab === 'insurance' ? '#004aad' : '#ffffff'}
+            />
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: '700',
+                color: activeAdminTab === 'insurance' ? '#004aad' : '#ffffff',
+              }}
+            >
+              Insurance Requests ({insuranceApps.length})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={{
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingVertical: 8,
+              borderRadius: 8,
+              backgroundColor: activeAdminTab === 'referrals' ? '#ffffff' : 'transparent',
+              gap: 6,
+            }}
+            onPress={() => setActiveAdminTab('referrals')}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name="gift"
+              size={16}
+              color={activeAdminTab === 'referrals' ? '#004aad' : '#ffffff'}
+            />
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: '700',
+                color: activeAdminTab === 'referrals' ? '#004aad' : '#ffffff',
+              }}
+            >
+              Referrals ({referralLeads.length})
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -458,6 +766,251 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                 <TouchableOpacity
                   style={styles.modalSaveBtn}
                   onPress={handleSaveStatus}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="save-outline" size={16} color="#ffffff" />
+                  <Text style={styles.modalSaveText}>Save Changes</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* Status Update Modal for Referral */}
+      {editingRefLead && (
+        <Modal
+          visible={true}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setEditingRefLead(null)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <View>
+                  <Text style={styles.modalTitle}>Update Referral Lead</Text>
+                  <Text style={styles.modalSub}>
+                    {editingRefLead.id} • {editingRefLead.friendName}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setEditingRefLead(null)}
+                  style={styles.closeBtn}
+                >
+                  <Ionicons name="close" size={20} color="#64748b" />
+                </TouchableOpacity>
+              </View>
+
+              {refSaveSuccessMsg && (
+                <View style={styles.modalSuccessBanner}>
+                  <Ionicons name="checkmark-circle" size={18} color="#15803d" />
+                  <Text style={styles.modalSuccessText}>{refSaveSuccessMsg}</Text>
+                </View>
+              )}
+
+              <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
+                {/* Select New Referral Status */}
+                <Text style={styles.inputGroupLabel}>Select Status:</Text>
+                <View style={styles.statusGrid}>
+                  {ALL_REFERRAL_STATUSES.map((st) => {
+                    const isSelected = newRefStatus === st;
+                    return (
+                      <TouchableOpacity
+                        key={st}
+                        style={[
+                          styles.statusOptionPill,
+                          isSelected && styles.statusOptionPillActive,
+                        ]}
+                        onPress={() => setNewRefStatus(st)}
+                        activeOpacity={0.7}
+                      >
+                        {isSelected && (
+                          <Ionicons name="checkmark" size={13} color="#ffffff" style={{ marginRight: 4 }} />
+                        )}
+                        <Text
+                          style={[
+                            styles.statusOptionText,
+                            isSelected && styles.statusOptionTextActive,
+                          ]}
+                        >
+                          {st}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Edit Payout Amount */}
+                <Text style={styles.inputGroupLabel}>Commission / Payout Amount (₹):</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={refPayoutAmount}
+                  onChangeText={setRefPayoutAmount}
+                  placeholder="e.g. 15000"
+                  placeholderTextColor="#94a3b8"
+                  keyboardType="numeric"
+                />
+
+                {/* Edit Payout Status */}
+                <Text style={styles.inputGroupLabel}>Payout Status (Pending / Approved / Paid):</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={refPayoutStatus}
+                  onChangeText={setRefPayoutStatus}
+                  placeholder="e.g. Approved or Paid"
+                  placeholderTextColor="#94a3b8"
+                />
+
+                {/* Edit Next Action */}
+                <Text style={styles.inputGroupLabel}>Customer Next Action Instruction:</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={nextRefActionNote}
+                  onChangeText={setNextRefActionNote}
+                  placeholder="e.g. Loan approved. Payout scheduled to referrer bank account."
+                  placeholderTextColor="#94a3b8"
+                  multiline
+                  numberOfLines={2}
+                />
+
+                {/* Edit Admin Remarks / Reasons */}
+                <Text style={styles.inputGroupLabel}>Admin Remarks / Decision Reason:</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={adminRefRemarks}
+                  onChangeText={setAdminRefRemarks}
+                  placeholder="e.g. Candidate submitted documents. Sanctioned at 9.5% p.a."
+                  placeholderTextColor="#94a3b8"
+                  multiline
+                  numberOfLines={2}
+                />
+              </ScrollView>
+
+              {/* Action Buttons */}
+              <View style={styles.modalBtnRow}>
+                <TouchableOpacity
+                  style={styles.modalCancelBtn}
+                  onPress={() => setEditingRefLead(null)}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.modalSaveBtn}
+                  onPress={handleSaveRefStatus}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="save-outline" size={16} color="#ffffff" />
+                  <Text style={styles.modalSaveText}>Save Changes</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* Status Update Modal for Insurance */}
+      {editingInsApp && (
+        <Modal
+          visible={true}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setEditingInsApp(null)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <View>
+                  <Text style={styles.modalTitle}>Update Insurance Request</Text>
+                  <Text style={styles.modalSub}>
+                    {editingInsApp.id} • {editingInsApp.insuranceTypeName || editingInsApp.insuranceType}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setEditingInsApp(null)}
+                  style={styles.closeBtn}
+                >
+                  <Ionicons name="close" size={20} color="#64748b" />
+                </TouchableOpacity>
+              </View>
+
+              {insSaveSuccessMsg && (
+                <View style={styles.modalSuccessBanner}>
+                  <Ionicons name="checkmark-circle" size={18} color="#15803d" />
+                  <Text style={styles.modalSuccessText}>{insSaveSuccessMsg}</Text>
+                </View>
+              )}
+
+              <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
+                {/* Select New Insurance Status */}
+                <Text style={styles.inputGroupLabel}>Select Status:</Text>
+                <View style={styles.statusGrid}>
+                  {ALL_INSURANCE_STATUSES.map((st) => {
+                    const isSelected = newInsStatus === st;
+                    return (
+                      <TouchableOpacity
+                        key={st}
+                        style={[
+                          styles.statusOptionPill,
+                          isSelected && styles.statusOptionPillActive,
+                        ]}
+                        onPress={() => setNewInsStatus(st)}
+                        activeOpacity={0.7}
+                      >
+                        {isSelected && (
+                          <Ionicons name="checkmark" size={13} color="#ffffff" style={{ marginRight: 4 }} />
+                        )}
+                        <Text
+                          style={[
+                            styles.statusOptionText,
+                            isSelected && styles.statusOptionTextActive,
+                          ]}
+                        >
+                          {st}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Edit Next Action */}
+                <Text style={styles.inputGroupLabel}>Customer Next Action Instruction:</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={nextInsActionNote}
+                  onChangeText={setNextInsActionNote}
+                  placeholder="e.g. Insurance advisor will share policy quote options over WhatsApp..."
+                  placeholderTextColor="#94a3b8"
+                  multiline
+                  numberOfLines={2}
+                />
+
+                {/* Edit Admin Remarks / Reasons */}
+                <Text style={styles.inputGroupLabel}>Admin Remarks / Decision Reason:</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={adminInsRemarks}
+                  onChangeText={setAdminInsRemarks}
+                  placeholder="e.g. Star Health & Care Insurance quotes verified. Premium comparison shared."
+                  placeholderTextColor="#94a3b8"
+                  multiline
+                  numberOfLines={2}
+                />
+              </ScrollView>
+
+              {/* Action Buttons */}
+              <View style={styles.modalBtnRow}>
+                <TouchableOpacity
+                  style={styles.modalCancelBtn}
+                  onPress={() => setEditingInsApp(null)}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.modalSaveBtn}
+                  onPress={handleSaveInsStatus}
                   activeOpacity={0.85}
                 >
                   <Ionicons name="save-outline" size={16} color="#ffffff" />

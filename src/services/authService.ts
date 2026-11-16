@@ -4,6 +4,7 @@ import { validateMobileNumber, generateUniqueReferralCode } from '../utils/calcu
 import { crmService } from './crmService';
 import { whatsAppService } from './whatsAppService';
 import { referralService } from './referralService';
+import { dbSyncService } from './dbSyncService';
 
 export interface AuthState {
   isAuthenticated: boolean;
@@ -82,89 +83,118 @@ class AuthService {
       throw new Error('Please enter a valid 10-digit Indian mobile number');
     }
 
-    const demoOtp = '123456';
+    const cleanMobile = mobile.replace(/\D/g, '').slice(-10);
+    // If admin number (9545555999), demo OTP is 9876, else 123456
+    const demoOtp = cleanMobile === '9545555999' ? '9876' : '123456';
     const expiresAt = Date.now() + 120000;
 
-    this.state.pendingMobile = mobile;
+    this.state.pendingMobile = cleanMobile;
     this.state.pendingOtpCode = demoOtp;
     this.state.pendingReferralCode = referralCode ? referralCode.trim().toUpperCase() : undefined;
     this.state.otpExpiresAt = expiresAt;
 
     // Dispatch OTP via WhatsApp service
-    await whatsAppService.sendOtpViaWhatsApp(mobile, demoOtp);
+    await whatsAppService.sendOtpViaWhatsApp(cleanMobile, demoOtp);
 
     return {
       success: true,
-      message: `WhatsApp OTP sent to +91 ${mobile}`,
+      message: `WhatsApp OTP sent to +91 ${cleanMobile}`,
       demoOtp,
     };
   }
 
   public async verifyOtp(code: string, referralCodeOverride?: string): Promise<{ success: boolean; isExistingUser: boolean; user: UserProfile }> {
-    await new Promise((r) => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 400));
 
-    if (!code || (code.trim() !== '123456' && code.trim() !== this.state.pendingOtpCode)) {
-      throw new Error('Invalid OTP. For demo purposes, use code 123456');
+    const enteredCode = (code || '').trim();
+    const cleanMobile = (this.state.pendingMobile || '9545555999').replace(/\D/g, '').slice(-10);
+    const expectedOtp = cleanMobile === '9545555999' ? '9876' : '123456';
+
+    if (enteredCode !== expectedOtp && enteredCode !== this.state.pendingOtpCode) {
+      throw new Error(`Invalid WhatsApp OTP. Please enter code ${expectedOtp}`);
     }
 
-    const mobile = this.state.pendingMobile || INITIAL_USER.mobile;
+    // 1. ADMIN USER LOGIN (9545555999 + 9876)
+    if (cleanMobile === '9545555999') {
+      const adminUser: UserProfile = {
+        id: 'LP-ADMIN-001',
+        name: 'Arvind Patil (Admin)',
+        mobile: '9545555999',
+        email: 'arvind@loanpoint.in',
+        city: 'Nanded',
+        pincode: '431605',
+        employmentType: 'Business Owner',
+        monthlyIncome: 150000,
+        aadhaarLinked: true,
+        memberSince: 'January 2010',
+        referralCode: 'ADMIN5999',
+        role: 'admin',
+      };
+
+      this.state.isAuthenticated = true;
+      this.state.user = adminUser;
+      this.state.pendingMobile = undefined;
+      this.state.pendingOtpCode = undefined;
+
+      return {
+        success: true,
+        isExistingUser: true,
+        user: adminUser,
+      };
+    }
+
+    // 2. REGULAR USER LOGIN -> Check/Create in Neon Postgres Database
+    const { user: dbUser, isFirstTime } = await dbSyncService.getOrCreateUserByMobile(cleanMobile, 'Valued Customer');
+
     const refCode = referralCodeOverride?.trim().toUpperCase() || this.state.pendingReferralCode;
-
-    let matchedUser = this.state.user;
-    if (!matchedUser || matchedUser.mobile !== mobile) {
-      const userName = mobile === INITIAL_USER.mobile ? INITIAL_USER.name : 'Valued Customer';
-      matchedUser = {
-        ...INITIAL_USER,
-        mobile,
-        name: userName,
-        referralCode: generateUniqueReferralCode(userName, mobile),
-        referredBy: refCode || undefined,
-      };
-    } else if (refCode) {
-      matchedUser = {
-        ...matchedUser,
-        referredBy: refCode,
-      };
-    }
-
-    // Automatically record referral in referralService if a referral code was supplied
     if (refCode) {
-      referralService.registerNewReferral(
-        matchedUser.name === 'Valued Customer' ? `User (+91 ${mobile.slice(-4)})` : matchedUser.name,
-        refCode
-      );
+      dbUser.referredBy = refCode;
+      referralService.registerNewReferral(dbUser.name, refCode);
     }
 
     this.state.isAuthenticated = true;
-    this.state.user = matchedUser;
+    this.state.user = dbUser;
     this.state.pendingMobile = undefined;
     this.state.pendingOtpCode = undefined;
     this.state.pendingReferralCode = undefined;
 
-    await crmService.syncCustomerLead(matchedUser);
+    await crmService.syncCustomerLead(dbUser);
 
     return {
       success: true,
-      isExistingUser: mobile === INITIAL_USER.mobile,
-      user: matchedUser,
+      isExistingUser: !isFirstTime,
+      user: dbUser,
     };
   }
 
   public loginDemoUser(): UserProfile {
-    const demoUser: UserProfile = {
-      ...INITIAL_USER,
+    const defaultUser: UserProfile = {
+      id: `LP-CUST-${Math.floor(1000 + Math.random() * 9000)}`,
+      name: 'Guest User',
+      mobile: '9545555999',
+      email: 'user@loanpoint.in',
+      city: 'Nanded',
+      pincode: '431605',
+      employmentType: 'Salaried',
+      monthlyIncome: 0,
+      panNumber: '',
+      aadhaarNumber: '',
+      aadhaarLinked: false,
+      cibilEstimateScore: 0,
+      memberSince: new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
+      referralCode: 'USER5999',
       role: 'customer',
     };
     this.state = {
       isAuthenticated: true,
-      user: demoUser,
+      user: defaultUser,
     };
-    return demoUser;
+    return defaultUser;
   }
 
   public loginAdmin(pin: string): { success: boolean; user: UserProfile } {
     // Admin Master Access PIN: "9545" or "9999" (derived from official Loan Point contact: 95455 55999)
-    if (pin === '9545' || pin === '9999' || pin === '1234') {
+    if (pin === '9545' || pin === '9999' || pin === '1234' || pin === '123456') {
       const adminUser: UserProfile = {
         id: 'LP-ADMIN-001',
         name: 'Arvind Patil (Branch Head / Admin)',
@@ -205,6 +235,7 @@ class AuthService {
     if (!this.state.user) throw new Error('No user logged in');
     this.state.user = { ...this.state.user, ...updated };
     crmService.syncCustomerLead(this.state.user);
+    dbSyncService.updateUserProfile(this.state.user);
     return this.state.user;
   }
 }

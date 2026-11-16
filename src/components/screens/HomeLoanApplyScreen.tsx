@@ -53,15 +53,15 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
   // ---------------- STEP 1: Basic Details ----------------
-  const [fullName, setFullName] = useState<string>(user?.name || 'Arvind Patil');
-  const [mobileNumber, setMobileNumber] = useState<string>(user?.mobile || '9823012345');
-  const [emailId, setEmailId] = useState<string>(user?.email || 'arvind.patil@example.com');
+  const [fullName, setFullName] = useState<string>(user?.name || '');
+  const [mobileNumber, setMobileNumber] = useState<string>(user?.mobile || '');
+  const [emailId, setEmailId] = useState<string>(user?.email || '');
   const [dateOfBirth, setDateOfBirth] = useState<string>('15 Aug 1990');
-  const [city, setCity] = useState<string>(user?.city || 'Nanded, Maharashtra');
+  const [city, setCity] = useState<string>(user?.city || '');
 
   // ---------------- STEP 2: Property Details ----------------
   const [propertyType, setPropertyType] = useState<string>('Ready to Move Flat / Apartment');
-  const [propertyLocation, setPropertyLocation] = useState<string>(user?.city || 'Nanded, Maharashtra');
+  const [propertyLocation, setPropertyLocation] = useState<string>(user?.city || '');
   const [propertyValue, setPropertyValue] = useState<string>('₹75,00,000');
   const [propertyStage, setPropertyStage] = useState<string>('Selected / Finalized');
 
@@ -77,8 +77,8 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
   const [tenureYears, setTenureYears] = useState<string>('20 Years');
 
   // ---------------- STEP 4: Documents ----------------
-  const [panNumber, setPanNumber] = useState<string>(user?.panNumber || 'ABCDE1234F');
-  const [aadhaarNumber, setAadhaarNumber] = useState<string>(user?.aadhaarNumber || '987654321012');
+  const [panNumber, setPanNumber] = useState<string>(user?.panNumber || '');
+  const [aadhaarNumber, setAadhaarNumber] = useState<string>(user?.aadhaarNumber || '');
   const [uploadedDocs, setUploadedDocs] = useState<UploadedHomeDocsState>({
     panCard: true,
     aadhaarCard: true,
@@ -457,7 +457,7 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
                     maxLength={10}
                     value={mobileNumber}
                     onChangeText={setMobileNumber}
-                  />
+                   editable={false} />
                 </View>
               </View>
             </View>

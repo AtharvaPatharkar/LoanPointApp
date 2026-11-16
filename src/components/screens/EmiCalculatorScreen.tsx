@@ -7,12 +7,16 @@ import {
   ScrollView,
   TextInput,
   Platform,
+  Image,
+  Dimensions,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { calculateEMI, calculateTotalInterest, calculateTotalPayment, formatINR } from '../../utils/calculator';
 import { LoanType } from '../../types';
 import { colors } from '../../theme/colors';
 import { CustomSlider } from '../common/CustomSlider';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface EmiCalculatorScreenProps {
   initialLoanType?: LoanType;
@@ -190,6 +194,16 @@ export const EmiCalculatorScreen: React.FC<EmiCalculatorScreenProps> = ({
   return (
     <View style={styles.root}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        {/* 1. Hero Section: Top Banner with assets/inner-banner/emi-calculator-inner.png */}
+        <View style={styles.heroBannerImageContainer}>
+          <Image
+            source={require('../../../assets/inner-banner/emi-calculator-inner.png')}
+            style={styles.heroBannerImage}
+            resizeMode="contain"
+          />
+        </View>
+
+        <View style={styles.contentWrapper}>
         {/* Premium EMI Result Header Card */}
         <View style={styles.resultCard}>
           {/* Subtle Background Glow Accent */}
@@ -531,6 +545,7 @@ export const EmiCalculatorScreen: React.FC<EmiCalculatorScreenProps> = ({
                 })}
           </ScrollView>
         </View>
+        </View>
       </ScrollView>
 
       {/* Floating Bottom Apply Button */}
@@ -564,8 +579,26 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   container: {
-    padding: 16,
     paddingBottom: 96,
+  },
+  heroBannerImageContainer: {
+    width: '100%',
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  heroBannerImage: {
+    width: SCREEN_WIDTH,
+    height: Math.round(SCREEN_WIDTH * (341 / 1024)),
+  },
+  contentWrapper: {
+    paddingHorizontal: 16,
   },
   resultCard: {
     backgroundColor: colors.cardNavyFrom,

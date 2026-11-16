@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Dimensions,
@@ -55,6 +55,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
   // Edit Profile Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [profileStep, setProfileStep] = useState<number>(1); // Step 1: Contact & City, Step 2: Work & Income, Step 3: Identity / KYC
   const [editEmail, setEditEmail] = useState<string>(user?.email || '');
   const [editCity, setEditCity] = useState<string>(user?.city || '');
   const [editEmploymentType, setEditEmploymentType] = useState<
@@ -91,7 +92,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const aadhaarValidation = isAadhaarEntered ? validateAadhaar(editAadhaarNumber) : { isValid: true };
   const isAadhaarValid = aadhaarValidation.isValid;
 
-  const openEditModal = () => {
+  const openEditModal = (targetStep = 1) => {
     setEditEmail(user?.email || '');
     setEditCity(user?.city || '');
     setEditEmploymentType(user?.employmentType || 'Salaried');
@@ -103,7 +104,41 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     setShowEmploymentDropdown(false);
     setShowCityPicker(false);
     setIsCitySelected(false);
+    setProfileStep(targetStep);
     setIsEditModalOpen(true);
+  };
+
+  const handleNextStep = () => {
+    setEditErrorMessage(null);
+
+    if (profileStep === 1) {
+      if (isEmailEntered && !isEmailValid) {
+        setEditErrorMessage('Please enter a valid email address (e.g. name@domain.com)');
+        return;
+      }
+      if (isCityWrong) {
+        setEditErrorMessage(`"${editCity.trim()}" is not a recognized Indian city/district.`);
+        return;
+      }
+      setProfileStep(2);
+      return;
+    }
+
+    if (profileStep === 2) {
+      if (!isIncomeValid) {
+        setEditErrorMessage(incomeValidation.error || 'Please enter a valid monthly net income');
+        return;
+      }
+      setProfileStep(3);
+      return;
+    }
+  };
+
+  const handlePrevStep = () => {
+    setEditErrorMessage(null);
+    if (profileStep > 1) {
+      setProfileStep(profileStep - 1);
+    }
   };
 
   const handleSaveProfile = async () => {
@@ -246,7 +281,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         {/* Edit Profile Button Pill */}
         <TouchableOpacity
           style={styles.editProfileBtn}
-          onPress={openEditModal}
+          onPress={() => openEditModal(1)}
           activeOpacity={0.82}
         >
           <View style={styles.editIconCircle}>
@@ -256,6 +291,117 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           <Ionicons name="chevron-forward" size={15} color="#008ecc" />
         </TouchableOpacity>
       </View>
+
+      {/* 1B. Profile Completion Stepper / Progress Tracker Widget */}
+      {(() => {
+        const hasCity = !!user?.city && user.city.length > 1;
+        const hasIncome = (user?.monthlyIncome || 0) > 0;
+        const hasPan = !!user?.panNumber && user.panNumber.length === 10;
+        const hasAadhaar = !!user?.aadhaarNumber && user.aadhaarNumber.length >= 4;
+        const completedCount = [hasCity, hasIncome, hasPan, hasAadhaar].filter(Boolean).length;
+        const completionPercent = Math.round((completedCount / 4) * 100);
+
+        return (
+          <View style={styles.stepperCard}>
+            <View style={styles.stepperHeader}>
+              <View style={styles.stepperHeaderLeft}>
+                <View style={styles.stepperProgressBadge}>
+                  <Ionicons name="sparkles" size={14} color="#2563eb" />
+                  <Text style={styles.stepperBadgeText}>PROFILE STRENGTH</Text>
+                </View>
+                <Text style={styles.stepperTitle}>{completionPercent}% Completed</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.stepStartBtn}
+                onPress={() => openEditModal(!hasCity ? 1 : !hasIncome ? 2 : 3)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.stepStartBtnText}>
+                  {completionPercent === 100 ? 'View Details' : 'Complete Next Step'}
+                </Text>
+                <Ionicons name="arrow-forward" size={13} color="#ffffff" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Visual Progress Bar */}
+            <View style={styles.stepperProgressBarBg}>
+              <View style={[styles.stepperProgressBarFill, { width: `${Math.max(10, completionPercent)}%` }]} />
+            </View>
+
+            {/* 3 Step Milestone Pills */}
+            <View style={styles.stepperMilestonesRow}>
+              {/* Step 1 Pill */}
+              <TouchableOpacity
+                style={[styles.stepMilestonePill, hasCity && styles.stepMilestonePillDone]}
+                onPress={() => openEditModal(1)}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.stepMilestoneCircle, hasCity && styles.stepMilestoneCircleDone]}>
+                  {hasCity ? (
+                    <Ionicons name="checkmark" size={12} color="#ffffff" />
+                  ) : (
+                    <Text style={styles.stepMilestoneNumber}>1</Text>
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.stepMilestoneTitle, hasCity && styles.stepMilestoneTitleDone]}>
+                    Contact & City
+                  </Text>
+                  <Text style={styles.stepMilestoneSub}>
+                    {hasCity ? user?.city : 'Add City'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Step 2 Pill */}
+              <TouchableOpacity
+                style={[styles.stepMilestonePill, hasIncome && styles.stepMilestonePillDone]}
+                onPress={() => openEditModal(2)}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.stepMilestoneCircle, hasIncome && styles.stepMilestoneCircleDone]}>
+                  {hasIncome ? (
+                    <Ionicons name="checkmark" size={12} color="#ffffff" />
+                  ) : (
+                    <Text style={styles.stepMilestoneNumber}>2</Text>
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.stepMilestoneTitle, hasIncome && styles.stepMilestoneTitleDone]}>
+                    Income & Work
+                  </Text>
+                  <Text style={styles.stepMilestoneSub}>
+                    {hasIncome ? `₹${(user?.monthlyIncome || 0).toLocaleString('en-IN')}` : 'Add Salary'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Step 3 Pill */}
+              <TouchableOpacity
+                style={[styles.stepMilestonePill, hasPan && styles.stepMilestonePillDone]}
+                onPress={() => openEditModal(3)}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.stepMilestoneCircle, hasPan && styles.stepMilestoneCircleDone]}>
+                  {hasPan ? (
+                    <Ionicons name="checkmark" size={12} color="#ffffff" />
+                  ) : (
+                    <Text style={styles.stepMilestoneNumber}>3</Text>
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.stepMilestoneTitle, hasPan && styles.stepMilestoneTitleDone]}>
+                    KYC & Identity
+                  </Text>
+                  <Text style={styles.stepMilestoneSub}>
+                    {hasPan ? 'PAN Verified' : 'Add PAN'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+        );
+      })()}
 
       {/* 2. Registration & Account Information Card */}
       <View style={styles.section}>
@@ -267,7 +413,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </View>
             <Text style={styles.sectionTitle}>Registration Information</Text>
           </View>
-          <TouchableOpacity onPress={openEditModal} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => openEditModal(1)} activeOpacity={0.7}>
             <Text style={styles.changeActionLink}>Change Details</Text>
           </TouchableOpacity>
         </View>
@@ -648,8 +794,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           <View style={styles.editModalCard}>
             <View style={styles.editModalHeader}>
               <View>
-                <Text style={styles.editModalTitle}>Edit Profile Information</Text>
-                <Text style={styles.editModalSub}>Update your city, income, and KYC details</Text>
+                <Text style={styles.editModalTitle}>Complete Your Profile</Text>
+                <Text style={styles.editModalSub}>
+                  {profileStep === 1
+                    ? 'Step 1 of 3: Personal & Contact'
+                    : profileStep === 2
+                    ? 'Step 2 of 3: Employment & Income'
+                    : 'Step 3 of 3: KYC & Identity Verification'}
+                </Text>
               </View>
               <TouchableOpacity
                 style={styles.editModalCloseBtn}
@@ -660,402 +812,484 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </TouchableOpacity>
             </View>
 
+            {/* Step Navigation Indicator Bar */}
+            <View style={styles.modalStepTrackerBar}>
+              {[1, 2, 3].map((stepNum) => {
+                const isActive = profileStep === stepNum;
+                const isPassed = profileStep > stepNum;
+                return (
+                  <TouchableOpacity
+                    key={`modal-step-${stepNum}`}
+                    style={[
+                      styles.modalStepIndicator,
+                      isActive && styles.modalStepIndicatorActive,
+                      isPassed && styles.modalStepIndicatorPassed,
+                    ]}
+                    onPress={() => {
+                      if (stepNum < profileStep) setProfileStep(stepNum);
+                    }}
+                    disabled={stepNum > profileStep}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      style={[
+                        styles.modalStepDot,
+                        isActive && styles.modalStepDotActive,
+                        isPassed && styles.modalStepDotPassed,
+                      ]}
+                    >
+                      {isPassed ? (
+                        <Ionicons name="checkmark" size={10} color="#ffffff" />
+                      ) : (
+                        <Text
+                          style={[
+                            styles.modalStepDotText,
+                            isActive && styles.modalStepDotTextActive,
+                          ]}
+                        >
+                          {stepNum}
+                        </Text>
+                      )}
+                    </View>
+                    <Text
+                      style={[
+                        styles.modalStepLabel,
+                        isActive && styles.modalStepLabelActive,
+                        isPassed && styles.modalStepLabelPassed,
+                      ]}
+                    >
+                      {stepNum === 1 ? 'Contact' : stepNum === 2 ? 'Income' : 'KYC'}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
             <ScrollView
               style={styles.editModalScroll}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="always"
             >
-              {/* Notice that Full Name and Mobile Number are verified and non-editable */}
-              <View style={styles.lockedNoticeBox}>
-                <Ionicons name="shield-checkmark" size={16} color="#059669" />
-                <Text style={styles.lockedNoticeText}>
-                  Full Name & Registered Mobile are verified at sign up and cannot be edited. All other details below can be changed.
-                </Text>
-              </View>
-
-              {/* Full Name (Read-Only) */}
-              <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Full Legal Name (Fixed)</Text>
-                <View style={[styles.inputBox, styles.inputBoxDisabled]}>
-                  <Ionicons name="person" size={16} color="#94a3b8" style={{ marginRight: 8 }} />
-                  <Text style={styles.inputDisabledText}>{user?.name || 'Customer'}</Text>
-                  <Ionicons name="lock-closed" size={14} color="#94a3b8" />
-                </View>
-              </View>
-
-              {/* Mobile Number (Read-Only) */}
-              <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Registered WhatsApp Number (Fixed)</Text>
-                <View style={[styles.inputBox, styles.inputBoxDisabled]}>
-                  <Ionicons name="call" size={16} color="#94a3b8" style={{ marginRight: 8 }} />
-                  <Text style={styles.inputDisabledText}>+91 {user?.mobile || '9545555999'}</Text>
-                  <Ionicons name="lock-closed" size={14} color="#94a3b8" />
-                </View>
-              </View>
-
-              {/* Email Address (Editable + Max Limit + @ Domain Suggest) */}
-              <View style={styles.fieldGroup}>
-                <View style={styles.fieldLabelRow}>
-                  <Text style={styles.fieldLabel}>Email Address</Text>
-                  <Text style={styles.fieldHint}>
-                    {editEmail.length > 0 ? `${editEmail.length}/70 chars` : 'Optional'}
-                  </Text>
-                </View>
-                <View
-                  style={[
-                    styles.inputBox,
-                    isEmailEntered && isEmailValid && styles.inputBoxActive,
-                    isEmailEntered && !isEmailValid && styles.inputBoxError,
-                  ]}
-                >
-                  <Ionicons
-                    name="mail-outline"
-                    size={16}
-                    color={isEmailEntered && !isEmailValid ? '#dc2626' : 'colors.primary'}
-                    style={{ marginRight: 8 }}
-                  />
-                  <TextInput
-                    style={[styles.textInputField, isEmailEntered && !isEmailValid && { color: '#dc2626' }]}
-                    value={editEmail}
-                    onChangeText={setEditEmail}
-                    placeholder="email@example.com"
-                    placeholderTextColor="#94a3b8"
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    maxLength={70}
-                  />
-                  {isEmailEntered && isEmailValid && (
-                    <Ionicons name="checkmark-circle" size={16} color="#16a34a" />
-                  )}
-                  {isEmailEntered && !isEmailValid && (
-                    <Ionicons name="alert-circle" size={16} color="#dc2626" />
-                  )}
-                </View>
-
-                {/* Email Red Line Error */}
-                {isEmailEntered && !isEmailValid && (
-                  <View style={styles.cityErrorAlert}>
-                    <Ionicons name="alert-circle" size={13} color="#dc2626" />
-                    <Text style={styles.cityErrorAlertText}>
-                      Please enter a valid email format (e.g. name@domain.com)
-                    </Text>
+              {/* STEP 1: Personal & Contact */}
+              {profileStep === 1 && (
+                <>
+                  <View style={styles.stepInfoCallout}>
+                    <Ionicons name="location" size={18} color="#2563eb" />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.stepInfoCalloutTitle}>Your Location & Contact</Text>
+                      <Text style={styles.stepInfoCalloutSub}>
+                        Banks use your residential location to match branch lending criteria in Nanded & Maharashtra.
+                      </Text>
+                    </View>
                   </View>
-                )}
 
-                {/* @ Auto Suggestions */}
-                {emailDomainSuggestions.length > 0 && !isEmailValid && (
-                  <View style={styles.domainSuggestBox}>
-                    <Text style={styles.domainSuggestTitle}>Suggestions:</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-                      {emailDomainSuggestions.map((sug, i) => {
-                        const domainName = sug.split('@')[1];
-                        return (
-                          <TouchableOpacity
-                            key={`profile-mail-${domainName}-${i}`}
-                            style={styles.domainChip}
-                            onPress={() => setEditEmail(sug)}
-                            activeOpacity={0.7}
-                          >
-                            <Text style={styles.domainChipAt}>@</Text>
-                            <Text style={styles.domainChipText}>{domainName}</Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </ScrollView>
+                  {/* Full Name (Read-Only) */}
+                  <View style={styles.fieldGroup}>
+                    <Text style={styles.fieldLabel}>Full Legal Name (Fixed)</Text>
+                    <View style={[styles.inputBox, styles.inputBoxDisabled]}>
+                      <Ionicons name="person" size={16} color="#94a3b8" style={{ marginRight: 8 }} />
+                      <Text style={styles.inputDisabledText}>{user?.name || 'Customer'}</Text>
+                      <Ionicons name="lock-closed" size={14} color="#94a3b8" />
+                    </View>
                   </View>
-                )}
-              </View>
 
+                  {/* Mobile Number (Read-Only) */}
+                  <View style={styles.fieldGroup}>
+                    <Text style={styles.fieldLabel}>Registered WhatsApp Number (Fixed)</Text>
+                    <View style={[styles.inputBox, styles.inputBoxDisabled]}>
+                      <Ionicons name="call" size={16} color="#94a3b8" style={{ marginRight: 8 }} />
+                      <Text style={styles.inputDisabledText}>+91 {user?.mobile || '9545555999'}</Text>
+                      <Ionicons name="lock-closed" size={14} color="#94a3b8" />
+                    </View>
+                  </View>
 
-              {/* City / District (Editable + India JSON + Autocomplete) */}
-              <View style={styles.fieldGroup}>
-                <View style={styles.fieldLabelRow}>
-                  <Text style={styles.fieldLabel}>City / District</Text>
-                  <Text style={styles.fieldHint}>Select or type</Text>
-                </View>
-                <View style={[styles.inputBox, isCityWrong && styles.inputBoxError]}>
-                  <Ionicons
-                    name="location-outline"
-                    size={16}
-                    color={isCityWrong ? '#dc2626' : 'colors.primary'}
-                    style={{ marginRight: 8 }}
-                  />
-                  <TextInput
-                    style={[styles.textInputField, isCityWrong && { color: '#dc2626' }]}
-                    value={editCity}
-                    onChangeText={(text) => {
-                      setEditCity(text);
-                      setIsCitySelected(false);
-                    }}
-                    placeholder="Type or select city"
-                    placeholderTextColor="#94a3b8"
-                  />
-                  {editCity.length > 0 && (
-                    <TouchableOpacity
-                      onPress={() => {
-                        setEditCity('');
-                        setIsCitySelected(false);
-                      }}
-                      style={{ marginRight: 6 }}
+                  {/* Email Address */}
+                  <View style={styles.fieldGroup}>
+                    <View style={styles.fieldLabelRow}>
+                      <Text style={styles.fieldLabel}>Email Address</Text>
+                      <Text style={styles.fieldHint}>
+                        {editEmail.length > 0 ? `${editEmail.length}/70 chars` : 'Optional'}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.inputBox,
+                        isEmailEntered && isEmailValid && styles.inputBoxActive,
+                        isEmailEntered && !isEmailValid && styles.inputBoxError,
+                      ]}
                     >
-                      <Ionicons name="close-circle" size={16} color={isCityWrong ? '#dc2626' : '#94a3b8'} />
-                    </TouchableOpacity>
-                  )}
-                  <TouchableOpacity
-                    style={styles.pickerTriggerBtn}
-                    onPress={() => {
-                      Keyboard.dismiss();
-                      setShowCityPicker((p) => !p);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.pickerTriggerBtnText}>{showCityPicker ? 'Close' : 'Select'}</Text>
-                    <Ionicons name={showCityPicker ? 'chevron-up' : 'chevron-down'} size={12} color="colors.primary" />
-                  </TouchableOpacity>
-                </View>
+                      <Ionicons
+                        name="mail-outline"
+                        size={16}
+                        color={isEmailEntered && !isEmailValid ? '#dc2626' : colors.primary}
+                        style={{ marginRight: 8 }}
+                      />
+                      <TextInput
+                        style={[styles.textInputField, isEmailEntered && !isEmailValid && { color: '#dc2626' }]}
+                        value={editEmail}
+                        onChangeText={setEditEmail}
+                        placeholder="email@example.com"
+                        placeholderTextColor="#94a3b8"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        maxLength={70}
+                      />
+                      {isEmailEntered && isEmailValid && (
+                        <Ionicons name="checkmark-circle" size={16} color="#16a34a" />
+                      )}
+                      {isEmailEntered && !isEmailValid && (
+                        <Ionicons name="alert-circle" size={16} color="#dc2626" />
+                      )}
+                    </View>
 
-                {/* City Error Warning */}
-                {isCityWrong && (
-                  <View style={styles.cityErrorAlert}>
-                    <Ionicons name="alert-circle" size={14} color="#dc2626" />
-                    <Text style={styles.cityErrorAlertText}>
-                      "{editCity.trim()}" is not found in India cities list.
-                    </Text>
+                    {isEmailEntered && !isEmailValid && (
+                      <View style={styles.cityErrorAlert}>
+                        <Ionicons name="alert-circle" size={13} color="#dc2626" />
+                        <Text style={styles.cityErrorAlertText}>
+                          Please enter a valid email format (e.g. name@domain.com)
+                        </Text>
+                      </View>
+                    )}
+
+                    {emailDomainSuggestions.length > 0 && !isEmailValid && (
+                      <View style={styles.domainSuggestBox}>
+                        <Text style={styles.domainSuggestTitle}>Suggestions:</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                          {emailDomainSuggestions.map((sug, i) => {
+                            const domainName = sug.split('@')[1];
+                            return (
+                              <TouchableOpacity
+                                key={`profile-mail-${domainName}-${i}`}
+                                style={styles.domainChip}
+                                onPress={() => setEditEmail(sug)}
+                                activeOpacity={0.7}
+                              >
+                                <Text style={styles.domainChipAt}>@</Text>
+                                <Text style={styles.domainChipText}>{domainName}</Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </ScrollView>
+                      </View>
+                    )}
                   </View>
-                )}
 
-                {/* City Autocomplete Suggestions */}
-                {editCity.trim().length >= 3 && !showCityPicker && !isCitySelected && cityLocationService.searchSuggestions(editCity, 5).length > 0 && (
-                  <View style={styles.autoSuggestCard}>
-                    {cityLocationService.searchSuggestions(editCity, 5).map((item, idx) => (
+                  {/* City / District */}
+                  <View style={styles.fieldGroup}>
+                    <View style={styles.fieldLabelRow}>
+                      <Text style={styles.fieldLabel}>City / District</Text>
+                      <Text style={styles.fieldHint}>Required</Text>
+                    </View>
+                    <View style={[styles.inputBox, isCityWrong && styles.inputBoxError]}>
+                      <Ionicons
+                        name="location-outline"
+                        size={16}
+                        color={isCityWrong ? '#dc2626' : colors.primary}
+                        style={{ marginRight: 8 }}
+                      />
+                      <TextInput
+                        style={[styles.textInputField, isCityWrong && { color: '#dc2626' }]}
+                        value={editCity}
+                        onChangeText={(text) => {
+                          setEditCity(text);
+                          setIsCitySelected(false);
+                        }}
+                        placeholder="e.g. Nanded, Mumbai, Pune"
+                        placeholderTextColor="#94a3b8"
+                      />
+                      {editCity.length > 0 && (
+                        <TouchableOpacity
+                          onPress={() => {
+                            setEditCity('');
+                            setIsCitySelected(false);
+                          }}
+                          style={{ marginRight: 6 }}
+                        >
+                          <Ionicons name="close-circle" size={16} color={isCityWrong ? '#dc2626' : '#94a3b8'} />
+                        </TouchableOpacity>
+                      )}
                       <TouchableOpacity
-                        key={`profile-city-${item.city}-${idx}`}
-                        style={styles.autoSuggestItem}
+                        style={styles.pickerTriggerBtn}
                         onPress={() => {
-                          setEditCity(item.city);
-                          setIsCitySelected(true);
                           Keyboard.dismiss();
+                          setShowCityPicker((p) => !p);
                         }}
                         activeOpacity={0.7}
                       >
-                        <Ionicons name="location-outline" size={14} color="colors.primary" style={{ marginRight: 6 }} />
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.autoSuggestCityName}>{item.city}</Text>
-                          <Text style={styles.autoSuggestStateName}>{item.state}</Text>
-                        </View>
-                        <Ionicons name="arrow-forward-circle-outline" size={14} color="#94a3b8" />
+                        <Text style={styles.pickerTriggerBtnText}>{showCityPicker ? 'Close' : 'Select'}</Text>
+                        <Ionicons name={showCityPicker ? 'chevron-up' : 'chevron-down'} size={12} color={colors.primary} />
                       </TouchableOpacity>
-                    ))}
+                    </View>
+
+                    {isCityWrong && (
+                      <View style={styles.cityErrorAlert}>
+                        <Ionicons name="alert-circle" size={14} color="#dc2626" />
+                        <Text style={styles.cityErrorAlertText}>
+                          "{editCity.trim()}" is not found in India cities list.
+                        </Text>
+                      </View>
+                    )}
+
+                    {editCity.trim().length >= 3 && !showCityPicker && !isCitySelected && cityLocationService.searchSuggestions(editCity, 5).length > 0 && (
+                      <View style={styles.autoSuggestCard}>
+                        {cityLocationService.searchSuggestions(editCity, 5).map((item, idx) => (
+                          <TouchableOpacity
+                            key={`profile-city-${item.city}-${idx}`}
+                            style={styles.autoSuggestItem}
+                            onPress={() => {
+                              setEditCity(item.city);
+                              setIsCitySelected(true);
+                              Keyboard.dismiss();
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons name="location-outline" size={14} color={colors.primary} style={{ marginRight: 6 }} />
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.autoSuggestCityName}>{item.city}</Text>
+                              <Text style={styles.autoSuggestStateName}>{item.state}</Text>
+                            </View>
+                            <Ionicons name="arrow-forward-circle-outline" size={14} color="#94a3b8" />
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+
+                    {showCityPicker && (
+                      <View style={styles.allCitiesCard}>
+                        <ScrollView style={{ maxHeight: 150 }} nestedScrollEnabled>
+                          {cityLocationService.searchSuggestions(editCity || 'a', 30).map((item, idx) => (
+                            <TouchableOpacity
+                              key={`drop-${item.city}-${idx}`}
+                              style={styles.cityDropdownOption}
+                              onPress={() => {
+                                setEditCity(item.city);
+                                setShowCityPicker(false);
+                                setIsCitySelected(true);
+                              }}
+                            >
+                              <Text style={styles.cityDropdownText}>{item.city}</Text>
+                              <Text style={styles.cityDropdownSub}>{item.state}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      </View>
+                    )}
                   </View>
-                )}
+                </>
+              )}
 
-                {/* All India Dropdown List */}
-                {showCityPicker && (
-                  <View style={styles.allCitiesCard}>
-                    <ScrollView style={{ maxHeight: 150 }} nestedScrollEnabled>
-                      {cityLocationService.searchSuggestions(editCity || 'a', 30).map((item, idx) => (
-                        <TouchableOpacity
-                          key={`drop-${item.city}-${idx}`}
-                          style={styles.cityDropdownOption}
-                          onPress={() => {
-                            setEditCity(item.city);
-                            setShowCityPicker(false);
-                            setIsCitySelected(true);
-                          }}
-                        >
-                          <Text style={styles.cityDropdownText}>{item.city}</Text>
-                          <Text style={styles.cityDropdownSub}>{item.state}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
+              {/* STEP 2: Employment & Income */}
+              {profileStep === 2 && (
+                <>
+                  <View style={[styles.stepInfoCallout, { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }]}>
+                    <Ionicons name="briefcase" size={18} color="#16a34a" />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.stepInfoCalloutTitle, { color: '#166534' }]}>Income & Employment</Text>
+                      <Text style={[styles.stepInfoCalloutSub, { color: '#15803d' }]}>
+                        Higher verified monthly income qualifies you for maximum loan amounts with lower interest rates.
+                      </Text>
+                    </View>
                   </View>
-                )}
-              </View>
 
-              {/* Employment Type Dropdown (Editable) */}
-              <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Employment Type</Text>
-                <TouchableOpacity
-                  style={[styles.inputBox, showEmploymentDropdown && styles.inputBoxActive]}
-                  onPress={() => {
-                    Keyboard.dismiss();
-                    setShowEmploymentDropdown((p) => !p);
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons
-                    name={
-                      editEmploymentType === 'Salaried'
-                        ? 'briefcase'
-                        : editEmploymentType === 'Self Employed'
-                        ? 'ribbon'
-                        : editEmploymentType === 'Business Owner'
-                        ? 'storefront'
-                        : editEmploymentType === 'Agriculturist'
-                        ? 'leaf'
-                        : 'apps'
-                    }
-                    size={16}
-                    color="colors.primary"
-                    style={{ marginRight: 8 }}
-                  />
-                  <Text style={styles.dropdownValueText}>{editEmploymentType}</Text>
-                  <Ionicons name={showEmploymentDropdown ? 'chevron-up' : 'chevron-down'} size={16} color="colors.primary" />
-                </TouchableOpacity>
+                  {/* Employment Type */}
+                  <View style={styles.fieldGroup}>
+                    <Text style={styles.fieldLabel}>Employment Type</Text>
+                    <TouchableOpacity
+                      style={[styles.inputBox, showEmploymentDropdown && styles.inputBoxActive]}
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        setShowEmploymentDropdown((p) => !p);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons
+                        name={
+                          editEmploymentType === 'Salaried'
+                            ? 'briefcase'
+                            : editEmploymentType === 'Self Employed'
+                            ? 'ribbon'
+                            : editEmploymentType === 'Business Owner'
+                            ? 'storefront'
+                            : editEmploymentType === 'Agriculturist'
+                            ? 'leaf'
+                            : 'apps'
+                        }
+                        size={16}
+                        color={colors.primary}
+                        style={{ marginRight: 8 }}
+                      />
+                      <Text style={styles.dropdownValueText}>{editEmploymentType}</Text>
+                      <Ionicons name={showEmploymentDropdown ? 'chevron-up' : 'chevron-down'} size={16} color={colors.primary} />
+                    </TouchableOpacity>
 
-                {showEmploymentDropdown && (
-                  <View style={styles.empDropdownMenu}>
-                    {(['Salaried', 'Self Employed', 'Business Owner', 'Agriculturist', 'Others'] as const).map((type) => {
-                      const isSelected = editEmploymentType === type;
-                      return (
-                        <TouchableOpacity
-                          key={type}
-                          style={[styles.empOptionRow, isSelected && styles.empOptionRowActive]}
-                          onPress={() => {
-                            setEditEmploymentType(type);
-                            setShowEmploymentDropdown(false);
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={[styles.empOptionText, isSelected && styles.empOptionTextActive]}>
-                            {type}
-                          </Text>
-                          {isSelected && <Ionicons name="checkmark-circle" size={16} color="colors.primary" />}
-                        </TouchableOpacity>
-                      );
-                    })}
+                    {showEmploymentDropdown && (
+                      <View style={styles.empDropdownMenu}>
+                        {(['Salaried', 'Self Employed', 'Business Owner', 'Agriculturist', 'Others'] as const).map((type) => {
+                          const isSelected = editEmploymentType === type;
+                          return (
+                            <TouchableOpacity
+                              key={type}
+                              style={[styles.empOptionRow, isSelected && styles.empOptionRowActive]}
+                              onPress={() => {
+                                setEditEmploymentType(type);
+                                setShowEmploymentDropdown(false);
+                              }}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={[styles.empOptionText, isSelected && styles.empOptionTextActive]}>
+                                {type}
+                              </Text>
+                              {isSelected && <Ionicons name="checkmark-circle" size={16} color={colors.primary} />}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    )}
                   </View>
-                )}
-              </View>
 
-              {/* Monthly Income (Editable) */}
-              {/* Monthly Income (Editable + Red Line Validation) */}
-              <View style={styles.fieldGroup}>
-                <View style={styles.fieldLabelRow}>
-                  <Text style={styles.fieldLabel}>Monthly Net Income (₹)</Text>
-                  <Text style={styles.fieldHint}>Required (Min ₹10K)</Text>
-                </View>
-                <View
-                  style={[
-                    styles.inputBox,
-                    isIncomeValid && styles.inputBoxActive,
-                    !isIncomeValid && styles.inputBoxError,
-                  ]}
-                >
-                  <Text style={[styles.currencyPrefix, !isIncomeValid && { color: '#dc2626' }]}>₹</Text>
-                  <TextInput
-                    style={[styles.textInputField, !isIncomeValid && { color: '#dc2626' }]}
-                    value={editMonthlyIncome}
-                    onChangeText={setEditMonthlyIncome}
-                    keyboardType="numeric"
-                    placeholder="50000"
-                    placeholderTextColor="#94a3b8"
-                  />
-                  {isIncomeValid && <Ionicons name="checkmark-circle" size={16} color="#16a34a" />}
-                  {!isIncomeValid && <Ionicons name="alert-circle" size={16} color="#dc2626" />}
-                </View>
-                {!isIncomeValid && (
-                  <View style={styles.cityErrorAlert}>
-                    <Ionicons name="alert-circle" size={13} color="#dc2626" />
-                    <Text style={styles.cityErrorAlertText}>
-                      {incomeValidation.error || 'Please enter valid monthly income (min ₹10,000)'}
-                    </Text>
+                  {/* Monthly Income */}
+                  <View style={styles.fieldGroup}>
+                    <View style={styles.fieldLabelRow}>
+                      <Text style={styles.fieldLabel}>Monthly Net Income (₹)</Text>
+                      <Text style={styles.fieldHint}>Required (Min ₹10K)</Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.inputBox,
+                        isIncomeValid && styles.inputBoxActive,
+                        !isIncomeValid && styles.inputBoxError,
+                      ]}
+                    >
+                      <Text style={[styles.currencyPrefix, !isIncomeValid && { color: '#dc2626' }]}>₹</Text>
+                      <TextInput
+                        style={[styles.textInputField, !isIncomeValid && { color: '#dc2626' }]}
+                        value={editMonthlyIncome}
+                        onChangeText={setEditMonthlyIncome}
+                        keyboardType="numeric"
+                        placeholder="50000"
+                        placeholderTextColor="#94a3b8"
+                      />
+                      {isIncomeValid && <Ionicons name="checkmark-circle" size={16} color="#16a34a" />}
+                      {!isIncomeValid && <Ionicons name="alert-circle" size={16} color="#dc2626" />}
+                    </View>
+                    {!isIncomeValid && (
+                      <View style={styles.cityErrorAlert}>
+                        <Ionicons name="alert-circle" size={13} color="#dc2626" />
+                        <Text style={styles.cityErrorAlertText}>
+                          {incomeValidation.error || 'Please enter valid monthly income (min ₹10,000)'}
+                        </Text>
+                      </View>
+                    )}
                   </View>
-                )}
-              </View>
+                </>
+              )}
 
-              {/* PAN Number (Editable + Format Validation) */}
-              <View style={styles.fieldGroup}>
-                <View style={styles.fieldLabelRow}>
-                  <Text style={styles.fieldLabel}>PAN Number</Text>
-                  <Text style={styles.fieldHint}>Optional (10 chars)</Text>
-                </View>
-                <View
-                  style={[
-                    styles.inputBox,
-                    isPanEntered && isPanValid && styles.inputBoxActive,
-                    isPanEntered && !isPanValid && styles.inputBoxError,
-                  ]}
-                >
-                  <Ionicons
-                    name="card-outline"
-                    size={16}
-                    color={isPanEntered && !isPanValid ? '#dc2626' : 'colors.primary'}
-                    style={{ marginRight: 8 }}
-                  />
-                  <TextInput
-                    style={[
-                      styles.textInputField,
-                      { textTransform: 'uppercase', fontWeight: '700', letterSpacing: 1 },
-                      isPanEntered && !isPanValid && { color: '#dc2626' },
-                    ]}
-                    value={editPanNumber}
-                    onChangeText={(t) => setEditPanNumber(t.toUpperCase())}
-                    maxLength={10}
-                    placeholder="ABCDE1234F"
-                    placeholderTextColor="#94a3b8"
-                    autoCapitalize="characters"
-                  />
-                  {isPanEntered && isPanValid && <Ionicons name="checkmark-circle" size={16} color="#16a34a" />}
-                  {isPanEntered && !isPanValid && <Ionicons name="alert-circle" size={16} color="#dc2626" />}
-                </View>
-                {isPanEntered && !isPanValid && (
-                  <View style={styles.cityErrorAlert}>
-                    <Ionicons name="alert-circle" size={13} color="#dc2626" />
-                    <Text style={styles.cityErrorAlertText}>
-                      Invalid PAN card format. Must be 5 uppercase letters, 4 numbers, 1 letter.
-                    </Text>
+              {/* STEP 3: Identity & KYC */}
+              {profileStep === 3 && (
+                <>
+                  <View style={[styles.stepInfoCallout, { backgroundColor: '#faf5ff', borderColor: '#e9d5ff' }]}>
+                    <Ionicons name="card" size={18} color="#9333ea" />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.stepInfoCalloutTitle, { color: '#6b21a8' }]}>KYC & Identity Proof</Text>
+                      <Text style={[styles.stepInfoCalloutSub, { color: '#7e22ce' }]}>
+                        Providing PAN card enables instant CIBIL check & bank sanction approval within hours.
+                      </Text>
+                    </View>
                   </View>
-                )}
-              </View>
 
-              {/* Aadhaar Number (Editable + 12-digit Validation) */}
-              <View style={styles.fieldGroup}>
-                <View style={styles.fieldLabelRow}>
-                  <Text style={styles.fieldLabel}>Aadhaar Card Number</Text>
-                  <Text style={styles.fieldHint}>
-                    {editAadhaarNumber.length > 0 ? `${editAadhaarNumber.replace(/[\s-]/g, '').length}/12 Digits` : 'Optional'}
-                  </Text>
-                </View>
-                <View
-                  style={[
-                    styles.inputBox,
-                    isAadhaarEntered && isAadhaarValid && styles.inputBoxActive,
-                    isAadhaarEntered && !isAadhaarValid && styles.inputBoxError,
-                  ]}
-                >
-                  <Ionicons
-                    name="finger-print-outline"
-                    size={16}
-                    color={isAadhaarEntered && !isAadhaarValid ? '#dc2626' : 'colors.primary'}
-                    style={{ marginRight: 8 }}
-                  />
-                  <TextInput
-                    style={[
-                      styles.textInputField,
-                      { fontWeight: '700', letterSpacing: 1 },
-                      isAadhaarEntered && !isAadhaarValid && { color: '#dc2626' },
-                    ]}
-                    value={editAadhaarNumber}
-                    onChangeText={(t) => setEditAadhaarNumber(t.replace(/\D/g, '').slice(0, 12))}
-                    maxLength={12}
-                    keyboardType="numeric"
-                    placeholder="5489 1234 5678"
-                    placeholderTextColor="#94a3b8"
-                  />
-                  {isAadhaarEntered && isAadhaarValid && <Ionicons name="checkmark-circle" size={16} color="#16a34a" />}
-                  {isAadhaarEntered && !isAadhaarValid && <Ionicons name="alert-circle" size={16} color="#dc2626" />}
-                </View>
-                {isAadhaarEntered && !isAadhaarValid && (
-                  <View style={styles.cityErrorAlert}>
-                    <Ionicons name="alert-circle" size={13} color="#dc2626" />
-                    <Text style={styles.cityErrorAlertText}>
-                      {aadhaarValidation.error || 'Aadhaar must be exactly 12 numeric digits'}
-                    </Text>
+                  {/* PAN Number */}
+                  <View style={styles.fieldGroup}>
+                    <View style={styles.fieldLabelRow}>
+                      <Text style={styles.fieldLabel}>PAN Card Number</Text>
+                      <Text style={styles.fieldHint}>Recommended (10 chars)</Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.inputBox,
+                        isPanEntered && isPanValid && styles.inputBoxActive,
+                        isPanEntered && !isPanValid && styles.inputBoxError,
+                      ]}
+                    >
+                      <Ionicons
+                        name="card-outline"
+                        size={16}
+                        color={isPanEntered && !isPanValid ? '#dc2626' : colors.primary}
+                        style={{ marginRight: 8 }}
+                      />
+                      <TextInput
+                        style={[
+                          styles.textInputField,
+                          { textTransform: 'uppercase', fontWeight: '700', letterSpacing: 1 },
+                          isPanEntered && !isPanValid && { color: '#dc2626' },
+                        ]}
+                        value={editPanNumber}
+                        onChangeText={(t) => setEditPanNumber(t.toUpperCase())}
+                        maxLength={10}
+                        placeholder="ABCDE1234F"
+                        placeholderTextColor="#94a3b8"
+                        autoCapitalize="characters"
+                      />
+                      {isPanEntered && isPanValid && <Ionicons name="checkmark-circle" size={16} color="#16a34a" />}
+                      {isPanEntered && !isPanValid && <Ionicons name="alert-circle" size={16} color="#dc2626" />}
+                    </View>
+                    {isPanEntered && !isPanValid && (
+                      <View style={styles.cityErrorAlert}>
+                        <Ionicons name="alert-circle" size={13} color="#dc2626" />
+                        <Text style={styles.cityErrorAlertText}>
+                          Invalid PAN card format. Must be 5 uppercase letters, 4 numbers, 1 letter.
+                        </Text>
+                      </View>
+                    )}
                   </View>
-                )}
-              </View>
 
+                  {/* Aadhaar Number */}
+                  <View style={styles.fieldGroup}>
+                    <View style={styles.fieldLabelRow}>
+                      <Text style={styles.fieldLabel}>Aadhaar Card Number</Text>
+                      <Text style={styles.fieldHint}>
+                        {editAadhaarNumber.length > 0 ? `${editAadhaarNumber.replace(/[\s-]/g, '').length}/12 Digits` : 'Optional'}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.inputBox,
+                        isAadhaarEntered && isAadhaarValid && styles.inputBoxActive,
+                        isAadhaarEntered && !isAadhaarValid && styles.inputBoxError,
+                      ]}
+                    >
+                      <Ionicons
+                        name="finger-print-outline"
+                        size={16}
+                        color={isAadhaarEntered && !isAadhaarValid ? '#dc2626' : colors.primary}
+                        style={{ marginRight: 8 }}
+                      />
+                      <TextInput
+                        style={[
+                          styles.textInputField,
+                          { fontWeight: '700', letterSpacing: 1 },
+                          isAadhaarEntered && !isAadhaarValid && { color: '#dc2626' },
+                        ]}
+                        value={editAadhaarNumber}
+                        onChangeText={(t) => setEditAadhaarNumber(t.replace(/\D/g, '').slice(0, 12))}
+                        maxLength={12}
+                        keyboardType="numeric"
+                        placeholder="5489 1234 5678"
+                        placeholderTextColor="#94a3b8"
+                      />
+                      {isAadhaarEntered && isAadhaarValid && <Ionicons name="checkmark-circle" size={16} color="#16a34a" />}
+                      {isAadhaarEntered && !isAadhaarValid && <Ionicons name="alert-circle" size={16} color="#dc2626" />}
+                    </View>
+                    {isAadhaarEntered && !isAadhaarValid && (
+                      <View style={styles.cityErrorAlert}>
+                        <Ionicons name="alert-circle" size={13} color="#dc2626" />
+                        <Text style={styles.cityErrorAlertText}>
+                          {aadhaarValidation.error || 'Aadhaar must be exactly 12 numeric digits'}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </>
+              )}
 
               {/* Error / Success Messages */}
               {editErrorMessage && (
@@ -1072,22 +1306,46 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 </View>
               )}
 
-              {/* Save Changes Button */}
-              <TouchableOpacity
-                style={[styles.saveBtn, isSaving && { opacity: 0.7 }]}
-                onPress={handleSaveProfile}
-                disabled={isSaving}
-                activeOpacity={0.85}
-              >
-                {isSaving ? (
-                  <ActivityIndicator color="#ffffff" />
-                ) : (
-                  <>
-                    <Ionicons name="checkmark-done" size={18} color="#ffffff" />
-                    <Text style={styles.saveBtnText}>Save Profile Changes</Text>
-                  </>
+              {/* Interactive Next / Save Button Row */}
+              <View style={styles.wizardActionRow}>
+                {profileStep > 1 && (
+                  <TouchableOpacity
+                    style={styles.wizardBackBtn}
+                    onPress={handlePrevStep}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="arrow-back" size={16} color="#475569" />
+                    <Text style={styles.wizardBackBtnText}>Previous</Text>
+                  </TouchableOpacity>
                 )}
-              </TouchableOpacity>
+
+                {profileStep < 3 ? (
+                  <TouchableOpacity
+                    style={[styles.wizardNextBtn, profileStep === 1 && { flex: 1 }]}
+                    onPress={handleNextStep}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.wizardNextBtnText}>Save & Next Step</Text>
+                    <Ionicons name="arrow-forward" size={16} color="#ffffff" />
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.wizardSubmitBtn, isSaving && { opacity: 0.7 }]}
+                    onPress={handleSaveProfile}
+                    disabled={isSaving}
+                    activeOpacity={0.85}
+                  >
+                    {isSaving ? (
+                      <ActivityIndicator color="#ffffff" />
+                    ) : (
+                      <>
+                        <Ionicons name="checkmark-done-circle" size={18} color="#ffffff" />
+                        <Text style={styles.wizardSubmitBtnText}>Submit & Sync to Cloud</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
             </ScrollView>
           </View>
         </View>
@@ -1930,6 +2188,288 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: 'colors.primaryDark',
+  },
+
+  /* STEPPER PROGRESS TRACKER CARD */
+  stepperCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#1e3a8a',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  stepperHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  stepperHeaderLeft: {
+    gap: 3,
+  },
+  stepperProgressBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#eff6ff',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+  },
+  stepperBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#1d4ed8',
+    letterSpacing: 0.5,
+  },
+  stepperTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  stepStartBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#2563eb',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  stepStartBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  stepperProgressBarBg: {
+    height: 7,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 6,
+    overflow: 'hidden',
+    marginBottom: 14,
+  },
+  stepperProgressBarFill: {
+    height: '100%',
+    backgroundColor: '#2563eb',
+    borderRadius: 6,
+  },
+  stepperMilestonesRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  stepMilestonePill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#f8fafc',
+    padding: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  stepMilestonePillDone: {
+    backgroundColor: '#f0fdf4',
+    borderColor: '#bbf7d0',
+  },
+  stepMilestoneCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#cbd5e1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepMilestoneCircleDone: {
+    backgroundColor: '#16a34a',
+  },
+  stepMilestoneNumber: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#475569',
+  },
+  stepMilestoneTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  stepMilestoneTitleDone: {
+    color: '#15803d',
+  },
+  stepMilestoneSub: {
+    fontSize: 10,
+    color: '#94a3b8',
+    marginTop: 1,
+  },
+
+  /* MODAL STEPPER INDICATORS & WIZARD ACTIONS */
+  modalStepTrackerBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 6,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    gap: 6,
+  },
+  modalStepIndicator: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  modalStepIndicatorActive: {
+    backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  modalStepIndicatorPassed: {},
+  modalStepDot: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#e2e8f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalStepDotActive: {
+    backgroundColor: '#2563eb',
+  },
+  modalStepDotPassed: {
+    backgroundColor: '#16a34a',
+  },
+  modalStepDotText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#64748b',
+  },
+  modalStepDotTextActive: {
+    color: '#ffffff',
+  },
+  modalStepLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#94a3b8',
+  },
+  modalStepLabelActive: {
+    color: '#0f172a',
+    fontWeight: '800',
+  },
+  modalStepLabelPassed: {
+    color: '#15803d',
+    fontWeight: '700',
+  },
+
+  stepInfoCallout: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: '#eff6ff',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+  },
+  stepInfoCalloutTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#1e40af',
+  },
+  stepInfoCalloutSub: {
+    fontSize: 11,
+    color: '#3b82f6',
+    marginTop: 2,
+    lineHeight: 16,
+  },
+
+  wizardActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 14,
+    marginBottom: 24,
+  },
+  wizardBackBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#f1f5f9',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+  },
+  wizardBackBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  wizardNextBtn: {
+    flex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#2563eb',
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  wizardNextBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  wizardSubmitBtn: {
+    flex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#16a34a',
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    shadowColor: '#16a34a',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  wizardSubmitBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#ffffff',
   },
 });
 

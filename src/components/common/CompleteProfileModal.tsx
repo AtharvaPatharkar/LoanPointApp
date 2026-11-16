@@ -7,9 +7,8 @@ import {
   Modal,
   Platform,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { UserProfile } from '../../types';
-import { colors } from '../../theme/colors';
 
 interface CompleteProfileModalProps {
   visible: boolean;
@@ -27,13 +26,14 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
   if (!visible) return null;
 
   // Calculate profile completeness items
-  const hasPan = !!user?.panNumber && user.panNumber.length > 5;
-  const hasAadhaar = !!user?.aadhaarLinked;
+  const hasName = !!user?.name && user.name.length > 2 && user.name !== 'Valued Customer';
   const hasCity = !!user?.city && user.city.length > 1;
   const hasIncome = (user?.monthlyIncome || 0) > 0;
+  const hasPan = !!user?.panNumber && user.panNumber.length > 5;
+  const hasAadhaar = !!user?.aadhaarLinked;
 
-  const completedCount = [hasCity, hasIncome, hasPan, hasAadhaar].filter(Boolean).length;
-  const progressPercent = Math.round((completedCount / 4) * 100);
+  const completedCount = [hasName, hasCity, hasIncome, hasPan, hasAadhaar].filter(Boolean).length;
+  const progressPercent = Math.round((completedCount / 5) * 100);
 
   return (
     <Modal
@@ -44,6 +44,9 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
     >
       <View style={styles.backdrop}>
         <View style={styles.modalCard}>
+          {/* Top Decorative Gold/Cyan Accent Bar */}
+          <View style={styles.topAccentBar} />
+
           {/* Close button */}
           <TouchableOpacity
             style={styles.closeBtn}
@@ -53,85 +56,110 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
             <Ionicons name="close" size={20} color="#64748b" />
           </TouchableOpacity>
 
-          {/* Celebration / Prompt Icon */}
-          <View style={styles.iconCircle}>
-            <Ionicons name="person-circle" size={54} color="colors.primary" />
+          {/* Celebration / Avatar Shield Graphic */}
+          <View style={styles.avatarWrap}>
+            <View style={styles.iconCircleOuter}>
+              <View style={styles.iconCircleInner}>
+                <Ionicons name="person" size={32} color="#004aad" />
+              </View>
+            </View>
+            <View style={styles.sparkleBadge}>
+              <Ionicons name="sparkles" size={14} color="#ffffff" />
+            </View>
           </View>
 
+          {/* Header & Welcoming Text */}
           <Text style={styles.modalTitle}>Complete Your Profile</Text>
           <Text style={styles.modalSubtitle}>
-            Welcome, <Text style={{ fontWeight: '800', color: '#0f172a' }}>{user?.name || 'Customer'}</Text>! Complete your profile & KYC documents to get instant loan approvals and faster disbursements.
+            Welcome to Loan Point, <Text style={styles.userNameHighlight}>{user?.name || 'Valued Customer'}</Text>! Complete your 3-step profile to unlock pre-approved loan offers, faster disbursals, and instant eligibility.
           </Text>
 
-          {/* Profile Progress Bar */}
+          {/* Profile Strength Progress Card */}
           <View style={styles.progressCard}>
             <View style={styles.progressHeaderRow}>
-              <Text style={styles.progressLabel}>Profile Strength</Text>
-              <Text style={styles.progressValueText}>{progressPercent}% Completed</Text>
+              <View style={styles.progressLabelWrap}>
+                <Ionicons name="shield-checkmark" size={15} color="#004aad" />
+                <Text style={styles.progressLabel}>Profile Strength</Text>
+              </View>
+              <View style={styles.progressValueBadge}>
+                <Text style={styles.progressValueText}>{progressPercent}% Done</Text>
+              </View>
             </View>
             <View style={styles.progressBarBg}>
-              <View style={[styles.progressBarFill, { width: `${Math.max(progressPercent, 25)}%` }]} />
+              <View style={[styles.progressBarFill, { width: `${Math.max(progressPercent, 20)}%` }]} />
             </View>
+            <Text style={styles.progressSubHint}>
+              {completedCount} of 5 key profile parameters verified
+            </Text>
           </View>
 
-          {/* Pending Checklist */}
+          {/* 3 Steps Overview Checklist */}
           <View style={styles.checklistCard}>
+            {/* Step 1 */}
             <View style={styles.checkItem}>
-              <Ionicons
-                name={hasCity ? 'checkmark-circle' : 'ellipse-outline'}
-                size={18}
-                color={hasCity ? '#16a34a' : '#94a3b8'}
-              />
-              <Text style={[styles.checkItemText, hasCity && styles.checkItemTextDone]}>
-                City & Residence ({user?.city || 'Not specified'})
-              </Text>
+              <View style={[styles.stepNumberBadge, (hasName && hasCity) && styles.stepNumberBadgeDone]}>
+                {(hasName && hasCity) ? (
+                  <Ionicons name="checkmark" size={12} color="#ffffff" />
+                ) : (
+                  <Text style={styles.stepNumberText}>1</Text>
+                )}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.checkItemTitle}>Personal & City Details</Text>
+                <Text style={styles.checkItemSub}>
+                  {user?.city ? `City: ${user.city}` : 'Add full name & current residence city'}
+                </Text>
+              </View>
             </View>
 
+            {/* Step 2 */}
             <View style={styles.checkItem}>
-              <Ionicons
-                name={hasIncome ? 'checkmark-circle' : 'ellipse-outline'}
-                size={18}
-                color={hasIncome ? '#16a34a' : '#94a3b8'}
-              />
-              <Text style={[styles.checkItemText, hasIncome && styles.checkItemTextDone]}>
-                Employment & Income Status
-              </Text>
+              <View style={[styles.stepNumberBadge, hasIncome && styles.stepNumberBadgeDone]}>
+                {hasIncome ? (
+                  <Ionicons name="checkmark" size={12} color="#ffffff" />
+                ) : (
+                  <Text style={styles.stepNumberText}>2</Text>
+                )}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.checkItemTitle}>Income & Employment</Text>
+                <Text style={styles.checkItemSub}>
+                  {user?.employmentType ? `${user.employmentType} (₹${(user.monthlyIncome || 0).toLocaleString('en-IN')}/mo)` : 'Select employment type & monthly earnings'}
+                </Text>
+              </View>
             </View>
 
+            {/* Step 3 */}
             <View style={styles.checkItem}>
-              <Ionicons
-                name={hasPan ? 'checkmark-circle' : 'alert-circle'}
-                size={18}
-                color={hasPan ? '#16a34a' : '#d97706'}
-              />
-              <Text style={[styles.checkItemText, hasPan && styles.checkItemTextDone]}>
-                PAN & Identity Verification {hasPan ? '' : '(Pending)'}
-              </Text>
-            </View>
-
-            <View style={styles.checkItem}>
-              <Ionicons
-                name={hasAadhaar ? 'checkmark-circle' : 'alert-circle'}
-                size={18}
-                color={hasAadhaar ? '#16a34a' : '#d97706'}
-              />
-              <Text style={[styles.checkItemText, hasAadhaar && styles.checkItemTextDone]}>
-                Aadhaar e-KYC Linkage {hasAadhaar ? '' : '(Pending)'}
-              </Text>
+              <View style={[styles.stepNumberBadge, (hasPan || hasAadhaar) && styles.stepNumberBadgeDone]}>
+                {(hasPan || hasAadhaar) ? (
+                  <Ionicons name="checkmark" size={12} color="#ffffff" />
+                ) : (
+                  <Text style={styles.stepNumberText}>3</Text>
+                )}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.checkItemTitle}>Identity & KYC Verification</Text>
+                <Text style={styles.checkItemSub}>
+                  {hasPan ? `PAN: ${user?.panNumber}` : 'Link PAN & Aadhaar for 100% paperless loan approval'}
+                </Text>
+              </View>
             </View>
           </View>
 
-          {/* Action Buttons */}
+          {/* Main Action Button */}
           <TouchableOpacity
             style={styles.completeBtn}
             onPress={onCompleteNow}
-            activeOpacity={0.85}
+            activeOpacity={0.88}
           >
-            <Ionicons name="sparkles" size={18} color="#ffffff" />
-            <Text style={styles.completeBtnText}>Complete Profile & KYC Now</Text>
-            <Ionicons name="arrow-forward" size={18} color="#ffffff" />
+            <View style={styles.completeBtnIconWrap}>
+              <Ionicons name="arrow-forward" size={17} color="#004aad" />
+            </View>
+            <Text style={styles.completeBtnText}>Complete Profile in 2 Minutes</Text>
           </TouchableOpacity>
 
+          {/* Dismiss / Later Button */}
           <TouchableOpacity
             style={styles.laterBtn}
             onPress={onDismiss}
@@ -148,29 +176,38 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    backgroundColor: 'rgba(15, 23, 42, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 18,
   },
   modalCard: {
     width: '100%',
-    maxWidth: 380,
+    maxWidth: 390,
     backgroundColor: '#ffffff',
     borderRadius: 24,
     padding: 22,
     alignItems: 'center',
     shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+    elevation: 10,
     position: 'relative',
+    overflow: 'hidden',
+  },
+  topAccentBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 5,
+    backgroundColor: '#004aad',
   },
   closeBtn: {
     position: 'absolute',
-    top: 16,
-    right: 16,
+    top: 14,
+    right: 14,
     width: 32,
     height: 32,
     borderRadius: 16,
@@ -179,39 +216,69 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 10,
   },
-  iconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: 'colors.primaryLight',
+  avatarWrap: {
+    position: 'relative',
+    marginTop: 6,
+    marginBottom: 10,
+  },
+  iconCircleOuter: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: '#eff6ff',
+    borderWidth: 2.5,
+    borderColor: '#bfdbfe',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 4,
-    marginBottom: 12,
+  },
+  iconCircleInner: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#dbeafe',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sparkleBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#059669',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 21,
     fontWeight: '800',
     color: '#0f172a',
     textAlign: 'center',
     letterSpacing: -0.3,
   },
+  userNameHighlight: {
+    fontWeight: '800',
+    color: '#004aad',
+  },
   modalSubtitle: {
-    fontSize: 13,
-    color: '#64748b',
+    fontSize: 12.5,
+    color: '#475569',
     textAlign: 'center',
     marginTop: 6,
     lineHeight: 18,
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
   },
   progressCard: {
     width: '100%',
     backgroundColor: '#f8fafc',
     borderRadius: 14,
-    borderWidth: 1,
+    borderWidth: 1.2,
     borderColor: '#e2e8f0',
     padding: 12,
-    marginTop: 16,
+    marginTop: 14,
     marginBottom: 12,
   },
   progressHeaderRow: {
@@ -220,15 +287,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  progressLabelWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   progressLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#334155',
+    color: '#1e293b',
+  },
+  progressValueBadge: {
+    backgroundColor: '#eff6ff',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
   },
   progressValueText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
-    color: 'colors.primary',
+    color: '#004aad',
   },
   progressBarBg: {
     height: 8,
@@ -238,59 +318,93 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: 'colors.primary',
+    backgroundColor: '#004aad',
     borderRadius: 4,
+  },
+  progressSubHint: {
+    fontSize: 10.5,
+    color: '#64748b',
+    marginTop: 6,
+    fontWeight: '500',
   },
   checklistCard: {
     width: '100%',
     backgroundColor: '#ffffff',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#f1f5f9',
+    borderColor: '#e2e8f0',
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 18,
-    gap: 8,
+    paddingVertical: 10,
+    marginBottom: 16,
+    gap: 10,
   },
   checkItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  checkItemText: {
-    fontSize: 12,
-    fontWeight: '600',
+  stepNumberBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#e2e8f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepNumberBadgeDone: {
+    backgroundColor: '#16a34a',
+  },
+  stepNumberText: {
+    fontSize: 11,
+    fontWeight: '800',
     color: '#475569',
   },
-  checkItemTextDone: {
-    color: '#16a34a',
+  checkItemTitle: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  checkItemSub: {
+    fontSize: 10.5,
+    color: '#64748b',
+    marginTop: 1,
   },
   completeBtn: {
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'colors.primary',
+    backgroundColor: '#004aad',
     borderRadius: 14,
     paddingVertical: 14,
-    gap: 8,
-    shadowColor: 'colors.primary',
+    paddingHorizontal: 18,
+    gap: 10,
+    shadowColor: '#004aad',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.35,
     shadowRadius: 8,
     elevation: 4,
   },
+  completeBtnIconWrap: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   completeBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 14.5,
+    fontWeight: '800',
     color: '#ffffff',
+    letterSpacing: 0.2,
   },
   laterBtn: {
     paddingVertical: 10,
     marginTop: 4,
   },
   laterBtnText: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '600',
     color: '#64748b',
   },

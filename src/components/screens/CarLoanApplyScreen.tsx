@@ -53,11 +53,11 @@ export const CarLoanApplyScreen: React.FC<CarLoanApplyScreenProps> = ({
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
   // ---------------- STEP 1: Basic Details ----------------
-  const [fullName, setFullName] = useState<string>(user?.name || 'Arvind Patil');
-  const [mobileNumber, setMobileNumber] = useState<string>(user?.mobile || '9823012345');
-  const [emailId, setEmailId] = useState<string>(user?.email || 'arvind.patil@example.com');
+  const [fullName, setFullName] = useState<string>(user?.name || '');
+  const [mobileNumber, setMobileNumber] = useState<string>(user?.mobile || '');
+  const [emailId, setEmailId] = useState<string>(user?.email || '');
   const [dob, setDob] = useState<string>('20/06/1990');
-  const [city, setCity] = useState<string>(user?.city || 'Nanded, Maharashtra');
+  const [city, setCity] = useState<string>(user?.city || '');
   const [isAgreedStep1, setIsAgreedStep1] = useState<boolean>(true);
 
   // ---------------- STEP 2: Car Details ----------------
@@ -78,8 +78,8 @@ export const CarLoanApplyScreen: React.FC<CarLoanApplyScreenProps> = ({
   const [cibilScoreRange, setCibilScoreRange] = useState<string>('750 and Above (Excellent)');
 
   // ---------------- STEP 4: Documents ----------------
-  const [panNumber, setPanNumber] = useState<string>(user?.panNumber || 'ABCDE1234F');
-  const [aadhaarNumber, setAadhaarNumber] = useState<string>(user?.aadhaarNumber || '987654321012');
+  const [panNumber, setPanNumber] = useState<string>(user?.panNumber || '');
+  const [aadhaarNumber, setAadhaarNumber] = useState<string>(user?.aadhaarNumber || '');
   const [uploadedDocs, setUploadedDocs] = useState<UploadedDocState>({
     panCard: true,
     aadhaarCard: true,
@@ -385,8 +385,8 @@ export const CarLoanApplyScreen: React.FC<CarLoanApplyScreenProps> = ({
                           isActive
                             ? styles.stepLabelActive
                             : isCompleted
-                            ? styles.stepLabelCompleted
-                            : styles.stepLabel
+                              ? styles.stepLabelCompleted
+                              : styles.stepLabel
                         }
                         numberOfLines={1}
                       >
@@ -459,7 +459,7 @@ export const CarLoanApplyScreen: React.FC<CarLoanApplyScreenProps> = ({
                       maxLength={10}
                       value={mobileNumber}
                       onChangeText={setMobileNumber}
-                    />
+                     editable={false} />
                   </View>
                 </View>
               </View>
@@ -1538,7 +1538,7 @@ export const CarLoanApplyScreen: React.FC<CarLoanApplyScreenProps> = ({
                 <View style={styles.rmActionCol}>
                   <TouchableOpacity
                     style={styles.rmCallBtn}
-                    onPress={() => Linking.openURL('tel:9545555999').catch(() => {})}
+                    onPress={() => Linking.openURL('tel:9545555999').catch(() => { })}
                     activeOpacity={0.8}
                   >
                     <Ionicons name="call" size={14} color="#002e75" />
@@ -1551,7 +1551,7 @@ export const CarLoanApplyScreen: React.FC<CarLoanApplyScreenProps> = ({
                       const msg = encodeURIComponent(
                         `Hello Arvind Patil, I just submitted Car Loan Application ${submittedApp.id} for ${carMakeModel}. Please assist.`
                       );
-                      Linking.openURL(`https://api.whatsapp.com/send?phone=919545555999&text=${msg}`).catch(() => {});
+                      Linking.openURL(`https://api.whatsapp.com/send?phone=919545555999&text=${msg}`).catch(() => { });
                     }}
                     activeOpacity={0.8}
                   >

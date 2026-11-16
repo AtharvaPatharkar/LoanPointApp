@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Dimensions,
@@ -11,6 +11,7 @@ import {
   Alert,
   Modal,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import {
   Ionicons,
@@ -18,7 +19,8 @@ import {
   FontAwesome5,
 } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
-import { UserProfile } from '../../types';
+import { UserProfile, InsuranceApplication } from '../../types';
+import { dbSyncService } from '../../services/dbSyncService';
 
 interface MyInsuranceScreenProps {
   user: UserProfile | null;
@@ -75,7 +77,37 @@ export const MyInsuranceScreen: React.FC<MyInsuranceScreenProps> = ({
   // Form Fields for "Insurance Request Details"
   const [fullName, setFullName] = useState<string>(user?.name || '');
   const [mobileNumber, setMobileNumber] = useState<string>(user?.mobile || '');
+  const [userCity, setUserCity] = useState<string>(user?.city || '');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // Live submitted insurance applications from database
+  const [dbInsuranceList, setDbInsuranceList] = useState<InsuranceApplication[]>([]);
+  const [isLoadingInsurance, setIsLoadingInsurance] = useState<boolean>(false);
+
+  // Synchronize form fields whenever user profile changes
+  useEffect(() => {
+    if (user?.name) setFullName(user.name);
+    if (user?.mobile) setMobileNumber(user.mobile);
+    if (user?.city) setUserCity(user.city);
+  }, [user]);
+
+  // Load insurance applications for the user from Neon Postgres
+  const loadUserInsurance = async () => {
+    if (!user?.mobile) return;
+    setIsLoadingInsurance(true);
+    try {
+      const records = await dbSyncService.getInsuranceApplicationsByMobile(user.mobile);
+      setDbInsuranceList(records || []);
+    } catch (e) {
+      console.warn('Failed to load user insurance records:', e);
+    } finally {
+      setIsLoadingInsurance(false);
+    }
+  };
+
+  useEffect(() => {
+    loadUserInsurance();
+  }, [user?.mobile]);
 
   const expertPhone = '+91 9545555999';
 
@@ -161,7 +193,7 @@ export const MyInsuranceScreen: React.FC<MyInsuranceScreenProps> = ({
     }
   };
 
-  const handleSubmitInsuranceRequest = () => {
+  const handleSubmitInsuranceRequest = async () => {
     if (!fullName.trim()) {
       Alert.alert('Required Field', 'Please enter your Full Name.');
       return;
@@ -172,12 +204,42 @@ export const MyInsuranceScreen: React.FC<MyInsuranceScreenProps> = ({
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      // Determine insurance type key
+      let insKey = 'health';
+      const low = selectedInsuranceType.toLowerCase();
+      if (low.includes('life') || low.includes('term')) insKey = 'life';
+      else if (low.includes('motor') || low.includes('vehicle') || low.includes('car') || low.includes('bike')) insKey = 'motor';
+      else if (low.includes('accident')) insKey = 'personal_accident';
+      else if (low.includes('home') || low.includes('property')) insKey = 'home_property';
+      else if (low.includes('travel')) insKey = 'travel';
+
+      const savedRecord = await dbSyncService.createInsuranceApplication({
+        applicantName: fullName.trim(),
+        mobile: mobileNumber.trim(),
+        insuranceType: insKey,
+        insuranceTypeName: selectedInsuranceType,
+        userId: user?.id,
+        details: {
+          city: userCity || user?.city || '',
+          email: user?.email || '',
+          requestedOn: new Date().toISOString(),
+        },
+      });
+
+      // Refresh insurance list
+      await loadUserInsurance();
+
       Alert.alert(
         'Insurance Request Submitted! 🎉',
-        `Thank you ${fullName}! Your ${selectedInsuranceType} request has been recorded.\n\nA dedicated Relationship Manager (RM) will be assigned automatically and will reach out to you at +91 ${mobileNumber.replace(/\D/g, '').slice(-10)} within 2 business hours.`,
+        `Thank you ${fullName}! Your ${selectedInsuranceType} request has been recorded in database with Reference ID: ${savedRecord.id}.\n\nAn Insurance Advisor has been assigned and will contact you on +91 ${mobileNumber.replace(/\D/g, '').slice(-10)} shortly.`,
         [
+          {
+            text: 'View Applications',
+            onPress: () => {
+              setCurrentView('my_policies');
+            },
+          },
           {
             text: 'OK',
             onPress: () => {
@@ -190,7 +252,12 @@ export const MyInsuranceScreen: React.FC<MyInsuranceScreenProps> = ({
           },
         ]
       );
-    }, 600);
+    } catch (err: any) {
+      console.error('Submit insurance error:', err);
+      Alert.alert('Error', 'Failed to submit insurance request. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // 6 Overview Insurance Categories
@@ -443,7 +510,135 @@ export const MyInsuranceScreen: React.FC<MyInsuranceScreenProps> = ({
             </TouchableOpacity>
           </View>
 
-          {/* Policy Cards List */}
+          {/* Live Submitted Insurance Applications Section */}
+          <View style={{ marginTop: 15, marginBottom: 10, paddingHorizontal: 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="time" size={18} color="#002e75" />
+                <Text style={{ fontSize: 16, fontWeight: '800', color: '#0f172a' }}>
+                  Submitted Applications & Status
+                </Text>
+              </View>
+              <TouchableOpacity onPress={loadUserInsurance} style={{ padding: 4 }}>
+                <Ionicons name="refresh" size={16} color="#004aad" />
+              </TouchableOpacity>
+            </View>
+
+            {isLoadingInsurance ? (
+              <View style={{ padding: 20, alignItems: 'center' }}>
+                <ActivityIndicator size="small" color="#004aad" />
+                <Text style={{ fontSize: 12, color: '#64748b', marginTop: 6 }}>Loading live insurance records...</Text>
+              </View>
+            ) : dbInsuranceList.length === 0 ? (
+              <View style={{ backgroundColor: '#f8fafc', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#e2e8f0', alignItems: 'center' }}>
+                <Ionicons name="document-text-outline" size={32} color="#94a3b8" />
+                <Text style={{ fontSize: 13, color: '#64748b', marginTop: 6, textAlign: 'center' }}>
+                  No insurance applications submitted yet.{'\n'}Tap "Buy New Insurance" to request coverage.
+                </Text>
+              </View>
+            ) : (
+              dbInsuranceList.map((app) => {
+                const isApproved = app.status === 'Policy Issued';
+                const isRejected = app.status === 'Rejected';
+                const isReview = app.status === 'Quote Shared' || app.status === 'Documents Verified';
+
+                return (
+                  <View
+                    key={app.id}
+                    style={{
+                      backgroundColor: '#ffffff',
+                      borderRadius: 12,
+                      padding: 14,
+                      marginBottom: 10,
+                      borderWidth: 1.5,
+                      borderColor: isApproved ? '#86efac' : isRejected ? '#fca5a5' : '#bfdbfe',
+                      shadowColor: '#000',
+                      shadowOpacity: 0.05,
+                      shadowRadius: 4,
+                      elevation: 2,
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '800', color: '#002e75' }}>
+                        {app.id}
+                      </Text>
+                      <View
+                        style={{
+                          paddingHorizontal: 8,
+                          paddingVertical: 3,
+                          borderRadius: 12,
+                          backgroundColor: isApproved ? '#ecfdf5' : isRejected ? '#fef2f2' : '#eff6ff',
+                          borderWidth: 1,
+                          borderColor: isApproved ? '#86efac' : isRejected ? '#fca5a5' : '#bfdbfe',
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            fontWeight: '700',
+                            color: isApproved ? '#15803d' : isRejected ? '#dc2626' : '#1d4ed8',
+                          }}
+                        >
+                          {app.status}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#0f172a' }}>
+                      {app.insuranceTypeName || app.insuranceType.toUpperCase()}
+                    </Text>
+                    <Text style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                      Applicant: {app.applicantName} ({app.mobile})
+                    </Text>
+
+                    {/* Admin Reason / Remarks */}
+                    {app.remarks && (
+                      <View style={{ backgroundColor: '#f8fafc', padding: 8, borderRadius: 8, marginTop: 8, borderWidth: 1, borderColor: '#e2e8f0' }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#334155' }}>
+                          Admin Remarks / Updates:
+                        </Text>
+                        <Text style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>
+                          {app.remarks}
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Next Action */}
+                    {app.nextAction && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}>
+                        <Ionicons name="arrow-forward-circle-outline" size={13} color="#004aad" />
+                        <Text style={{ fontSize: 11, color: '#004aad', fontWeight: '600' }}>
+                          Next Step: {app.nextAction}
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Status Update Timestamp */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6, borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 6 }}>
+                      <Ionicons name="calendar-outline" size={12} color="#94a3b8" />
+                      <Text style={{ fontSize: 10, color: '#94a3b8' }}>
+                        Last Updated: {new Date(app.statusUpdatedAt || app.createdAt).toLocaleString('en-IN', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true,
+                        })}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })
+            )}
+          </View>
+
+          {/* Active Policies / Reference Policies List */}
+          <View style={{ marginVertical: 8, paddingHorizontal: 4 }}>
+            <Text style={{ fontSize: 15, fontWeight: '800', color: '#0f172a', marginBottom: 8 }}>
+              Active Policy Portfolio
+            </Text>
+          </View>
           {filteredPolicies.map((policy) => {
             const isHealth = policy.type === 'health';
             const isLife = policy.type === 'life';
@@ -663,7 +858,7 @@ export const MyInsuranceScreen: React.FC<MyInsuranceScreenProps> = ({
               </View>
             </View>
 
-            {/* Field 3: Mobile Number * */}
+            {/* Field 3: Mobile Number * (Locked Primary Key) */}
             <View style={styles.formRow}>
               <View style={styles.fieldLabelRow}>
                 <Ionicons name="call" size={18} color="#002e75" style={{ marginRight: 8 }} />
@@ -671,15 +866,38 @@ export const MyInsuranceScreen: React.FC<MyInsuranceScreenProps> = ({
                   Mobile Number <Text style={{ color: '#dc2626' }}>*</Text>
                 </Text>
               </View>
-              <View style={styles.textInputBox}>
+              <View style={[styles.textInputBox, { backgroundColor: '#f1f5f9', borderColor: '#cbd5e1' }]}>
                 <TextInput
-                  style={styles.textInputField}
+                  style={[styles.textInputField, { color: '#64748b' }]}
                   placeholder="Enter 10 digit mobile number"
                   placeholderTextColor="#94a3b8"
                   keyboardType="phone-pad"
                   maxLength={10}
                   value={mobileNumber}
-                  onChangeText={setMobileNumber}
+                  editable={false}
+                />
+                <View style={{ paddingRight: 10, justifyContent: 'center' }}>
+                  <Ionicons name="lock-closed" size={16} color="#94a3b8" />
+                </View>
+              </View>
+              <Text style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>
+                * Mobile number is registered to your account and cannot be modified.
+              </Text>
+            </View>
+
+            {/* Field 4: City */}
+            <View style={styles.formRow}>
+              <View style={styles.fieldLabelRow}>
+                <Ionicons name="location" size={18} color="#002e75" style={{ marginRight: 8 }} />
+                <Text style={styles.fieldLabelText}>City / Location</Text>
+              </View>
+              <View style={styles.textInputBox}>
+                <TextInput
+                  style={styles.textInputField}
+                  placeholder="Enter your city"
+                  placeholderTextColor="#94a3b8"
+                  value={userCity}
+                  onChangeText={setUserCity}
                 />
               </View>
             </View>

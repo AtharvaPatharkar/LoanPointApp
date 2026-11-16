@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Dimensions,
@@ -12,6 +12,7 @@ import {
   Modal,
   Platform,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import {
   Ionicons,
@@ -20,7 +21,8 @@ import {
   Feather,
 } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
-import { UserProfile } from '../../types';
+import { UserProfile, ReferralLead } from '../../types';
+import { dbSyncService } from '../../services/dbSyncService';
 import { LoanIcon } from '../common/LoanIcon';
 
 interface OffersReferralScreenProps {
@@ -90,67 +92,8 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
     estimatedCommission: 'Up to 1.5% on Disbursal',
   });
 
-  // EXACT dataset matching reference image for View My Referrals screen
-  const [myReferralsList, setMyReferralsList] = useState<ReferralItem[]>([
-    {
-      id: 'REF-HL-01',
-      fullName: 'Rahul Deshmukh',
-      mobileNumber: '+91 9545555999',
-      city: 'Nanded',
-      loanProduct: 'Home Loan',
-      loanAmount: '₹50,00,000',
-      status: 'Disbursed',
-      earning: '₹75,000',
-      earningRate: '1.5%',
-      date: '12 Nov 2026',
-    },
-    {
-      id: 'REF-PL-02',
-      fullName: 'Sneha Kulkarni',
-      mobileNumber: '+91 98562 33441',
-      city: 'Pune',
-      loanProduct: 'Personal Loan',
-      loanAmount: '₹10,00,000',
-      status: 'Disbursed',
-      earning: '₹15,000',
-      earningRate: '1.5%',
-      date: '08 Nov 2026',
-    },
-    {
-      id: 'REF-BL-03',
-      fullName: 'Amit Patil',
-      mobileNumber: '+91 90965 77880',
-      city: 'Latur',
-      loanProduct: 'Business Loan',
-      loanAmount: '₹25,00,000',
-      status: 'Approved',
-      earning: '₹37,500',
-      earningRate: '1.5%',
-      date: '04 Nov 2026',
-    },
-    {
-      id: 'REF-CL-04',
-      fullName: 'Pooja More',
-      mobileNumber: '+91 97654 88991',
-      city: 'Nanded',
-      loanProduct: 'Car Loan',
-      loanAmount: '₹8,00,000',
-      status: 'Application / Login',
-      earning: '—',
-      date: '02 Nov 2026',
-    },
-    {
-      id: 'REF-PL-05',
-      fullName: 'Vikas Mane',
-      mobileNumber: '+91 99234 55660',
-      city: 'Aurangabad',
-      loanProduct: 'Personal Loan',
-      loanAmount: '₹5,00,000',
-      status: 'In Process',
-      earning: '—',
-      date: '29 Oct 2026',
-    },
-  ]);
+  // Live dataset purely from user actions & Neon Postgres DB
+  const [myReferralsList, setMyReferralsList] = useState<ReferralItem[]>([]);
 
   const loanOptions = [
     { label: 'Home Loan', rate: 'Up to 1.5%', icon: 'home-outline', product: 'Home Loan' },
@@ -162,15 +105,55 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
   ];
 
   // Referral link
-  const referralCode = 'ARVIND123';
+  const referralCode = user?.referralCode || `LP${(user?.mobile || '9999').slice(-4)}`;
   const referralLink = `https://loanpoint.app/refer/${referralCode}`;
 
-  // Metrics from reference image for View My Referrals
-  const statsTotalReferrals = 26;
-  const statsApplicationsLogin = 18;
-  const statsLoansApproved = 10;
-  const statsLoansDisbursed = 8;
-  const statsTotalEarnings = '₹1,24,500';
+  // Live submitted referrals from Neon DB
+  const [dbReferrals, setDbReferrals] = useState<ReferralLead[]>([]);
+  const [isLoadingReferrals, setIsLoadingReferrals] = useState<boolean>(false);
+
+  // Fetch referrals submitted by the current user from Neon DB
+  const loadReferrals = async () => {
+    if (!user?.mobile) return;
+    setIsLoadingReferrals(true);
+    try {
+      const records = await dbSyncService.getReferralLeadsByReferrer(user.mobile);
+      setDbReferrals(records || []);
+    } catch (err) {
+      console.warn('Failed to load referral leads from DB:', err);
+    } finally {
+      setIsLoadingReferrals(false);
+    }
+  };
+
+  useEffect(() => {
+    loadReferrals();
+  }, [user?.mobile]);
+
+  // Dynamic Live Metrics from database referrals
+  const allCurrentRefs = [
+    ...dbReferrals.map((d) => ({
+      status: d.status,
+      payout: d.payoutAmount || 0,
+    })),
+    ...myReferralsList.map((m) => ({
+      status: m.status,
+      payout: parseFloat(m.earning.replace(/[^0-9.]/g, '')) || 0,
+    })),
+  ];
+
+  const statsTotalReferrals = allCurrentRefs.length;
+  const statsApplicationsLogin = allCurrentRefs.filter(
+    (r) => r.status === 'Login / Application' || r.status === 'Application / Login'
+  ).length;
+  const statsLoansApproved = allCurrentRefs.filter(
+    (r) => r.status === 'Loan Approval' || r.status === 'Approved'
+  ).length;
+  const statsLoansDisbursed = allCurrentRefs.filter(
+    (r) => r.status === 'Disbursed'
+  ).length;
+  const sumTotalEarnings = allCurrentRefs.reduce((acc, r) => acc + (r.payout || 0), 0);
+  const statsTotalEarnings = sumTotalEarnings > 0 ? `₹${sumTotalEarnings.toLocaleString('en-IN')}` : '₹0';
 
   const handleCopyLink = () => {
     setCopied(true);
@@ -221,7 +204,7 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
     );
   };
 
-  const handleSubmitLead = () => {
+  const handleSubmitLead = async () => {
     if (!friendName.trim()) {
       Alert.alert('Validation Error', 'Please enter your friend\'s full name.');
       return;
@@ -236,37 +219,46 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      const now = new Date();
-      const day = now.getDate().toString().padStart(2, '0');
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const monthStr = months[now.getMonth()];
-      const year = now.getFullYear();
-      let hours = now.getHours();
-      const minutes = now.getMinutes().toString().padStart(2, '0');
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      hours = hours % 12 || 12;
-      const hoursStr = hours.toString().padStart(2, '0');
-      const timeStr = `${day} ${monthStr} ${year}, ${hoursStr}:${minutes} ${ampm}`;
+    try {
+      const cleanFriendMobile = friendMobile.replace(/\D/g, '').slice(-10);
+      const referrerPhone = user?.mobile || '9545555999';
 
-      const randomSuffix = Math.floor(1000 + Math.random() * 9000).toString();
-      const newLead: SubmittedReferral = {
-        id: `REF-20261112-${randomSuffix.slice(0, 4)}`,
-        fullName: friendName.trim(),
-        mobileNumber: `+91 ${friendMobile.replace(/\D/g, '').slice(-10)}`,
-        loanType: selectedLoan,
+      const savedLead = await dbSyncService.createReferralLead({
+        referrerMobile: referrerPhone,
+        referrerUserId: user?.id,
+        friendName: friendName.trim(),
+        friendMobile: cleanFriendMobile,
+        loanProduct: selectedLoan,
         city: friendCity.trim(),
+        loanAmount: 2500000,
+      });
+
+      const now = new Date();
+      const timeStr = now.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+
+      const newLead: SubmittedReferral = {
+        id: savedLead.id,
+        fullName: savedLead.friendName,
+        mobileNumber: `+91 ${savedLead.friendMobile}`,
+        loanType: savedLead.loanProduct,
+        city: savedLead.city,
         submittedOn: timeStr,
         status: 'Referral Submitted',
         estimatedCommission: 'Up to 1.5% on Disbursal',
       };
 
       const newReferralItem: ReferralItem = {
-        id: newLead.id,
-        fullName: newLead.fullName,
-        mobileNumber: newLead.mobileNumber,
-        city: newLead.city,
-        loanProduct: (newLead.loanType as any) || 'Home Loan',
+        id: savedLead.id,
+        fullName: savedLead.friendName,
+        mobileNumber: `+91 ${savedLead.friendMobile}`,
+        city: savedLead.city,
+        loanProduct: (savedLead.loanProduct as any) || 'Home Loan',
         loanAmount: '₹25,00,000',
         status: 'In Process',
         earning: '—',
@@ -275,14 +267,20 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
 
       setMyReferralsList([newReferralItem, ...myReferralsList]);
       setCurrentSubmitted(newLead);
-      setIsSubmitting(false);
+      await loadReferrals();
+
       setFriendName('');
       setFriendMobile('');
       setFriendCity('');
 
       // Open Referral Submitted Successfully view
       setScreenMode('submitted_success');
-    }, 600);
+    } catch (err) {
+      console.error('Error submitting referral lead:', err);
+      Alert.alert('Error', 'Failed to submit referral lead. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Helper for loan icon in list using attractive colourful LoanIcon
@@ -439,7 +437,7 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
             </View>
           </View>
 
-          {/* 4 Navigation Filter Pills: All Referrals (26) | In Process (10) | Disbursed (8) | Earnings (8) */}
+          {/* 4 Navigation Filter Pills: All Referrals ({statsTotalReferrals}) | In Process ({allCurrentRefs.filter((r) => r.status === "In Process" || r.status === "Referral Submitted" || r.status === "Login / Application").length}) | Disbursed ({statsLoansDisbursed}) | Earnings ({allCurrentRefs.filter((r) => r.payout > 0 || r.status === "Disbursed").length}) */}
           <View style={styles.filterPillsRow}>
             {/* Pill 1: All Referrals */}
             <TouchableOpacity
@@ -518,6 +516,106 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
             </TouchableOpacity>
           </View>
 
+          {/* Live Neon DB Submitted Referrals Section */}
+          <View style={{ marginBottom: 16 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, paddingHorizontal: 4 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="flash" size={16} color="#d97706" />
+                <Text style={{ fontSize: 15, fontWeight: '800', color: '#0f172a' }}>
+                  Live Tracked Referrals ({dbReferrals.length})
+                </Text>
+              </View>
+              <TouchableOpacity onPress={loadReferrals} style={{ padding: 4 }}>
+                <Ionicons name="refresh" size={15} color="#004aad" />
+              </TouchableOpacity>
+            </View>
+
+            {isLoadingReferrals ? (
+              <View style={{ padding: 14, alignItems: 'center' }}>
+                <ActivityIndicator size="small" color="#004aad" />
+                <Text style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>Checking database for updates...</Text>
+              </View>
+            ) : dbReferrals.length > 0 ? (
+              dbReferrals.map((lead) => {
+                const isDisbursed = lead.status === 'Disbursed';
+                const isApproved = lead.status === 'Loan Approval';
+                const isRejected = lead.status === 'Rejected';
+
+                return (
+                  <View
+                    key={lead.id}
+                    style={{
+                      backgroundColor: '#ffffff',
+                      borderRadius: 12,
+                      padding: 12,
+                      marginBottom: 8,
+                      borderWidth: 1,
+                      borderColor: isDisbursed ? '#86efac' : isApproved ? '#fde68a' : isRejected ? '#fca5a5' : '#bfdbfe',
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '800', color: '#002e75' }}>{lead.id}</Text>
+                      <View
+                        style={{
+                          paddingHorizontal: 8,
+                          paddingVertical: 2,
+                          borderRadius: 10,
+                          backgroundColor: isDisbursed ? '#ecfdf5' : isApproved ? '#fffbeb' : isRejected ? '#fef2f2' : '#eff6ff',
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 10,
+                            fontWeight: '700',
+                            color: isDisbursed ? '#15803d' : isApproved ? '#d97706' : isRejected ? '#dc2626' : '#1d4ed8',
+                          }}
+                        >
+                          {lead.status}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#0f172a' }}>
+                      {lead.friendName} • <Text style={{ color: '#004aad' }}>{lead.loanProduct}</Text>
+                    </Text>
+                    <Text style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+                      Mobile: +91 {lead.friendMobile} | City: {lead.city}
+                    </Text>
+
+                    {/* Admin Payout & Reason */}
+                    {lead.payoutAmount > 0 && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                        <Ionicons name="gift" size={13} color="#16a34a" />
+                        <Text style={{ fontSize: 12, fontWeight: '800', color: '#16a34a' }}>
+                          Earned Payout: ₹{lead.payoutAmount.toLocaleString('en-IN')} ({lead.payoutStatus})
+                        </Text>
+                      </View>
+                    )}
+
+                    {lead.remarks && (
+                      <View style={{ backgroundColor: '#f8fafc', padding: 6, borderRadius: 6, marginTop: 6 }}>
+                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#334155' }}>Admin Note: </Text>
+                        <Text style={{ fontSize: 10, color: '#475569' }}>{lead.remarks}</Text>
+                      </View>
+                    )}
+
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 4 }}>
+                      <Text style={{ fontSize: 10, color: '#004aad' }}>Next Step: {lead.nextAction || 'Verification in progress'}</Text>
+                      <Text style={{ fontSize: 9, color: '#94a3b8' }}>
+                        {new Date(lead.statusUpdatedAt || lead.createdAt).toLocaleDateString('en-IN', {
+                          day: '2-digit',
+                          month: 'short',
+                        })}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })
+            ) : null}
+          </View>
+
+          {filteredReferrals.length > 0 ? (
+            <>
           {/* Table Header Bar: Referral Details | Loan Product | Amount | Status & Earning */}
           <View style={styles.tableHeaderBar}>
             <View style={{ flex: 1.4 }}>
@@ -633,6 +731,19 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
               </View>
             );
           })}
+
+            </>
+          ) : (
+            <View style={{ backgroundColor: '#ffffff', borderRadius: 12, padding: 20, alignItems: 'center', marginVertical: 12, borderWidth: 1, borderColor: '#e2e8f0' }}>
+              <Ionicons name="gift-outline" size={38} color="#94a3b8" />
+              <Text style={{ fontSize: 15, fontWeight: '700', color: '#0f172a', marginTop: 8 }}>
+                No Referrals Yet
+              </Text>
+              <Text style={{ fontSize: 12, color: '#64748b', textAlign: 'center', marginTop: 4, lineHeight: 18 }}>
+                You have not referred any friends or family yet. Share your referral link or submit a lead to start earning up to 1.5% commission!
+              </Text>
+            </View>
+          )}
 
           {/* Bottom Actions Row: Filter | Download Report | Referral Policy */}
           <View style={styles.bottomActionsRow}>

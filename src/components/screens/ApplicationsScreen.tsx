@@ -982,6 +982,28 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
                       </Text>
                     </TouchableOpacity>
                   </View>
+                  {/* Real-time Status Details & Timestamp Banner */}
+                  <View style={styles.appStatusLiveBanner}>
+                    <View style={styles.appStatusLiveRow}>
+                      <View style={styles.appStatusLiveDot} />
+                      <Text style={styles.appStatusLiveText}>
+                        Status: <Text style={{ fontWeight: '800' }}>{app.status}</Text>
+                      </Text>
+                      {app.statusUpdatedDate ? (
+                        <Text style={styles.appStatusLiveDate}>
+                          Updated: {app.statusUpdatedDate}
+                        </Text>
+                      ) : null}
+                    </View>
+                    {app.remarks ? (
+                      <View style={styles.appRemarksBox}>
+                        <Ionicons name="chatbubble-ellipses-outline" size={13} color="#2563eb" />
+                        <Text style={styles.appRemarksText}>
+                          Reason / Remarks: <Text style={{ color: '#1e293b' }}>{app.remarks}</Text>
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
                 </View>
 
                 <View style={styles.stepperContainer}>
@@ -2376,5 +2398,51 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#002e75',
     letterSpacing: 0.2,
+  },
+
+  /* Live Application Status Banner */
+  appStatusLiveBanner: {
+    marginTop: 10,
+    backgroundColor: '#f8fafc',
+    borderRadius: 8,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  appStatusLiveRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  appStatusLiveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#2563eb',
+  },
+  appStatusLiveText: {
+    fontSize: 12,
+    color: '#0f172a',
+  },
+  appStatusLiveDate: {
+    fontSize: 11,
+    color: '#64748b',
+    marginLeft: 'auto',
+  },
+  appRemarksBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    marginTop: 5,
+    paddingTop: 5,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+  },
+  appRemarksText: {
+    fontSize: 11.5,
+    color: '#475569',
+    flex: 1,
+    lineHeight: 16,
   },
 });

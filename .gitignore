@@ -48,3 +48,4 @@ web-build/
 !.env.example
 
 backup_config/
+.neon
