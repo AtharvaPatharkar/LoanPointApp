@@ -1,6 +1,6 @@
 import { UserProfile } from '../types';
 import { INITIAL_USER } from '../data/mockData';
-import { validateMobileNumber, generateUniqueReferralCode } from '../utils/calculator';
+import { validateMobileNumber, generateRandomCustomerCode, generateRandomCustomerId } from '../utils/calculator';
 import { crmService } from './crmService';
 import { whatsAppService } from './whatsAppService';
 import { referralService } from './referralService';
@@ -47,24 +47,32 @@ class AuthService {
 
     const cleanMobile = params.mobile.replace(/\D/g, '').slice(-10);
     const refCode = params.referralCode ? params.referralCode.trim().toUpperCase() : undefined;
+    const generatedCustCode = generateRandomCustomerCode();
+    const generatedCustId = generateRandomCustomerId();
 
     const newUser: UserProfile = {
       ...INITIAL_USER,
-      id: `LP-CUST-${Math.floor(1000 + Math.random() * 9000)}`,
+      id: generatedCustId,
       name: params.name.trim(),
       mobile: cleanMobile,
-      email: params.email?.trim() || `${cleanMobile}@loanpoint.in`,
+      email: params.email?.trim() || '',
       city: params.city?.trim() || '',
       employmentType: params.employmentType || 'Salaried',
-      monthlyIncome: params.monthlyIncome || 50000,
+      monthlyIncome: params.monthlyIncome && params.monthlyIncome > 0 ? params.monthlyIncome : 0,
       memberSince: new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
-      referralCode: generateUniqueReferralCode(params.name, cleanMobile),
+      referralCode: generatedCustCode,
       referredBy: refCode,
     };
 
     if (refCode) {
       referralService.registerNewReferral(newUser.name, refCode);
     }
+
+    // Persist registered user directly to Neon Postgres DB so subsequent logins retrieve all entered data
+    await dbSyncService.updateUserProfile({
+      ...newUser,
+      referralCode: generatedCustCode,
+    });
 
     // Registration saves the customer record without auto-logging in
     this.state.isAuthenticated = false;

@@ -12,21 +12,87 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
-import { DocumentItem } from '../../types';
+import { DocumentItem, UserProfile } from '../../types';
 import { documentService } from '../../services/documentService';
-import { COMPANY_INFO } from '../../data/mockData';
+import { authService } from '../../services/authService';
+import { dbSyncService } from '../../services/dbSyncService';
+import { COMPANY_INFO, LOAN_CATEGORIES } from '../../data/mockData';
 import { colors } from '../../theme/colors';
 
 interface DocumentsScreenProps {
+  user?: UserProfile | null;
   onBack?: () => void;
 }
 
-export const DocumentsScreen: React.FC<DocumentsScreenProps> = () => {
-  const [documents, setDocuments] = useState<DocumentItem[]>(documentService.getDocuments());
+// 3 Universal KYC Documents mandatory across ALL loan categories
+const UNIVERSAL_MANDATORY_KYC = [
+  {
+    id: 'pan_card',
+    title: 'PAN Card',
+    category: 'Identity Proof' as DocumentItem['category'],
+    sub: 'Income Tax permanent account number for credit check',
+    icon: 'id-card',
+    iconType: 'fa5' as const,
+  },
+  {
+    id: 'aadhaar_card',
+    title: 'Aadhaar Card',
+    category: 'Identity Proof' as DocumentItem['category'],
+    sub: 'UIDAI government identity & residence verification',
+    icon: 'fingerprint',
+    iconType: 'mci' as const,
+  },
+  {
+    id: 'passport_photo',
+    title: 'Passport Size Photograph',
+    category: 'Identity Proof' as DocumentItem['category'],
+    sub: 'Recent passport photo with clean light background',
+    icon: 'camera-account',
+    iconType: 'mci' as const,
+  },
+];
+
+export const DocumentsScreen: React.FC<DocumentsScreenProps> = ({ user: propUser }) => {
+  const currentUser = propUser || authService.getUser();
+  const [documents, setDocuments] = useState<DocumentItem[]>(currentUser?.documents || documentService.getDocuments());
   const [selectedCategory, setSelectedCategory] = useState<DocumentItem['category']>('Identity Proof');
+  const [selectedLoanId, setSelectedLoanId] = useState<string>('personal');
   const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [uploadingTargetName, setUploadingTargetName] = useState<string>('');
+  const [isLoadingFromDb, setIsLoadingFromDb] = useState<boolean>(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Active Receipt Modal View State
+  const [viewingReceiptDoc, setViewingReceiptDoc] = useState<DocumentItem | null>(null);
+  // Active In-App Document Preview Modal State
+  const [previewDoc, setPreviewDoc] = useState<DocumentItem | null>(null);
+  const [isDownloading, setIsDownloading] = useState<boolean>(false);
+  const [downloadCompleted, setDownloadCompleted] = useState<boolean>(false);
+
+  // Fetch freshest documents directly from user record in Neon database on screen mount
+  useEffect(() => {
+    if (currentUser?.mobile) {
+      setIsLoadingFromDb(true);
+      dbSyncService
+        .getUserByMobile(currentUser.mobile)
+        .then((freshUser) => {
+          if (freshUser && freshUser.documents) {
+            documentService.setDocuments(freshUser.documents);
+            setDocuments(freshUser.documents);
+          } else {
+            documentService.setDocuments([]);
+            setDocuments([]);
+          }
+        })
+        .catch((e) => {
+          console.warn('Error loading documents from user DB:', e);
+        })
+        .finally(() => {
+          setIsLoadingFromDb(false);
+        });
+    }
+  }, [currentUser?.mobile]);
 
   // Auto-remove success message after 3.5 seconds
   useEffect(() => {
@@ -45,11 +111,6 @@ export const DocumentsScreen: React.FC<DocumentsScreenProps> = () => {
     };
   }, [successMessage]);
 
-  // Active Receipt Modal View State
-  const [viewingReceiptDoc, setViewingReceiptDoc] = useState<DocumentItem | null>(null);
-  const [isDownloading, setIsDownloading] = useState<boolean>(false);
-  const [downloadCompleted, setDownloadCompleted] = useState<boolean>(false);
-
   const categoryChips: {
     category: DocumentItem['category'];
     icon: string;
@@ -63,22 +124,81 @@ export const DocumentsScreen: React.FC<DocumentsScreenProps> = () => {
     { category: 'Property Document', icon: 'shield-home', iconType: 'mci', activeColor: '#2d3091', lightColor: '#e0e7ff' },
   ];
 
-  const categories: DocumentItem['category'][] = [
-    'Identity Proof',
-    'Address Proof',
-    'Income Proof',
-    'Property Document',
-  ];
+  // Specific finder for uploaded documents
+  const findUploadedDoc = (targetKeyword: string): DocumentItem | undefined => {
+    const lowerKey = targetKeyword.toLowerCase().trim();
+    return documents.find((d) => {
+      const dName = d.name.toLowerCase();
+      if (lowerKey === 'pan card') {
+        return dName.includes('pan');
+      }
+      if (lowerKey === 'aadhaar card') {
+        return dName.includes('aadhaar') || dName.includes('aadhar');
+      }
+      if (lowerKey === 'passport size photograph') {
+        return dName.includes('photo') || dName.includes('photograph') || dName.includes('passport size');
+      }
+      return dName.includes(lowerKey);
+    });
+  };
 
-  const pendingChecklist = [
-    { title: 'Last 6 Months Bank Statement', note: 'Required for underwriting credit verification', category: 'Income Proof' as const },
-    { title: 'Form 16 / Latest ITR Acknowledgement', note: 'Mandatory for loans above ₹5 Lakhs', category: 'Income Proof' as const },
-    { title: 'Updated Electricity / Utility Bill', note: 'Address verification within last 2 months', category: 'Address Proof' as const },
-  ];
+  // Map loan required doc string to best-fit category
+  const inferCategoryFromDocName = (docTitle: string): DocumentItem['category'] => {
+    const lower = docTitle.toLowerCase();
+    if (lower.includes('kyc') || lower.includes('pan') || lower.includes('aadhaar') || lower.includes('photo') || lower.includes('voter') || lower.includes('passport')) {
+      return 'Identity Proof';
+    }
+    if (lower.includes('address') || lower.includes('electricity') || lower.includes('bill') || lower.includes('residence') || lower.includes('rent')) {
+      return 'Address Proof';
+    }
+    if (
+      lower.includes('property') ||
+      lower.includes('deed') ||
+      lower.includes('7/12') ||
+      lower.includes('blueprint') ||
+      lower.includes('noc') ||
+      lower.includes('tax receipt') ||
+      lower.includes('satbara') ||
+      lower.includes('8a') ||
+      lower.includes('ferfar') ||
+      lower.includes('sale agreement') ||
+      lower.includes('chain of title') ||
+      lower.includes('sanctioned') ||
+      lower.includes('rc book')
+    ) {
+      return 'Property Document';
+    }
+    return 'Income Proof';
+  };
+
+  const currentLoan = LOAN_CATEGORIES.find((l) => l.id === selectedLoanId) || LOAN_CATEGORIES[0];
+  const requiredDocsForLoan = currentLoan.requiredDocuments || [];
+
+  // Check if a specific loan checklist item is already uploaded
+  const isDocItemUploaded = (docTitle: string): boolean => {
+    const lower = docTitle.toLowerCase();
+    return documents.some((d) => {
+      const dName = d.name.toLowerCase();
+      const dCategory = d.category.toLowerCase();
+      if (lower.includes('salary') && (dName.includes('salary') || dCategory.includes('income'))) return true;
+      if (lower.includes('itr') && (dName.includes('itr') || dCategory.includes('income'))) return true;
+      if (lower.includes('bank') && (dName.includes('bank') || dCategory.includes('income'))) return true;
+      if (lower.includes('gst') && (dName.includes('gst') || dCategory.includes('income'))) return true;
+      if (lower.includes('udyam') && (dName.includes('udyam') || dName.includes('shop') || dName.includes('registration'))) return true;
+      if ((lower.includes('property') || lower.includes('deed') || lower.includes('7/12') || lower.includes('sale agreement')) && dCategory.includes('property')) return true;
+      if (lower.includes('address') && dCategory.includes('address')) return true;
+      if (lower.includes('quotation') && (dName.includes('quotation') || dName.includes('invoice'))) return true;
+      if (lower.includes('admission') && dName.includes('admission')) return true;
+      if (lower.includes('mark sheet') && (dName.includes('mark') || dName.includes('academic'))) return true;
+      return dName.includes(lower.slice(0, 10));
+    });
+  };
 
   // Open local file explorer to choose an authentic file
-  const handlePickAndUploadFile = (categoryOverride?: DocumentItem['category']) => {
+  const handlePickAndUploadFile = (categoryOverride?: DocumentItem['category'], defaultDocName?: string) => {
     const targetCategory = categoryOverride || selectedCategory;
+    const labelForFile = defaultDocName || targetCategory;
+    setUploadingTargetName(labelForFile);
 
     // Web / Desktop / Mobile Browser File Picker
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -108,25 +228,29 @@ export const DocumentsScreen: React.FC<DocumentsScreenProps> = () => {
         reader.onload = async () => {
           const fileDataUri = reader.result as string;
           try {
+            const displayName = defaultDocName ? defaultDocName : file.name;
             const newDoc = await documentService.uploadDocument(
               {
-                name: file.name,
+                name: displayName,
                 size: file.size,
                 type: file.type || 'application/pdf',
                 uri: fileDataUri,
               },
-              targetCategory
+              targetCategory,
+              currentUser?.mobile
             );
             setDocuments(documentService.getDocuments());
-            setSuccessMessage(`Document "${newDoc.fileName}" uploaded and submitted to Loan Point.`);
+            setSuccessMessage(`Document "${newDoc.name}" uploaded and saved to your database vault.`);
           } catch {
             Alert.alert('Upload Error', 'Document upload failed. Please try again.');
           } finally {
             setIsUploading(false);
+            setUploadingTargetName('');
           }
         };
         reader.onerror = () => {
           setIsUploading(false);
+          setUploadingTargetName('');
           Alert.alert('Error', 'Unable to read selected file.');
         };
         reader.readAsDataURL(file);
@@ -137,23 +261,26 @@ export const DocumentsScreen: React.FC<DocumentsScreenProps> = () => {
 
     // Fallback for native platform when document-picker package isn't linked
     Alert.alert(
-      'Select Document Source',
-      'Choose a document to upload from your local storage:',
+      'Upload Document',
+      `Select authentic file for ${labelForFile}:`,
       [
         {
-          text: 'Recent PDF / Scan',
+          text: 'Upload File / Photo',
           onPress: async () => {
-            const fileName = `${targetCategory.replace(/\s+/g, '_')}_${Date.now().toString().slice(-4)}.pdf`;
+            const ext = 'pdf';
+            const fileName = `${labelForFile.replace(/\s+/g, '_')}.${ext}`;
             setIsUploading(true);
             try {
               const newDoc = await documentService.uploadDocument(
-                { name: fileName, size: 1024 * 650, type: 'application/pdf' },
-                targetCategory
+                { name: defaultDocName || labelForFile, size: 1024 * 240, type: 'application/pdf' },
+                targetCategory,
+                currentUser?.mobile
               );
               setDocuments(documentService.getDocuments());
-              setSuccessMessage(`Document "${newDoc.fileName}" uploaded and submitted.`);
+              setSuccessMessage(`Document "${newDoc.name}" uploaded and saved to your database vault.`);
             } finally {
               setIsUploading(false);
+              setUploadingTargetName('');
             }
           },
         },
@@ -162,11 +289,10 @@ export const DocumentsScreen: React.FC<DocumentsScreenProps> = () => {
     );
   };
 
-  // View uploaded document
+  // View uploaded document - opens in clean browser new tab or modal viewer
   const handleViewDocument = (doc: DocumentItem) => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       if (doc.fileUri) {
-        // Open file in new tab or popup window
         const win = window.open();
         if (win) {
           if (doc.fileType === 'PDF') {
@@ -183,30 +309,42 @@ export const DocumentsScreen: React.FC<DocumentsScreenProps> = () => {
         }
       }
     }
-    Alert.alert(
-      `Viewing: ${doc.name}`,
-      `Format: ${doc.fileType} (${doc.fileSizeKb} KB)\nUploaded: ${doc.uploadDate}\nStatus: ${doc.status}`
-    );
+    // Mobile or popup fallback
+    setPreviewDoc(doc);
   };
 
   // Download uploaded document
   const handleDownloadUploadedDoc = (doc: DocumentItem) => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
       const link = document.createElement('a');
-      link.href = doc.fileUri || `data:text/plain;charset=utf-8,${encodeURIComponent(`Document: ${doc.name}\nFormat: ${doc.fileType}`)}`;
+      link.href = doc.fileUri || `data:text/plain;charset=utf-8,${encodeURIComponent(`Document: ${doc.name}\nCategory: ${doc.category}\nFormat: ${doc.fileType}\nUploaded: ${doc.uploadDate}`)}`;
       link.download = doc.fileName || `${doc.name}.${doc.fileType.toLowerCase()}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      Alert.alert('Download Started', `"${doc.fileName || doc.name}" has been downloaded.`);
+      Alert.alert('Download Started', `"${doc.fileName || doc.name}" downloaded successfully.`);
       return;
     }
     Alert.alert('Download', `Downloading ${doc.fileName || doc.name}...`);
   };
 
-  const handleRemove = (id: string) => {
-    documentService.removeDocument(id);
-    setDocuments(documentService.getDocuments());
+  const handleRemove = async (id: string) => {
+    Alert.alert(
+      'Remove Document',
+      'Are you sure you want to delete this document from your secure vault?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await documentService.removeDocument(id, currentUser?.mobile);
+            setDocuments(documentService.getDocuments());
+            setSuccessMessage('Document removed from your vault.');
+          },
+        },
+      ]
+    );
   };
 
   const handleShareDocReceipt = async (doc: DocumentItem) => {
@@ -288,16 +426,18 @@ DIGITALLY RECORDED & VERIFIED BY LOAN POINT SYSTEM
       case 'Verified':
         return { bg: '#ecfdf5', text: '#065f46', border: '#a7f3d0' };
       case 'Under Review':
-        return { bg: 'colors.primaryLight', text: 'colors.primaryDark', border: 'colors.primaryBorder' };
+        return { bg: colors.primaryLight, text: colors.primaryDark, border: colors.primaryBorder };
       case 'Action Needed':
         return { bg: '#fef2f2', text: '#dc2626', border: '#fecaca' };
+      default:
+        return { bg: '#f1f5f9', text: '#475569', border: '#cbd5e1' };
     }
   };
 
   return (
     <View style={styles.root}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        {/* 1. Header Card */}
+        {/* ================= 1. HEADER CARD ================= */}
         <View style={styles.headerCard}>
           <View style={styles.headerTopRow}>
             <View style={styles.headerIconBadge}>
@@ -312,52 +452,30 @@ DIGITALLY RECORDED & VERIFIED BY LOAN POINT SYSTEM
             </View>
           </View>
           <Text style={styles.screenSub}>
-            Secure repository for KYC, income proofs, checklists, and official loan submission receipts.
+            Secure cloud storage for your loan documents. All files are verified and directly saved in your personal database vault.
           </Text>
-        </View>
-
-        {/* 2. Pending Document Checklist */}
-        <View style={styles.card}>
-          <View style={styles.sectionHeadingRow}>
-            <View style={[styles.sectionIconBox, { backgroundColor: '#fef3c7' }]}>
-              <Ionicons name="alert-circle" size={17} color="#d97706" />
+          {isLoadingFromDb && (
+            <View style={styles.syncRow}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={styles.syncText}>Syncing with secure database vault...</Text>
             </View>
-            <Text style={[styles.cardTitle, { color: '#92400e' }]}>Required Bank Checklist</Text>
-          </View>
-
-          <View style={styles.checklistItems}>
-            {pendingChecklist.map((item, idx) => (
-              <View key={idx} style={[styles.checkItemRow, idx === pendingChecklist.length - 1 && { borderBottomWidth: 0 }]}>
-                <View style={styles.checkItemIconWrap}>
-                  <Ionicons name="time" size={15} color="#d97706" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.checkItemTitle}>{item.title}</Text>
-                  <Text style={styles.checkItemSub}>{item.note}</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.uploadMiniBtn}
-                  onPress={() => handlePickAndUploadFile(item.category)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="cloud-upload" size={12} color="#ffffff" />
-                  <Text style={styles.uploadMiniText}>Upload</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
+          )}
         </View>
 
-        {/* 3. Upload Document Box */}
+        {/* ================= 2. QUICK UPLOAD DOCUMENT SECTION (TOP POSITION) ================= */}
         <View style={styles.card}>
           <View style={styles.sectionHeadingRow}>
             <View style={[styles.sectionIconBox, { backgroundColor: colors.primaryLight }]}>
-              <Ionicons name="cloud-upload" size={16} color={colors.primary} />
+              <Ionicons name="cloud-upload" size={17} color={colors.primary} />
             </View>
-            <Text style={styles.cardTitle}>Upload Document</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardTitle}>Quick Upload Document</Text>
+              <Text style={styles.cardSubtitle}>Choose category and select a file to instantly save to vault</Text>
+            </View>
           </View>
 
-          <Text style={styles.inputLabel}>Choose Proof Category</Text>
+          {/* Category Chips Selector */}
+          <Text style={styles.inputLabel}>Select Category to Upload:</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryChipsRow}>
             {categoryChips.map((tab) => {
               const isSelected = selectedCategory === tab.category;
@@ -411,6 +529,7 @@ DIGITALLY RECORDED & VERIFIED BY LOAN POINT SYSTEM
             })}
           </ScrollView>
 
+          {/* Upload Drop Area */}
           <TouchableOpacity
             style={styles.uploadDropzone}
             onPress={() => handlePickAndUploadFile()}
@@ -420,14 +539,16 @@ DIGITALLY RECORDED & VERIFIED BY LOAN POINT SYSTEM
             {isUploading ? (
               <View style={{ alignItems: 'center', padding: 8 }}>
                 <ActivityIndicator color={colors.primary} />
-                <Text style={styles.uploadTitle}>Uploading {selectedCategory}...</Text>
+                <Text style={styles.uploadTitle}>
+                  Uploading {uploadingTargetName || selectedCategory} to Vault...
+                </Text>
               </View>
             ) : (
               <>
                 <View style={styles.uploadIconCircle}>
                   <Ionicons name="cloud-upload" size={26} color={colors.primary} />
                 </View>
-                <Text style={styles.uploadTitle}>Tap to Browse & Upload</Text>
+                <Text style={styles.uploadTitle}>Tap to Browse & Upload {selectedCategory}</Text>
                 <Text style={styles.uploadSub}>Select PDF, JPG, PNG from device (max 5MB)</Text>
               </>
             )}
@@ -444,22 +565,230 @@ DIGITALLY RECORDED & VERIFIED BY LOAN POINT SYSTEM
           )}
         </View>
 
-        {/* 3. Submitted Document History & Receipts */}
+        {/* ================= 3. MANDATORY COMMON KYC DOCUMENTS (PAN, AADHAAR, PHOTO) ================= */}
+        <View style={styles.card}>
+          <View style={styles.sectionHeadingRow}>
+            <View style={[styles.sectionIconBox, { backgroundColor: '#e0f2fe' }]}>
+              <Ionicons name="shield-checkmark" size={17} color="#0284c7" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.cardTitle, { color: '#0369a1' }]}>Common Mandatory KYC (All Loans)</Text>
+              <Text style={styles.cardSubtitle}>
+                These 3 documents are compulsory for every loan application:
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.mandatoryKycList}>
+            {UNIVERSAL_MANDATORY_KYC.map((kyc) => {
+              const uploadedDoc = findUploadedDoc(kyc.title);
+              const isDone = !!uploadedDoc;
+
+              return (
+                <View
+                  key={kyc.id}
+                  style={[styles.kycCard, isDone && styles.kycCardDone]}
+                >
+                  <View style={styles.kycCardLeft}>
+                    <View style={[styles.kycIconBox, isDone && { backgroundColor: '#dcfce7' }]}>
+                      {kyc.iconType === 'fa5' ? (
+                        <FontAwesome5
+                          name={kyc.icon as any}
+                          size={15}
+                          color={isDone ? '#16a34a' : '#0284c7'}
+                        />
+                      ) : (
+                        <MaterialCommunityIcons
+                          name={kyc.icon as any}
+                          size={18}
+                          color={isDone ? '#16a34a' : '#0284c7'}
+                        />
+                      )}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <Text style={[styles.kycTitle, isDone && styles.kycTitleDone]}>
+                          {kyc.title}
+                        </Text>
+                        <View style={styles.mandatoryTag}>
+                          <Text style={styles.mandatoryTagText}>COMPULSORY</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.kycSub}>{kyc.sub}</Text>
+                      {uploadedDoc && (
+                        <Text style={styles.kycAttachedMeta}>
+                          ✓ Attached: {uploadedDoc.name} ({uploadedDoc.fileType} · {uploadedDoc.uploadDate})
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+
+                  <View style={styles.kycCardRight}>
+                    {isDone ? (
+                      <View style={styles.kycButtonsRow}>
+                        {/* Active View Button */}
+                        <TouchableOpacity
+                          style={styles.kycViewBtn}
+                          onPress={() => handleViewDocument(uploadedDoc)}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="eye" size={13} color="#ffffff" />
+                          <Text style={styles.kycViewBtnText}>View</Text>
+                        </TouchableOpacity>
+
+                        {/* Re-upload option */}
+                        <TouchableOpacity
+                          style={styles.kycReuploadBtn}
+                          onPress={() => handlePickAndUploadFile(kyc.category, kyc.title)}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="cloud-upload-outline" size={13} color={colors.text} />
+                          <Text style={styles.kycReuploadBtnText}>Re-upload</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.kycUploadBtn}
+                        onPress={() => handlePickAndUploadFile(kyc.category, kyc.title)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="cloud-upload" size={14} color="#ffffff" />
+                        <Text style={styles.kycUploadBtnText}>Upload</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* ================= 4. LOAN-SPECIFIC REMINDER DOCUMENTS ACCORDING TO LOAN TYPE ================= */}
+        <View style={styles.card}>
+          <View style={styles.sectionHeadingRow}>
+            <View style={[styles.sectionIconBox, { backgroundColor: '#fef3c7' }]}>
+              <Ionicons name="document-text-outline" size={17} color="#d97706" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.cardTitle, { color: '#92400e' }]}>Loan-Specific Additional Documents</Text>
+              <Text style={styles.cardSubtitle}>
+                Select loan category to check additional required documentation:
+              </Text>
+            </View>
+          </View>
+
+          {/* Loan Category Selector Tabs */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.loanTabsScroll}>
+            {LOAN_CATEGORIES.map((loan) => {
+              const isSelected = selectedLoanId === loan.id;
+              return (
+                <TouchableOpacity
+                  key={loan.id}
+                  style={[styles.loanTabChip, isSelected && styles.loanTabChipActive]}
+                  onPress={() => setSelectedLoanId(loan.id)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.loanTabText, isSelected && styles.loanTabTextActive]}>
+                    {loan.title}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {/* Active Checklist Items */}
+          <View style={styles.checklistItems}>
+            {requiredDocsForLoan.map((reqDoc, idx) => {
+              const uploaded = isDocItemUploaded(reqDoc);
+              const inferredCat = inferCategoryFromDocName(reqDoc);
+
+              return (
+                <View
+                  key={idx}
+                  style={[
+                    styles.checkItemRow,
+                    idx === requiredDocsForLoan.length - 1 && { borderBottomWidth: 0 },
+                    uploaded && styles.checkItemRowDone,
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.checkItemIconWrap,
+                      uploaded && { backgroundColor: '#dcfce7' },
+                    ]}
+                  >
+                    <Ionicons
+                      name={uploaded ? 'checkmark-circle' : 'time-outline'}
+                      size={17}
+                      color={uploaded ? '#16a34a' : '#d97706'}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.checkItemTitle, uploaded && styles.checkItemTitleDone]}>
+                      {reqDoc}
+                    </Text>
+                    <View style={styles.checkItemMetaRow}>
+                      <View style={styles.checkItemCatBadge}>
+                        <Text style={styles.checkItemCatBadgeText}>{inferredCat}</Text>
+                      </View>
+                      <Text style={[styles.checkItemStatusText, { color: uploaded ? '#16a34a' : '#d97706' }]}>
+                        {uploaded ? '✓ Attached in Vault' : 'Pending Upload'}
+                      </Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    style={[
+                      styles.uploadMiniBtn,
+                      uploaded && { backgroundColor: '#059669' },
+                    ]}
+                    onPress={() => handlePickAndUploadFile(inferredCat, reqDoc)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={uploaded ? 'cloud-done-outline' : 'cloud-upload-outline'}
+                      size={13}
+                      color="#ffffff"
+                    />
+                    <Text style={styles.uploadMiniText}>{uploaded ? 'Re-upload' : 'Upload'}</Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* ================= 5. SUBMITTED DOCUMENT VAULT & ACTIONS ================= */}
         <View style={styles.card}>
           <View style={styles.docListHeaderRow}>
-            <Text style={styles.cardTitle}>Uploaded Documents ({documents.length})</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardTitle}>Uploaded Documents Vault ({documents.length})</Text>
+              <Text style={styles.docListSub}>All authentic files uploaded by you saved in the database</Text>
+            </View>
             {documents.length > 0 && (
-              <Text style={styles.docCountText}>Tap 'View Receipt' for PDF</Text>
+              <View style={styles.vaultCountBadge}>
+                <Ionicons name="lock-closed" size={11} color={colors.primary} />
+                <Text style={styles.docCountText}>{documents.length} Saved</Text>
+              </View>
             )}
           </View>
 
           {documents.length === 0 ? (
             <View style={styles.emptyDocState}>
-              <Ionicons name="folder-open-outline" size={36} color={colors.textLight} />
-              <Text style={styles.emptyDocTitle}>No Documents Uploaded Yet</Text>
+              <View style={styles.emptyIconCircle}>
+                <Ionicons name="folder-open-outline" size={38} color={colors.textLight} />
+              </View>
+              <Text style={styles.emptyDocTitle}>Your Vault is Currently Empty</Text>
               <Text style={styles.emptyDocSub}>
-                Upload your KYC, address, or income proofs above. Only documents you upload will appear here.
+                No demo or dummy documents are displayed. Upload your PAN, Aadhaar, photo, or income documents above to safely save them to your account.
               </Text>
+              <TouchableOpacity
+                style={styles.emptyUploadCta}
+                onPress={() => handlePickAndUploadFile()}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="add-circle" size={16} color="#ffffff" />
+                <Text style={styles.emptyUploadCtaText}>Upload Your First Document</Text>
+              </TouchableOpacity>
             </View>
           ) : (
             <View style={styles.documentsList}>
@@ -467,6 +796,7 @@ DIGITALLY RECORDED & VERIFIED BY LOAN POINT SYSTEM
                 const badge = getStatusBadgeStyle(doc.status);
                 return (
                   <View key={doc.id} style={styles.docCard}>
+                    {/* Top Row: File icon, title/details, and status badge */}
                     <View style={styles.docCardTop}>
                       <View
                         style={[
@@ -489,7 +819,7 @@ DIGITALLY RECORDED & VERIFIED BY LOAN POINT SYSTEM
                               ? 'file-pdf-box'
                               : 'file-image-outline'
                           }
-                          size={22}
+                          size={24}
                           color={
                             doc.category === 'Identity Proof'
                               ? '#0284c7'
@@ -502,7 +832,7 @@ DIGITALLY RECORDED & VERIFIED BY LOAN POINT SYSTEM
                         />
                       </View>
                       <View style={styles.docInfo}>
-                        <Text style={styles.docName} numberOfLines={1}>{doc.name}</Text>
+                        <Text style={styles.docName} numberOfLines={2}>{doc.name}</Text>
                         <Text style={styles.docMeta}>
                           {doc.category} · {doc.fileSizeKb} KB · {doc.uploadDate}
                         </Text>
@@ -512,51 +842,57 @@ DIGITALLY RECORDED & VERIFIED BY LOAN POINT SYSTEM
                       </View>
                     </View>
 
-                    <View style={styles.docCardFooter}>
+                    {/* Responsive Actions Grid: View, Download, Receipt, Share, Delete */}
+                    <View style={styles.docCardActionsGrid}>
+                      {/* Active Prominent View Button */}
                       <TouchableOpacity
-                        style={styles.actionBtnPrimary}
+                        style={styles.actionBtnView}
                         onPress={() => handleViewDocument(doc)}
                         activeOpacity={0.7}
                       >
-                        <Ionicons name="eye-outline" size={14} color={colors.primary} />
-                        <Text style={styles.actionBtnPrimaryText}>View</Text>
+                        <Ionicons name="eye" size={14} color="#ffffff" />
+                        <Text style={styles.actionBtnViewText}>View</Text>
                       </TouchableOpacity>
 
+                      {/* Download File */}
                       <TouchableOpacity
-                        style={styles.actionBtnSecondary}
+                        style={styles.actionBtnOutline}
                         onPress={() => handleDownloadUploadedDoc(doc)}
                         activeOpacity={0.7}
                       >
                         <Ionicons name="download-outline" size={14} color={colors.text} />
-                        <Text style={styles.actionBtnSecondaryText}>Download</Text>
+                        <Text style={styles.actionBtnOutlineText}>Download</Text>
                       </TouchableOpacity>
 
+                      {/* Official Receipt */}
                       <TouchableOpacity
-                        style={styles.receiptSmallBtn}
+                        style={styles.actionBtnReceipt}
                         onPress={() => {
                           setDownloadCompleted(false);
                           setViewingReceiptDoc(doc);
                         }}
                         activeOpacity={0.7}
                       >
-                        <Ionicons name="receipt-outline" size={14} color={colors.accentGold} />
-                        <Text style={styles.receiptSmallText}>Receipt</Text>
+                        <Ionicons name="receipt-outline" size={14} color="#92400e" />
+                        <Text style={styles.actionBtnReceiptText}>Receipt</Text>
                       </TouchableOpacity>
 
+                      {/* WhatsApp / Native Share */}
                       <TouchableOpacity
-                        style={styles.shareBtn}
+                        style={styles.actionBtnIconOnly}
                         onPress={() => handleShareDocReceipt(doc)}
                         activeOpacity={0.7}
                       >
-                        <Ionicons name="share-social-outline" size={14} color={colors.textMuted} />
+                        <Ionicons name="share-social-outline" size={15} color={colors.text} />
                       </TouchableOpacity>
 
+                      {/* Delete */}
                       <TouchableOpacity
-                        style={styles.deleteBtn}
+                        style={styles.actionBtnDelete}
                         onPress={() => handleRemove(doc.id)}
                         activeOpacity={0.7}
                       >
-                        <Ionicons name="trash-outline" size={14} color={colors.danger} />
+                        <Ionicons name="trash-outline" size={15} color={colors.danger} />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -567,19 +903,84 @@ DIGITALLY RECORDED & VERIFIED BY LOAN POINT SYSTEM
         </View>
       </ScrollView>
 
+      {/* ================= IN-APP DOCUMENT PREVIEW MODAL ================= */}
+      <Modal visible={!!previewDoc} animationType="fade" transparent onRequestClose={() => setPreviewDoc(null)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.previewModalCard}>
+            <View style={styles.modalTopRow}>
+              <View style={styles.previewTitleWrap}>
+                <Ionicons name="document-text" size={18} color={colors.primary} />
+                <Text style={styles.previewTitleText} numberOfLines={1}>
+                  {previewDoc?.name}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setPreviewDoc(null)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={22} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            {previewDoc && (
+              <View style={styles.previewBody}>
+                <View style={styles.previewFileBanner}>
+                  <MaterialCommunityIcons
+                    name={previewDoc.fileType === 'PDF' ? 'file-pdf-box' : 'file-image-outline'}
+                    size={48}
+                    color={colors.primary}
+                  />
+                  <Text style={styles.previewFileName}>{previewDoc.fileName || previewDoc.name}</Text>
+                  <Text style={styles.previewFileMeta}>
+                    {previewDoc.category} · {previewDoc.fileType} Format · {previewDoc.fileSizeKb} KB
+                  </Text>
+                  <View style={[styles.statusBadge, { backgroundColor: '#ecfdf5', borderColor: '#a7f3d0', marginTop: 6 }]}>
+                    <Text style={[styles.statusBadgeText, { color: '#065f46' }]}>
+                      Status: {previewDoc.status}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.previewActions}>
+                  <TouchableOpacity
+                    style={styles.downloadCtaBtn}
+                    onPress={() => {
+                      if (previewDoc) handleDownloadUploadedDoc(previewDoc);
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="download" size={16} color={colors.white} />
+                    <Text style={styles.downloadCtaText}>Download File</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.receiptActionBtn}
+                    onPress={() => {
+                      const doc = previewDoc;
+                      setPreviewDoc(null);
+                      setViewingReceiptDoc(doc);
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="receipt-outline" size={16} color={colors.primary} />
+                    <Text style={styles.receiptActionBtnText}>View Receipt</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
+
       {/* ================= OFFICIAL RECEIPT PREVIEW & DOWNLOAD MODAL ================= */}
-      <Modal visible={!!viewingReceiptDoc} animationType="slide" transparent>
+      <Modal visible={!!viewingReceiptDoc} animationType="slide" transparent onRequestClose={() => setViewingReceiptDoc(null)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             {viewingReceiptDoc && (
               <>
-                {/* Modal Top Bar */}
                 <View style={styles.modalTopRow}>
                   <View style={styles.receiptBadge}>
                     <Ionicons name="checkmark-done" size={14} color={colors.white} />
                     <Text style={styles.receiptBadgeText}>OFFICIAL ACKNOWLEDGMENT</Text>
                   </View>
-                  <TouchableOpacity onPress={() => setViewingReceiptDoc(null)}>
+                  <TouchableOpacity onPress={() => setViewingReceiptDoc(null)} style={styles.modalCloseBtn}>
                     <Ionicons name="close" size={22} color={colors.text} />
                   </TouchableOpacity>
                 </View>
@@ -623,11 +1024,10 @@ DIGITALLY RECORDED & VERIFIED BY LOAN POINT SYSTEM
 
                   <View style={styles.paperFooter}>
                     <Ionicons name="shield-checkmark" size={14} color={colors.primary} />
-                    <Text style={styles.paperFooterText}>Digitally Verified & Stamped</Text>
+                    <Text style={styles.paperFooterText}>Digitally Verified & Recorded by Loan Point</Text>
                   </View>
                 </View>
 
-                {/* Download State & Action */}
                 {downloadCompleted ? (
                   <View style={styles.downloadSuccessBox}>
                     <Ionicons name="checkmark-circle" size={18} color={colors.success} />
@@ -681,7 +1081,7 @@ const styles = StyleSheet.create({
   },
   container: {
     padding: 16,
-    paddingBottom: 36,
+    paddingBottom: 40,
     gap: 16,
   },
 
@@ -743,7 +1143,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   screenHeading: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '800',
     color: colors.text,
   },
@@ -751,10 +1151,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textMuted,
     marginTop: 8,
-    lineHeight: 17,
+    lineHeight: 18,
+  },
+  syncRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  syncText: {
+    fontSize: 11.5,
+    color: colors.primary,
+    fontWeight: '600',
   },
 
-  /* 2. Structured Content Cards */
+  /* Structured Content Cards */
   card: {
     backgroundColor: colors.white,
     borderRadius: 16,
@@ -769,77 +1183,34 @@ const styles = StyleSheet.create({
   },
   sectionHeadingRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 14,
+    alignItems: 'flex-start',
+    gap: 10,
+    marginBottom: 12,
     paddingBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: colors.surfaceSubtle,
   },
   sectionIconBox: {
-    width: 28,
-    height: 28,
+    width: 32,
+    height: 32,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 2,
   },
   cardTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
     color: colors.primaryDeep,
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
-  checklistItems: {
-    gap: 10,
-  },
-  checkItemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.surfaceSubtle,
-    gap: 10,
-  },
-  checkItemIconWrap: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    backgroundColor: '#fef3c7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkItemTitle: {
-    fontSize: 12.5,
-    fontWeight: '800',
-    color: colors.text,
-  },
-  checkItemSub: {
-    fontSize: 11,
+  cardSubtitle: {
+    fontSize: 11.5,
     color: colors.textMuted,
     marginTop: 2,
-    lineHeight: 15,
-  },
-  uploadMiniBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    gap: 4,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  uploadMiniText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: colors.white,
   },
 
-  /* Upload Box & Chips */
+  /* 2. Quick Upload Box & Chips */
   inputLabel: {
     fontSize: 12,
     fontWeight: '700',
@@ -895,9 +1266,9 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   uploadIconCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
@@ -935,24 +1306,284 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  /* 3. Submitted Documents */
+  /* 3. Mandatory Common KYC List */
+  mandatoryKycList: {
+    gap: 10,
+  },
+  kycCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    padding: 12,
+    gap: 10,
+  },
+  kycCardDone: {
+    backgroundColor: '#f0fdf4',
+    borderColor: '#86efac',
+  },
+  kycCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  kycIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#e0f2fe',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  kycTitle: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: colors.text,
+  },
+  kycTitleDone: {
+    color: '#166534',
+  },
+  mandatoryTag: {
+    backgroundColor: '#fee2e2',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  mandatoryTagText: {
+    fontSize: 8.5,
+    fontWeight: '800',
+    color: '#b91c1c',
+    letterSpacing: 0.3,
+  },
+  kycSub: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  kycAttachedMeta: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#16a34a',
+    marginTop: 4,
+  },
+  kycCardRight: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+    paddingTop: 8,
+  },
+  kycButtonsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  kycViewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  kycViewBtnText: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  kycReuploadBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 4,
+  },
+  kycReuploadBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  kycUploadBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 5,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  kycUploadBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+
+  /* 4. Loan Category Tabs & Reminders */
+  loanTabsScroll: {
+    gap: 8,
+    paddingBottom: 12,
+  },
+  loanTabChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    backgroundColor: colors.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  loanTabChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  loanTabText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textMuted,
+  },
+  loanTabTextActive: {
+    color: colors.white,
+    fontWeight: '800',
+  },
+  checklistItems: {
+    gap: 8,
+  },
+  checkItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 10,
+  },
+  checkItemRowDone: {
+    backgroundColor: '#f0fdf4',
+    borderColor: '#bbf7d0',
+  },
+  checkItemIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: '#fef3c7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkItemTitle: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  checkItemTitleDone: {
+    color: '#166534',
+  },
+  checkItemMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 3,
+  },
+  checkItemCatBadge: {
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+  },
+  checkItemCatBadgeText: {
+    fontSize: 9.5,
+    fontWeight: '600',
+    color: colors.textMuted,
+  },
+  checkItemStatusText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+  },
+  uploadMiniBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  uploadMiniText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.white,
+  },
+
+  /* 5. Submitted Document Vault */
   docListHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
   },
+  docListSub: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  vaultCountBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.primaryBorder,
+  },
   docCountText: {
     fontSize: 11,
     color: colors.primary,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   emptyDocState: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 28,
     paddingHorizontal: 16,
-    gap: 6,
+    gap: 8,
+    backgroundColor: colors.surfaceSubtle,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  emptyIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   emptyDocTitle: {
     fontSize: 14,
@@ -965,9 +1596,25 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
     lineHeight: 17,
+    maxWidth: 320,
+  },
+  emptyUploadCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 8,
+    marginTop: 6,
+  },
+  emptyUploadCtaText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#ffffff',
   },
   documentsList: {
-    gap: 10,
+    gap: 12,
   },
   docCard: {
     backgroundColor: colors.surfaceSubtle,
@@ -979,12 +1626,12 @@ const styles = StyleSheet.create({
   },
   docCardTop: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 10,
   },
   docIconBox: {
-    width: 40,
-    height: 40,
+    width: 42,
+    height: 42,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
@@ -998,86 +1645,114 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     color: colors.text,
+    lineHeight: 17,
   },
   docMeta: {
     fontSize: 10.5,
     color: colors.textMuted,
-    marginTop: 2,
+    marginTop: 3,
     fontWeight: '500',
   },
   statusBadge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: 6,
     borderWidth: 1,
+    alignSelf: 'flex-start',
   },
   statusBadgeText: {
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: '800',
   },
-  docCardFooter: {
+  docCardActionsGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     borderTopWidth: 1,
     borderTopColor: colors.border,
     paddingTop: 10,
-    gap: 8,
+    gap: 6,
   },
-  actionBtnPrimary: {
+  actionBtnView: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 4,
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.primaryBorder,
+    minHeight: 32,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  actionBtnPrimaryText: {
+  actionBtnViewText: {
     fontSize: 11.5,
     fontWeight: '800',
-    color: colors.primary,
+    color: '#ffffff',
   },
-  actionBtnSecondary: {
+  actionBtnOutline: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 4,
     backgroundColor: colors.white,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 7,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    minHeight: 32,
+  },
+  actionBtnOutlineText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  actionBtnReceipt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    backgroundColor: '#fffbeb',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#fde68a',
+    minHeight: 32,
+  },
+  actionBtnReceiptText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#92400e',
+  },
+  actionBtnIconOnly: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 32,
+    height: 32,
+    backgroundColor: colors.white,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  actionBtnSecondaryText: {
-    fontSize: 11.5,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  receiptSmallBtn: {
-    flexDirection: 'row',
+  actionBtnDelete: {
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#fffbeb',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    justifyContent: 'center',
+    width: 32,
+    height: 32,
+    backgroundColor: '#fef2f2',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#fde68a',
-  },
-  receiptSmallText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#92400e',
-  },
-  shareBtn: {
-    padding: 5,
+    borderColor: '#fecaca',
     marginLeft: 'auto',
   },
-  deleteBtn: {
-    padding: 4,
-  },
+
+  /* Modals */
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -1090,11 +1765,77 @@ const styles = StyleSheet.create({
     padding: 18,
     paddingBottom: 32,
   },
+  previewModalCard: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    padding: 18,
+    paddingBottom: 32,
+  },
   modalTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
+  },
+  previewTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  previewTitleText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.text,
+    flex: 1,
+  },
+  modalCloseBtn: {
+    padding: 4,
+  },
+  previewBody: {
+    gap: 16,
+  },
+  previewFileBanner: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    backgroundColor: colors.surfaceSubtle,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 8,
+  },
+  previewFileName: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.text,
+    textAlign: 'center',
+  },
+  previewFileMeta: {
+    fontSize: 12,
+    color: colors.textMuted,
+  },
+  previewActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  receiptActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primaryLight,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.primaryBorder,
+    gap: 6,
+  },
+  receiptActionBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.primary,
   },
   receiptBadge: {
     flexDirection: 'row',
@@ -1195,7 +1936,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.primary,
-    paddingVertical: 11,
+    paddingVertical: 12,
     borderRadius: 8,
     gap: 6,
   },
@@ -1210,7 +1951,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#059669',
-    paddingVertical: 11,
+    paddingVertical: 12,
     borderRadius: 8,
     gap: 6,
   },

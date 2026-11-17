@@ -328,7 +328,7 @@ function MainApp() {
               onOpenProfile={() => {
                 setActiveSubScreen('profile_settings');
               }}
-              userName={user?.name || 'Rahul'}
+              userName={user?.name && user.name !== 'Valued Customer' ? user.name : (user?.mobile ? `User ${user.mobile.slice(-4)}` : 'Customer')}
               isHomeScreen={!activeSubScreen && currentTab === 'home'}
             />
           )}
@@ -542,7 +542,7 @@ function MainApp() {
               />
             )}
 
-            {activeSubScreen === 'documents' && <DocumentsScreen />}
+            {activeSubScreen === 'documents' && <DocumentsScreen user={user} />}
 
             {activeSubScreen === 'support' && <SupportScreen user={user} />}
 

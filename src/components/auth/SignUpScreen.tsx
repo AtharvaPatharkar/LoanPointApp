@@ -14,7 +14,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { COMPANY_INFO } from '../../data/mockData';
 import { authService } from '../../services/authService';
-import { cityLocationService, CityResultItem } from '../../services/cityLocationService';
 import { UserProfile } from '../../types';
 import { colors } from '../../theme/colors';
 import {
@@ -36,22 +35,14 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
   onSkipToDemo,
   initialReferralCode = '',
 }) => {
-  // Sign Up Form State - NO default city (user types or selects)
+  // Sign Up Form State - City removed from registration; Monthly Income starts empty
   const [fullName, setFullName] = useState<string>('');
   const [mobileNumber, setMobileNumber] = useState<string>('');
   const [emailAddress, setEmailAddress] = useState<string>('');
-  const [city, setCity] = useState<string>('');
   const [employmentType, setEmploymentType] = useState<'Salaried' | 'Self Employed' | 'Business Owner' | 'Agriculturist' | 'Others'>('Salaried');
-  const [monthlyIncome, setMonthlyIncome] = useState<string>('50000');
+  const [monthlyIncome, setMonthlyIncome] = useState<string>('');
   const [referralCode, setReferralCode] = useState<string>(initialReferralCode);
   const [agreeToTerms, setAgreeToTerms] = useState<boolean>(true);
-
-  // All India Cities state (Loaded from GitHub JSON via .env URL)
-  const [allIndiaCities, setAllIndiaCities] = useState<CityResultItem[]>(cityLocationService.getFallbackCities());
-  const [isCitiesLoading, setIsCitiesLoading] = useState<boolean>(false);
-  const [showCityPicker, setShowCityPicker] = useState<boolean>(false);
-  const [citySearchFilter, setCitySearchFilter] = useState<string>('');
-  const [isCitySelected, setIsCitySelected] = useState<boolean>(false);
   const [showEmploymentDropdown, setShowEmploymentDropdown] = useState<boolean>(false);
 
   // OTP Verification state after form entry
@@ -61,28 +52,6 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [registrationSuccessUser, setRegistrationSuccessUser] = useState<UserProfile | null>(null);
-
-  // Load all India cities from GitHub raw JSON configured in .env
-  useEffect(() => {
-    let isMounted = true;
-    const loadCities = async () => {
-      setIsCitiesLoading(true);
-      try {
-        const data = await cityLocationService.fetchCitiesData();
-        if (isMounted && data && data.length > 0) {
-          setAllIndiaCities(data);
-        }
-      } catch (err) {
-        console.warn('Failed loading India cities in SignUpScreen:', err);
-      } finally {
-        if (isMounted) setIsCitiesLoading(false);
-      }
-    };
-    loadCities();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   // Email Validation & Suggestions
   const isEmailEntered = emailAddress.trim().length > 0;
@@ -96,15 +65,12 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
   // Form validity checks
   const isNameValid = fullName.trim().length >= 2;
   const isMobileValid = mobileNumber.replace(/\D/g, '').length === 10;
-  // Check if user has entered an invalid city against the loaded India cities dataset
-  const isCityWrong = city.trim().length >= 3 && cityLocationService.isWrongCity(city);
   const isFormValid =
     isNameValid &&
     isMobileValid &&
     isEmailValid &&
     isIncomeValid &&
-    agreeToTerms &&
-    !isCityWrong;
+    agreeToTerms;
 
   const handleInitiateSignUp = async () => {
     setErrorMessage(null);
@@ -123,10 +89,6 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
     }
     if (!isIncomeValid) {
       setErrorMessage(incomeValidation.error || 'Please enter a valid monthly net income');
-      return;
-    }
-    if (isCityWrong) {
-      setErrorMessage(`"${city.trim()}" is not a recognized Indian city/district. Please choose a valid city.`);
       return;
     }
     if (!agreeToTerms) {
@@ -157,9 +119,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
         name: fullName.trim(),
         mobile: mobileNumber.replace(/\D/g, '').slice(-10),
         email: emailAddress.trim() || undefined,
-        city: city.trim() || undefined,
         employmentType,
-        monthlyIncome: incomeValidation.value || 50000,
+        monthlyIncome: incomeValidation.value || 0,
         referralCode: referralCode.trim() || undefined,
       });
 
@@ -171,14 +132,6 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
       setIsLoading(false);
     }
   };
-
-  // Filter India cities by query
-  const query = (citySearchFilter || city || '').toLowerCase().trim();
-  const filteredIndiaCities = query.length === 0
-    ? allIndiaCities.slice(0, 100)
-    : allIndiaCities.filter((c) =>
-        c.city.toLowerCase().includes(query) || c.state.toLowerCase().includes(query)
-      ).slice(0, 80);
 
   return (
     <ScrollView
@@ -219,17 +172,19 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
               <Text style={styles.successDetailValue}>+91 {registrationSuccessUser.mobile}</Text>
             </View>
             <View style={styles.successDetailRow}>
-              <Text style={styles.successDetailLabel}>City / District</Text>
-              <Text style={styles.successDetailValue}>{registrationSuccessUser.city || 'India'}</Text>
-            </View>
-            <View style={styles.successDetailRow}>
               <Text style={styles.successDetailLabel}>Employment Type</Text>
               <Text style={styles.successDetailValue}>{registrationSuccessUser.employmentType}</Text>
             </View>
             <View style={styles.successDetailRow}>
-              <Text style={styles.successDetailLabel}>Customer ID</Text>
+              <Text style={styles.successDetailLabel}>Monthly Income</Text>
+              <Text style={styles.successDetailValue}>
+                {registrationSuccessUser.monthlyIncome > 0 ? `₹${registrationSuccessUser.monthlyIncome.toLocaleString('en-IN')}` : 'Not provided'}
+              </Text>
+            </View>
+            <View style={styles.successDetailRow}>
+              <Text style={styles.successDetailLabel}>Customer ID & Code</Text>
               <Text style={[styles.successDetailValue, { color: colors.primary, fontWeight: '800' }]}>
-                {registrationSuccessUser.id}
+                {registrationSuccessUser.referralCode || registrationSuccessUser.id}
               </Text>
             </View>
           </View>
@@ -376,178 +331,6 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
             )}
           </View>
 
-          {/* City / District (No Default Nanded; Uses EXPO_PUBLIC_INDIA_STATES_DISTRICTS_URL) */}
-          <View style={styles.inputGroup}>
-            <View style={styles.labelRow}>
-              <Text style={styles.inputLabel}>City / District</Text>
-              <Text style={styles.optionalTag}>Select or type</Text>
-            </View>
-            {/* City Input Wrapper */}
-            <View
-              style={[
-                styles.inputWrapper,
-                city.length > 0 && !isCityWrong && styles.inputWrapperActive,
-                isCityWrong && styles.inputWrapperError,
-              ]}
-            >
-              <Ionicons
-                name="location-outline"
-                size={18}
-                color={isCityWrong ? '#dc2626' : city.length > 0 ? colors.primary : '#94a3b8'}
-                style={styles.inputIcon}
-              />
-              <TextInput
-                style={[styles.textInput, isCityWrong && { color: '#dc2626' }]}
-                placeholder="Type or select your city"
-                placeholderTextColor="#94a3b8"
-                value={city}
-                onChangeText={(text) => {
-                  setCity(text);
-                  setCitySearchFilter(text);
-                  setIsCitySelected(false);
-                }}
-              />
-              {/* Clear button if text entered */}
-              {city.length > 0 && (
-                <TouchableOpacity
-                  onPress={() => {
-                    setCity('');
-                    setCitySearchFilter('');
-                    setIsCitySelected(false);
-                  }}
-                  style={{ marginRight: 6 }}
-                >
-                  <Ionicons name="close-circle" size={16} color={isCityWrong ? '#dc2626' : '#94a3b8'} />
-                </TouchableOpacity>
-              )}
-              {/* Select City Button to open all India districts */}
-              <TouchableOpacity
-                style={[styles.selectCityBtn, isCityWrong && styles.selectCityBtnError]}
-                onPress={() => {
-                  Keyboard.dismiss();
-                  setShowCityPicker((prev) => !prev);
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.selectCityBtnText, isCityWrong && { color: '#dc2626' }]}>
-                  {showCityPicker ? 'Close' : 'Select City'}
-                </Text>
-                <Ionicons
-                  name={showCityPicker ? 'chevron-up' : 'chevron-down'}
-                  size={14}
-                  color={isCityWrong ? '#dc2626' : colors.primary}
-                />
-              </TouchableOpacity>
-            </View>
-
-            {/* RED ERROR MESSAGE IF WRONG CITY ENTERED */}
-            {isCityWrong && (
-              <View style={styles.cityErrorAlert}>
-                <Ionicons name="alert-circle" size={15} color="#dc2626" />
-                <Text style={styles.cityErrorAlertText}>
-                  "{city.trim()}" is not found in India cities/districts list. Please check spelling or select from list.
-                </Text>
-              </View>
-            )}
-
-            {/* LIVE AUTOCOMPLETE SUGGESTIONS (Triggered when user enters 3 or more characters and has not yet selected) */}
-            {city.trim().length >= 3 && !showCityPicker && !isCitySelected && cityLocationService.searchSuggestions(city, 6).length > 0 && (
-              <View style={styles.autoSuggestCard}>
-                {cityLocationService.searchSuggestions(city, 6).map((item, idx) => (
-                  <TouchableOpacity
-                    key={`sug-${item.city}-${item.stateCode}-${idx}`}
-                    style={styles.autoSuggestItem}
-                    onPress={() => {
-                      setCity(item.city);
-                      setCitySearchFilter(item.city);
-                      setIsCitySelected(true);
-                      Keyboard.dismiss();
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="location-outline" size={15} color="colors.primary" style={{ marginRight: 8 }} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.autoSuggestCityName}>
-                        {item.city}
-                      </Text>
-                      <Text style={styles.autoSuggestStateName}>
-                        {item.state}
-                      </Text>
-                    </View>
-                    <Ionicons name="arrow-forward-circle-outline" size={16} color="#94a3b8" />
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-
-            {/* City Dropdown List loaded from GitHub JSON in .env */}
-            {showCityPicker && (
-              <View style={styles.cityDropdownCard}>
-                <View style={styles.cityDropdownHeader}>
-                  <Ionicons name="map-outline" size={14} color="#64748b" />
-                  <Text style={styles.cityDropdownTitle}>
-                    All India Cities & Districts ({allIndiaCities.length})
-                  </Text>
-                  {isCitiesLoading && <ActivityIndicator size="small" color="colors.primary" />}
-                </View>
-
-                {/* Quick Search */}
-                <View style={styles.pickerSearchRow}>
-                  <Ionicons name="search" size={14} color="#94a3b8" />
-                  <TextInput
-                    style={styles.pickerSearchInput}
-                    value={citySearchFilter}
-                    onChangeText={setCitySearchFilter}
-                    placeholder="Search city, district, or state..."
-                    placeholderTextColor="#94a3b8"
-                  />
-                  {citySearchFilter.length > 0 && (
-                    <TouchableOpacity onPress={() => setCitySearchFilter('')}>
-                      <Ionicons name="close-circle" size={16} color="#94a3b8" />
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                <ScrollView
-                  style={styles.cityDropdownScroll}
-                  nestedScrollEnabled
-                  showsVerticalScrollIndicator
-                >
-                  {filteredIndiaCities.length > 0 ? (
-                    filteredIndiaCities.map((item, index) => {
-                      const isPicked = city.toLowerCase() === item.city.toLowerCase();
-                      return (
-                        <TouchableOpacity
-                          key={`${item.city}-${item.stateCode}-${index}`}
-                          style={[styles.cityOptionRow, isPicked && styles.cityOptionRowActive]}
-                          onPress={() => {
-                            setCity(item.city);
-                            setShowCityPicker(false);
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          <View style={styles.cityOptionTextWrap}>
-                            <Text style={[styles.cityOptionText, isPicked && styles.cityOptionTextActive]}>
-                              {item.city}
-                            </Text>
-                            <Text style={styles.cityOptionState}>{item.state}</Text>
-                          </View>
-                          {isPicked && (
-                            <Ionicons name="checkmark-circle" size={16} color="colors.primary" />
-                          )}
-                        </TouchableOpacity>
-                      );
-                    })
-                  ) : (
-                    <View style={styles.noCityFound}>
-                      <Text style={styles.noCityFoundText}>No matching Indian city or district found</Text>
-                    </View>
-                  )}
-                </ScrollView>
-              </View>
-            )}
-          </View>
-
           {/* Employment Type Dropdown */}
           <View style={styles.inputGroup}>
             <View style={styles.labelRow}>
@@ -675,7 +458,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
               </Text>
               <TextInput
                 style={[styles.textInput, !isIncomeValid && { color: '#dc2626' }]}
-                placeholder="50000"
+                placeholder="Enter monthly income (e.g. 50000)"
                 placeholderTextColor="#94a3b8"
                 keyboardType="numeric"
                 value={monthlyIncome}

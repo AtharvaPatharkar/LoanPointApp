@@ -1,5 +1,6 @@
-import { UserProfile, LoanApplication, InsuranceApplication, ReferralLead } from '../types';
+import { UserProfile, LoanApplication, InsuranceApplication, ReferralLead, DocumentItem } from '../types';
 import { getDbClient, isDatabaseConfigured } from './neonDbService';
+import { generateRandomCustomerCode } from '../utils/calculator';
 
 export class DbSyncService {
   /**
@@ -7,11 +8,12 @@ export class DbSyncService {
    */
   public async getOrCreateUserByMobile(mobile: string, defaultName = 'Valued Customer'): Promise<{ user: UserProfile; isFirstTime: boolean }> {
     const cleanMobile = mobile.replace(/\D/g, '').slice(-10);
+    const fallbackCode = generateRandomCustomerCode();
 
     if (!isDatabaseConfigured) {
       return {
         user: {
-          id: `LP-CUST-${cleanMobile.slice(-4)}`,
+          id: fallbackCode,
           name: defaultName,
           mobile: cleanMobile,
           email: `${cleanMobile}@loanpoint.in`,
@@ -24,7 +26,7 @@ export class DbSyncService {
           aadhaarLinked: false,
           cibilEstimateScore: 720,
           memberSince: new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
-          referralCode: `LP${cleanMobile.slice(-4)}`,
+          referralCode: fallbackCode,
           role: 'customer',
         },
         isFirstTime: true,
@@ -35,7 +37,7 @@ export class DbSyncService {
 
     // Check if user already exists
     const existing = await sql.query(
-      `SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, is_kyc_completed, created_at
+      `SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, is_kyc_completed, documents, created_at
        FROM users
        WHERE mobile = $1
        LIMIT 1;`,
@@ -44,12 +46,14 @@ export class DbSyncService {
 
     if (existing.length > 0) {
       const row = existing[0];
+      const validCode = row.referral_code && !row.referral_code.startsWith('LP') ? row.referral_code : (row.referral_code && row.referral_code.length >= 8 ? row.referral_code : fallbackCode);
+      const docs = typeof row.documents === 'string' ? JSON.parse(row.documents) : row.documents || [];
       return {
         user: {
           id: row.id,
           name: row.full_name,
           mobile: row.mobile,
-          email: row.email || `${row.mobile}@loanpoint.in`,
+          email: row.email || '',
           city: row.city || '',
           pincode: '',
           employmentType: (row.employment_type as any) || 'Salaried',
@@ -59,21 +63,22 @@ export class DbSyncService {
           aadhaarLinked: Boolean(row.aadhaar_last_four),
           cibilEstimateScore: 740,
           memberSince: new Date(row.created_at).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
-          referralCode: row.referral_code || `LP${cleanMobile.slice(-4)}`,
+          referralCode: row.referral_code || validCode,
           referredBy: row.referred_by || undefined,
           role: 'customer',
+          documents: Array.isArray(docs) ? docs : [],
         },
         isFirstTime: !row.is_kyc_completed && !row.city,
       };
     }
 
     // Insert new user into Neon Postgres
-    const newRefCode = `LP${cleanMobile.slice(-4)}`;
+    const newRefCode = generateRandomCustomerCode();
     const inserted = await sql.query(
       `INSERT INTO users (full_name, mobile, email, referral_code, is_kyc_completed)
        VALUES ($1, $2, $3, $4, FALSE)
        RETURNING id, full_name, mobile, email, referral_code, created_at;`,
-      [defaultName, cleanMobile, `${cleanMobile}@loanpoint.in`, newRefCode]
+      [defaultName, cleanMobile, '', newRefCode]
     );
 
     const newRow = inserted[0];
@@ -82,7 +87,7 @@ export class DbSyncService {
         id: newRow.id,
         name: newRow.full_name,
         mobile: newRow.mobile,
-        email: newRow.email,
+        email: newRow.email || '',
         city: '',
         pincode: '',
         employmentType: 'Salaried',
@@ -92,11 +97,54 @@ export class DbSyncService {
         aadhaarLinked: false,
         cibilEstimateScore: 720,
         memberSince: new Date(newRow.created_at).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
-        referralCode: newRow.referral_code,
+        referralCode: newRow.referral_code || newRefCode,
         role: 'customer',
       },
       isFirstTime: true,
     };
+  }
+
+  /**
+   * Fetch current user profile directly from Neon DB by mobile number
+   */
+  public async getUserByMobile(mobile: string): Promise<UserProfile | null> {
+    if (!isDatabaseConfigured) return null;
+    try {
+      const cleanMobile = mobile.replace(/\D/g, '').slice(-10);
+      const sql = getDbClient();
+      const rows = await sql.query(
+        `SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, is_kyc_completed, documents, created_at
+         FROM users
+         WHERE mobile = $1
+         LIMIT 1;`,
+        [cleanMobile]
+      );
+      if (!rows || rows.length === 0) return null;
+      const row = rows[0];
+      const docs = typeof row.documents === 'string' ? JSON.parse(row.documents) : row.documents || [];
+      return {
+        id: row.id,
+        name: row.full_name,
+        mobile: row.mobile,
+        email: row.email || '',
+        city: row.city || '',
+        pincode: '',
+        employmentType: (row.employment_type as any) || 'Salaried',
+        monthlyIncome: Number(row.monthly_income) || 0,
+        panNumber: row.pan_number || '',
+        aadhaarNumber: row.aadhaar_last_four ? `XXXX-XXXX-${row.aadhaar_last_four}` : '',
+        aadhaarLinked: Boolean(row.aadhaar_last_four),
+        cibilEstimateScore: 740,
+        memberSince: new Date(row.created_at).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
+        referralCode: row.referral_code || generateRandomCustomerCode(),
+        referredBy: row.referred_by || undefined,
+        role: 'customer',
+        documents: Array.isArray(docs) ? docs : [],
+      };
+    } catch (err) {
+      console.warn('Neon DB getUserByMobile error:', err);
+      return null;
+    }
   }
 
   /**
@@ -108,19 +156,23 @@ export class DbSyncService {
       const sql = getDbClient();
       const lastFour = user.aadhaarNumber ? user.aadhaarNumber.replace(/\D/g, '').slice(-4) : null;
       const isComplete = Boolean(user.city && user.panNumber && (user.monthlyIncome > 0));
+      const docsJson = JSON.stringify(user.documents || []);
 
       await sql.query(
         `UPDATE users
-         SET full_name = COALESCE(NULLIF($1, ''), full_name),
-             email = COALESCE(NULLIF($2, ''), email),
-             city = COALESCE(NULLIF($3, ''), city),
-             employment_type = COALESCE(NULLIF($4, ''), employment_type),
+         SET full_name = CASE WHEN $1::text <> '' THEN $1::text ELSE full_name END,
+             email = CASE WHEN $2::text <> '' THEN $2::text ELSE email END,
+             city = CASE WHEN $3::text <> '' THEN $3::text ELSE city END,
+             employment_type = CASE WHEN $4::text <> '' THEN $4::text ELSE employment_type END,
              monthly_income = CASE WHEN $5::numeric > 0 THEN $5::numeric ELSE monthly_income END,
-             pan_number = COALESCE(NULLIF($6, ''), pan_number),
-             aadhaar_last_four = COALESCE(NULLIF($7, ''), aadhaar_last_four),
-             is_kyc_completed = CASE WHEN $8::boolean THEN TRUE ELSE is_kyc_completed END,
+             pan_number = CASE WHEN $6::text <> '' THEN $6::text ELSE pan_number END,
+             aadhaar_last_four = CASE WHEN $7::text <> '' THEN $7::text ELSE aadhaar_last_four END,
+             referral_code = CASE WHEN $8::text <> '' THEN $8::text ELSE referral_code END,
+             referred_by = CASE WHEN $9::text <> '' THEN $9::text ELSE referred_by END,
+             documents = CASE WHEN $10::text <> '[]' THEN $10::jsonb ELSE documents END,
+             is_kyc_completed = CASE WHEN $11::boolean THEN TRUE ELSE is_kyc_completed END,
              updated_at = NOW()
-         WHERE mobile = $9;`,
+         WHERE mobile = $12;`,
         [
           user.name || '',
           user.email || '',
@@ -129,12 +181,89 @@ export class DbSyncService {
           user.monthlyIncome || 0,
           user.panNumber || '',
           lastFour || '',
+          user.referralCode || '',
+          user.referredBy || '',
+          docsJson,
           isComplete,
           user.mobile,
         ]
       );
     } catch (err) {
       console.warn('Neon DB profile update error:', err);
+    }
+  }
+
+  /**
+   * Save or append a document directly to user's documents JSON in the users table
+   */
+  public async saveUserDocument(mobile: string, documentItem: DocumentItem): Promise<DocumentItem[]> {
+    const cleanMobile = mobile.replace(/\D/g, '').slice(-10);
+    if (!isDatabaseConfigured) return [];
+
+    try {
+      const sql = getDbClient();
+      const rows = await sql.query(
+        `SELECT documents FROM users WHERE mobile = $1 LIMIT 1;`,
+        [cleanMobile]
+      );
+      let currentDocs: DocumentItem[] = [];
+      if (rows && rows.length > 0 && rows[0].documents) {
+        currentDocs = typeof rows[0].documents === 'string' ? JSON.parse(rows[0].documents) : rows[0].documents;
+      }
+      if (!Array.isArray(currentDocs)) currentDocs = [];
+
+      // Remove any existing doc with same id if replacing
+      currentDocs = currentDocs.filter(d => d.id !== documentItem.id);
+      currentDocs.unshift(documentItem);
+
+      await sql.query(
+        `UPDATE users
+         SET documents = $1::jsonb,
+             updated_at = NOW()
+         WHERE mobile = $2;`,
+        [JSON.stringify(currentDocs), cleanMobile]
+      );
+
+      return currentDocs;
+    } catch (err) {
+      console.warn('Neon DB saveUserDocument error:', err);
+      return [];
+    }
+  }
+
+  /**
+   * Delete a document from user's documents JSON in the users table
+   */
+  public async deleteUserDocument(mobile: string, docId: string): Promise<DocumentItem[]> {
+    const cleanMobile = mobile.replace(/\D/g, '').slice(-10);
+    if (!isDatabaseConfigured) return [];
+
+    try {
+      const sql = getDbClient();
+      const rows = await sql.query(
+        `SELECT documents FROM users WHERE mobile = $1 LIMIT 1;`,
+        [cleanMobile]
+      );
+      let currentDocs: DocumentItem[] = [];
+      if (rows && rows.length > 0 && rows[0].documents) {
+        currentDocs = typeof rows[0].documents === 'string' ? JSON.parse(rows[0].documents) : rows[0].documents;
+      }
+      if (!Array.isArray(currentDocs)) currentDocs = [];
+
+      currentDocs = currentDocs.filter(d => d.id !== docId);
+
+      await sql.query(
+        `UPDATE users
+         SET documents = $1::jsonb,
+             updated_at = NOW()
+         WHERE mobile = $2;`,
+        [JSON.stringify(currentDocs), cleanMobile]
+      );
+
+      return currentDocs;
+    } catch (err) {
+      console.warn('Neon DB deleteUserDocument error:', err);
+      return [];
     }
   }
 
@@ -159,13 +288,13 @@ export class DbSyncService {
 
       await sql.query(
         `UPDATE users
-         SET full_name = COALESCE(NULLIF($1, ''), full_name),
-             email = COALESCE(NULLIF($2, ''), email),
-             city = COALESCE(NULLIF($3, ''), city),
-             employment_type = COALESCE(NULLIF($4, ''), employment_type),
+         SET full_name = CASE WHEN $1::text <> '' THEN $1::text ELSE full_name END,
+             email = CASE WHEN $2::text <> '' THEN $2::text ELSE email END,
+             city = CASE WHEN $3::text <> '' THEN $3::text ELSE city END,
+             employment_type = CASE WHEN $4::text <> '' THEN $4::text ELSE employment_type END,
              monthly_income = CASE WHEN $5::numeric > 0 THEN $5::numeric ELSE monthly_income END,
-             pan_number = COALESCE(NULLIF($6, ''), pan_number),
-             aadhaar_last_four = COALESCE(NULLIF($7, ''), aadhaar_last_four),
+             pan_number = CASE WHEN $6::text <> '' THEN $6::text ELSE pan_number END,
+             aadhaar_last_four = CASE WHEN $7::text <> '' THEN $7::text ELSE aadhaar_last_four END,
              updated_at = NOW()
          WHERE mobile = $8;`,
         [

@@ -71,7 +71,7 @@ export const CompleteProfileModal: React.FC<CompleteProfileModalProps> = ({
           {/* Header & Welcoming Text */}
           <Text style={styles.modalTitle}>Complete Your Profile</Text>
           <Text style={styles.modalSubtitle}>
-            Welcome to Loan Point, <Text style={styles.userNameHighlight}>{user?.name || 'Valued Customer'}</Text>! Complete your 3-step profile to unlock pre-approved loan offers, faster disbursals, and instant eligibility.
+            Welcome to Loan Point{user?.mobile ? `, User +91 ${user.mobile}` : ''}! Complete your 3-step profile to unlock pre-approved loan offers, faster disbursals, and instant eligibility.
           </Text>
 
           {/* Profile Strength Progress Card */}

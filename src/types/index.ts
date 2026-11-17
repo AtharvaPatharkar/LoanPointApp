@@ -94,6 +94,7 @@ export interface UserProfile {
   referralCode: string;
   referredBy?: string;
   role?: 'customer' | 'admin';
+  documents?: DocumentItem[];
 }
 
 export interface DocumentItem {

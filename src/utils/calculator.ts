@@ -276,6 +276,22 @@ export function getEmailDomainSuggestions(input: string): string[] {
 }
 
 /**
+ * Generate 6-digit Customer ID (e.g. "LP-842915")
+ */
+export function generateRandomCustomerId(): string {
+  const random6Digit = Math.floor(100000 + Math.random() * 900000);
+  return `LP-${random6Digit}`;
+}
+
+/**
+ * Generate 6-digit Referral / Customer Code (e.g. "LP748291" or "849201")
+ */
+export function generateRandomCustomerCode(): string {
+  const random6Digit = Math.floor(100000 + Math.random() * 900000);
+  return `LP${random6Digit}`;
+}
+
+/**
  * Generate 100% collision-free referral code (PhonePe hybrid style)
  * Formula: FIRST_NAME (clean uppercase) + LAST_4_OF_MOBILE (e.g., "RAHUL" + "5999" -> "RAHUL5999")
  */

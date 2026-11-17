@@ -20,6 +20,7 @@ import { Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-ico
 import { UserProfile, NotificationPreferences } from '../../types';
 import { notificationService } from '../../services/notificationService';
 import { authService } from '../../services/authService';
+import { dbSyncService } from '../../services/dbSyncService';
 import { cityLocationService } from '../../services/cityLocationService';
 import { COMPANY_INFO } from '../../data/mockData';
 import { colors } from '../../theme/colors';
@@ -62,10 +63,33 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     'Salaried' | 'Self Employed' | 'Business Owner' | 'Agriculturist' | 'Others'
   >(user?.employmentType || 'Salaried');
   const [editMonthlyIncome, setEditMonthlyIncome] = useState<string>(
-    (user?.monthlyIncome || 50000).toString()
+    user?.monthlyIncome && user.monthlyIncome > 0 ? user.monthlyIncome.toString() : ''
   );
   const [editPanNumber, setEditPanNumber] = useState<string>(user?.panNumber || '');
   const [editAadhaarNumber, setEditAadhaarNumber] = useState<string>(user?.aadhaarNumber || '');
+
+  // Keep local fields in sync with user prop updates
+  useEffect(() => {
+    setEditEmail(user?.email || '');
+    setEditCity(user?.city || '');
+    setEditEmploymentType(user?.employmentType || 'Salaried');
+    setEditMonthlyIncome(user?.monthlyIncome && user.monthlyIncome > 0 ? user.monthlyIncome.toString() : '');
+    setEditPanNumber(user?.panNumber || '');
+    setEditAadhaarNumber(user?.aadhaarNumber || '');
+  }, [user]);
+
+  // Fetch freshest user data from Neon DB when Profile screen loads
+  useEffect(() => {
+    if (user?.mobile && onUpdateUser) {
+      dbSyncService.getUserByMobile(user.mobile).then((freshUser) => {
+        if (freshUser) {
+          onUpdateUser(freshUser);
+        }
+      }).catch((e) => {
+        console.warn('Failed to load fresh user from DB:', e);
+      });
+    }
+  }, [user?.mobile]);
 
   // Dropdowns & Autocomplete within Edit Modal
   const [showEmploymentDropdown, setShowEmploymentDropdown] = useState<boolean>(false);
@@ -96,7 +120,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     setEditEmail(user?.email || '');
     setEditCity(user?.city || '');
     setEditEmploymentType(user?.employmentType || 'Salaried');
-    setEditMonthlyIncome((user?.monthlyIncome || 50000).toString());
+    setEditMonthlyIncome(user?.monthlyIncome && user.monthlyIncome > 0 ? user.monthlyIncome.toString() : '');
     setEditPanNumber(user?.panNumber || '');
     setEditAadhaarNumber(user?.aadhaarNumber || '');
     setEditSuccessMessage(null);
@@ -170,7 +194,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         email: editEmail.trim() || undefined,
         city: editCity.trim(),
         employmentType: editEmploymentType,
-        monthlyIncome: incomeValidation.value || (user?.monthlyIncome || 50000),
+        monthlyIncome: incomeValidation.value || (user?.monthlyIncome || 0),
         panNumber: editPanNumber.trim().toUpperCase() || undefined,
         aadhaarNumber: editAadhaarNumber.replace(/\D/g, '') || undefined,
       });
@@ -270,8 +294,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <Text style={styles.customerBadgeText}>VERIFIED BORROWER</Text>
             </View>
 
-            <Text style={styles.userName}>{user?.name || 'Customer'}</Text>
-            <Text style={styles.userMobile}>+91 {user?.mobile || '9545555999'}</Text>
+            <Text style={styles.userName}>{user?.name && user.name !== 'Valued Customer' ? user.name : (user?.mobile ? `User ${user.mobile.slice(-4)}` : 'Customer')}</Text>
+            <Text style={styles.userMobile}>{user?.mobile ? `+91 ${user.mobile}` : 'Mobile not linked'}</Text>
             <Text style={styles.userCity}>
               {user?.city ? `${user.city} · ` : ''}{user?.employmentType || 'Salaried'}
             </Text>
@@ -419,7 +443,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         </View>
 
         <View style={styles.regInfoCard}>
-          {/* Full Legal Name (Locked / Read-Only) */}
+          {/* Full Legal Name */}
           <View style={styles.regInfoRow}>
             <View style={styles.regInfoLeft}>
               <View style={[styles.fieldIcon3D, { backgroundColor: '#e0f2fe', borderColor: '#bae6fd' }]}>
@@ -429,7 +453,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <Text style={styles.regInfoLabel}>Full Legal Name</Text>
             </View>
             <View style={styles.regInfoRight}>
-              <Text style={styles.regInfoValue}>{user?.name || 'Customer'}</Text>
+              <Text style={styles.regInfoValue}>{user?.name && user.name !== 'Valued Customer' ? user.name : 'Not provided'}</Text>
               <View style={styles.lockedBadge}>
                 <Ionicons name="lock-closed" size={10} color="#059669" />
                 <Text style={styles.lockedBadgeText}>Verified</Text>
@@ -447,7 +471,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <Text style={styles.regInfoLabel}>WhatsApp Mobile</Text>
             </View>
             <View style={styles.regInfoRight}>
-              <Text style={styles.regInfoValue}>+91 {user?.mobile || '9545555999'}</Text>
+              <Text style={styles.regInfoValue}>{user?.mobile ? `+91 ${user.mobile}` : 'Not provided'}</Text>
               <View style={styles.lockedBadge}>
                 <Ionicons name="lock-closed" size={10} color="#059669" />
                 <Text style={styles.lockedBadgeText}>Verified</Text>
@@ -516,8 +540,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <Text style={styles.regInfoLabel}>Monthly Net Income</Text>
             </View>
             <View style={styles.regInfoRight}>
-              <Text style={[styles.regInfoValue, { fontWeight: '800', color: '#16a34a' }]}>
-                ₹{(user?.monthlyIncome || 50000).toLocaleString('en-IN')}
+              <Text style={[styles.regInfoValue, { fontWeight: '800', color: user?.monthlyIncome && user.monthlyIncome > 0 ? '#16a34a' : '#94a3b8' }]}>
+                {user?.monthlyIncome && user.monthlyIncome > 0 ? `₹${user.monthlyIncome.toLocaleString('en-IN')}` : 'Not provided'}
               </Text>
               <Ionicons name="pencil" size={12} color="#94a3b8" />
             </View>
@@ -568,7 +592,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </View>
             <View style={styles.regInfoRight}>
               <Text style={[styles.regInfoValue, { color: colors.primary, fontWeight: '800' }]}>
-                {user?.referralCode || user?.id || 'LP-CUST-8102'}
+                {user?.referralCode || (user?.id && user.id.startsWith('LP-') ? user.id : (user?.mobile ? `LP${user.mobile.slice(-6)}` : 'LP-CUSTOMER'))}
               </Text>
             </View>
           </View>
@@ -883,12 +907,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     </View>
                   </View>
 
-                  {/* Full Name (Read-Only) */}
+                  {/* Full Name */}
                   <View style={styles.fieldGroup}>
                     <Text style={styles.fieldLabel}>Full Legal Name (Fixed)</Text>
                     <View style={[styles.inputBox, styles.inputBoxDisabled]}>
                       <Ionicons name="person" size={16} color="#94a3b8" style={{ marginRight: 8 }} />
-                      <Text style={styles.inputDisabledText}>{user?.name || 'Customer'}</Text>
+                      <Text style={styles.inputDisabledText}>{user?.name && user.name !== 'Valued Customer' ? user.name : 'Not provided'}</Text>
                       <Ionicons name="lock-closed" size={14} color="#94a3b8" />
                     </View>
                   </View>
@@ -898,7 +922,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     <Text style={styles.fieldLabel}>Registered WhatsApp Number (Fixed)</Text>
                     <View style={[styles.inputBox, styles.inputBoxDisabled]}>
                       <Ionicons name="call" size={16} color="#94a3b8" style={{ marginRight: 8 }} />
-                      <Text style={styles.inputDisabledText}>+91 {user?.mobile || '9545555999'}</Text>
+                      <Text style={styles.inputDisabledText}>{user?.mobile ? `+91 ${user.mobile}` : 'Not provided'}</Text>
                       <Ionicons name="lock-closed" size={14} color="#94a3b8" />
                     </View>
                   </View>
@@ -1166,7 +1190,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                         value={editMonthlyIncome}
                         onChangeText={setEditMonthlyIncome}
                         keyboardType="numeric"
-                        placeholder="50000"
+                        placeholder="e.g. 50000"
                         placeholderTextColor="#94a3b8"
                       />
                       {isIncomeValid && <Ionicons name="checkmark-circle" size={16} color="#16a34a" />}

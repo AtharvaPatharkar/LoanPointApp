@@ -11,6 +11,7 @@ export interface DbUser {
   pan_number: string | null;
   aadhaar_last_four: string | null;
   is_kyc_completed: boolean;
+  documents?: any;
   created_at: string;
   updated_at: string;
 }

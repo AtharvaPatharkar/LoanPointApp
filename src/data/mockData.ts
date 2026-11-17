@@ -60,11 +60,9 @@ export const LOAN_CATEGORIES: LoanCategory[] = [
       'Credit score ideally 700+ (profiles with lower score subject to specialist review)',
     ],
     requiredDocuments: [
-      'PAN Card & Aadhaar Card',
       'Latest 3 months salary slips',
       'Latest 6 months bank statement (salary account)',
       'Current residence address proof (Electricity bill/Rent agreement)',
-      'Passport size photograph',
     ],
     features: [
       'No collateral or security needed',
@@ -95,7 +93,6 @@ export const LOAN_CATEGORIES: LoanCategory[] = [
       'Latest 2 years Income Tax Returns (ITR) with Computation & Balance Sheet',
       '12 months current bank account statement',
       'GST returns for the last 12 months (3B/GSTR-1)',
-      'KYC of Promoters/Partners/Directors',
     ],
     features: [
       'Tailored for MSME traders & manufacturers',
@@ -121,7 +118,6 @@ export const LOAN_CATEGORIES: LoanCategory[] = [
       'Approved building plan and clear legal title of the property',
     ],
     requiredDocuments: [
-      'KYC: PAN Card, Aadhaar Card, Photo',
       'Income documents: 3 months salary slips or 3 years ITR',
       '6 months bank statement',
       'Property documents: Sale agreement, Title deed, Sanctioned blueprint, 7/12 extract or city survey extract',
@@ -181,7 +177,6 @@ export const LOAN_CATEGORIES: LoanCategory[] = [
       'Valid driving license / vehicle buyer quotation from authorized dealer',
     ],
     requiredDocuments: [
-      'Identity & Residence Proof (Aadhaar, PAN, Electricity Bill)',
       'Latest 3 months salary slip / 2 years ITR',
       '6 months bank account statement',
       'Proforma Invoice / Quotation from auto showroom',
@@ -213,7 +208,6 @@ export const LOAN_CATEGORIES: LoanCategory[] = [
     requiredDocuments: [
       'Admission letter with detailed course fee schedule',
       'Academic mark sheets of 10th, 12th, graduation, and entrance exam scorecards',
-      'Student & co-applicant KYC (PAN, Aadhaar, Passport)',
       'Co-applicant income proof: 3 months salary / 2 years ITR and 6 months bank statement',
       'Collateral property documents (if loan amount exceeds threshold)',
     ],
@@ -241,7 +235,6 @@ export const LOAN_CATEGORIES: LoanCategory[] = [
       'Clean repayment history on previous crop credit where applicable',
     ],
     requiredDocuments: [
-      'Aadhaar Card, PAN Card, Voter ID',
       'Latest 7/12 (Satbara) extract, 8A holding certificate, Ferfar (mutation extract)',
       'Crop cultivation certificate (Pik Pahani) from Talathi/Gram Sevak',
       'Tractor / equipment proforma quotation from authorized dealer',
@@ -271,7 +264,6 @@ export const LOAN_CATEGORIES: LoanCategory[] = [
       'No previous default with any commercial bank or microfinance institution',
     ],
     requiredDocuments: [
-      'Applicant identity & address proof (Aadhaar, Voter ID, PAN)',
       'Business address proof & Shop Act registration or Udyam Aadhar',
       'Quotation of machinery/raw materials to be purchased',
       'Bank account statement for the past 6 months',
