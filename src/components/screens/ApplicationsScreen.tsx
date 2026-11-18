@@ -37,10 +37,11 @@ interface StepMilestone {
 }
 
 const MILESTONES: StepMilestone[] = [
-  { key: 'received', label: 'Received' },
-  { key: 'documents', label: 'Documents' },
-  { key: 'assessment', label: 'Lender\nAssessment' },
-  { key: 'approval', label: 'Approval' },
+  { key: 'sent', label: '1. Sent' },
+  { key: 'received', label: '2. Enquiry\nReceived' },
+  { key: 'verification', label: '3. Document\nVerification' },
+  { key: 'approval', label: '4. Bank\nApproval' },
+  { key: 'disbursed', label: '5. Disbursed' },
 ];
 
 const TOP_UP_MILESTONES = [
@@ -67,7 +68,8 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
       (app.status === 'Processing' ||
         app.status === 'Documents Pending' ||
         app.status === 'Application Submitted' ||
-        app.status === 'Enquiry Received')
+        app.status === 'Enquiry Received' ||
+        app.status === 'Application Sent')
   );
 
   const disbursedList = applications.filter((app) => !app.isTopUp && app.status === 'Disbursed');
@@ -89,10 +91,12 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
               : [];
 
   const getStageIndex = (app: LoanApplication): number => {
-    if (app.status === 'Disbursed' || app.status === 'Approved') return 3;
+    if (app.status === 'Disbursed') return 4;
+    if (app.status === 'Approved') return 3;
     if (app.status === 'Processing') return 2;
-    if (app.status === 'Documents Pending' || app.status === 'Application Submitted') return 1;
-    return 0;
+    if (app.status === 'Documents Pending' || app.status === 'Application Submitted') return 2;
+    if (app.status === 'Enquiry Received') return 1;
+    return 0; // Sent
   };
 
   const formatAmountINR = (num: number): string => {
@@ -709,14 +713,14 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
           /* Disbursed Tab Specific View */
           <View>
             {disbursedList.map((app) => {
-              const bankName = app.bankName || 'HDFC Bank';
-              const rmName = app.assignedManager?.name || 'Arvind Patil';
-              const rmPhone = app.assignedManager?.phone || '+91 9545555999';
-              const disbursementDate = app.disbursementDate || '20 Sep 2026';
-              const tenure = app.tenureYears || (app.tenureMonths ? `${Math.round(app.tenureMonths / 12)} Years` : '20 Years');
-              const interestRate = app.interestRate || '7.80% p.a.';
-              const emiAmount = app.emiAmount || '₹43,476 / Month';
-              const loanAmount = formatAmountINR(app.requestedAmount || 5000000);
+              const bankName = app.bankName || 'Partner Bank Disbursed';
+              const rmName = app.assignedManager?.name || 'Loan Officer';
+              const rmPhone = app.assignedManager?.phone || '+91 95455 55999';
+              const disbursementDate = app.disbursementDate || app.statusUpdatedDate || 'Recently Disbursed';
+              const tenure = app.tenureYears || (app.tenureMonths ? `${Math.round(app.tenureMonths / 12)} Years` : '—');
+              const interestRate = app.interestRate || '—';
+              const emiAmount = app.emiAmount || '—';
+              const loanAmount = formatAmountINR(app.requestedAmount || 0);
 
               return (
                 <View key={app.id} style={styles.disbursedCard}>
@@ -866,22 +870,37 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
             <Ionicons name="document-text-outline" size={44} color="#94a3b8" />
             <Text style={styles.emptyTitle}>No loans in this section</Text>
             <Text style={styles.emptySubtitle}>
-              Tap "Apply for New Loan" below or explore "Top Up My Loan" for instant cash.
+              Tap "Apply for New Loan" below or check "Top Up My Loan" for instant cash.
             </Text>
           </View>
         ) : (
           currentList.map((app) => {
             const stageIndex = getStageIndex(app);
-            const isHome = app.loanType === 'home';
-            const bankName = app.bankName || (isHome ? 'HDFC Bank' : 'ICICI Bank');
-            const rmName = app.assignedManager?.name || (isHome ? 'Arvind Patil' : 'Disha Bhure');
-            const rmPhone = app.assignedManager?.phone || (isHome ? '+91 9545555999' : '+91 90216 78901');
+            const bankName = app.bankName || 'Under Partner Bank Review';
+            const rmName = app.assignedManager?.name || 'Loan Officer Assigned';
+            const rmPhone = app.assignedManager?.phone || '+91 95455 55999';
 
             return (
               <TouchableOpacity
                 key={app.id}
                 style={styles.loanCardWrapper}
-                onPress={() => onSelectApplication(app)}
+                onPress={() => {
+                  if (app.status === 'Application Sent') {
+                    Alert.alert(
+                      'Application Sent — Pending Review',
+                      'Your loan enquiry has been submitted successfully and is awaiting review by our Loan Point branch administrator. Full tracking details will unlock once your enquiry is reviewed.',
+                      [
+                        { text: 'OK' },
+                        {
+                          text: 'Call Advisor',
+                          onPress: () => handleCallRM(rmPhone),
+                        },
+                      ]
+                    );
+                    return;
+                  }
+                  onSelectApplication(app);
+                }}
                 activeOpacity={0.92}
               >
                 <View style={styles.cardHeaderRow}>
@@ -895,7 +914,7 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
                   />
 
                   <View style={styles.loanTitleCol}>
-                    <Text style={styles.loanTitleText}>{app.loanTypeName}</Text>
+                    <Text style={styles.loanTitleText} numberOfLines={1}>{app.loanTypeName}</Text>
                     <View style={styles.appIdBadgePill}>
                       <Text style={styles.appIdText}>Application ID: {app.id}</Text>
                     </View>
@@ -907,6 +926,8 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
                         ? styles.disbursedGreenPill
                         : app.status === 'Rejected'
                         ? styles.rejectedRedPill
+                        : app.status === 'Application Sent'
+                        ? styles.pendingReviewPill
                         : styles.inProgressYellowPill
                     }
                   >
@@ -916,27 +937,23 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
                           ? styles.disbursedGreenPillText
                           : app.status === 'Rejected'
                           ? styles.rejectedRedPillText
+                          : app.status === 'Application Sent'
+                          ? styles.pendingReviewPillText
                           : styles.inProgressYellowPillText
                       }
+                      numberOfLines={1}
                     >
-                      {app.status === 'Disbursed'
-                        ? 'Disbursed'
-                        : app.status === 'Rejected'
-                        ? 'Rejected'
-                        : app.isTopUp
-                        ? 'Top Up'
-                        : 'In Progress'}
+                      {app.status === 'Application Sent' ? 'Sent (Pending)' : app.status}
                     </Text>
                   </View>
-
-                  <Ionicons name="chevron-forward" size={18} color="#0f172a" />
                 </View>
 
+                {/* 3-Column Summary Information */}
                 <View style={styles.infoThreeColsRow}>
                   <View style={styles.infoColItem}>
                     <View style={styles.colHeaderMiniRow}>
                       <Ionicons name="business-outline" size={16} color="#004aad" />
-                      <Text style={styles.colHeaderLabel}>Bank Name</Text>
+                      <Text style={styles.colHeaderLabel} numberOfLines={1}>Bank Name</Text>
                     </View>
                     <View style={styles.bankValueRow}>
                       <BankLogo bank={bankName} width={20} height={20} />
@@ -953,9 +970,9 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
                       <View style={styles.moneyBagIconCircle}>
                         <Text style={styles.moneyBagSymbol}>₹</Text>
                       </View>
-                      <Text style={styles.colHeaderLabel}>Loan Amount</Text>
+                      <Text style={styles.colHeaderLabel} numberOfLines={1}>Loan Amount</Text>
                     </View>
-                    <Text style={styles.loanAmountValue}>
+                    <Text style={styles.loanAmountValue} numberOfLines={1}>
                       {formatAmountINR(app.requestedAmount)}
                     </Text>
                   </View>
@@ -982,28 +999,29 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
                       </Text>
                     </TouchableOpacity>
                   </View>
-                  {/* Real-time Status Details & Timestamp Banner */}
-                  <View style={styles.appStatusLiveBanner}>
-                    <View style={styles.appStatusLiveRow}>
-                      <View style={styles.appStatusLiveDot} />
-                      <Text style={styles.appStatusLiveText}>
-                        Status: <Text style={{ fontWeight: '800' }}>{app.status}</Text>
+                </View>
+
+                {/* Real-time Status Details & Timestamp Banner (Placed outside 3-col row to prevent overflow) */}
+                <View style={styles.appStatusLiveBanner}>
+                  <View style={styles.appStatusLiveRow}>
+                    <View style={styles.appStatusLiveDot} />
+                    <Text style={styles.appStatusLiveText} numberOfLines={1}>
+                      Status: <Text style={{ fontWeight: '800' }}>{app.status}</Text>
+                    </Text>
+                    {app.statusUpdatedDate ? (
+                      <Text style={styles.appStatusLiveDate} numberOfLines={1}>
+                        Updated: {app.statusUpdatedDate}
                       </Text>
-                      {app.statusUpdatedDate ? (
-                        <Text style={styles.appStatusLiveDate}>
-                          Updated: {app.statusUpdatedDate}
-                        </Text>
-                      ) : null}
-                    </View>
-                    {app.remarks ? (
-                      <View style={styles.appRemarksBox}>
-                        <Ionicons name="chatbubble-ellipses-outline" size={13} color="#2563eb" />
-                        <Text style={styles.appRemarksText}>
-                          Reason / Remarks: <Text style={{ color: '#1e293b' }}>{app.remarks}</Text>
-                        </Text>
-                      </View>
                     ) : null}
                   </View>
+                  {app.remarks ? (
+                    <View style={styles.appRemarksBox}>
+                      <Ionicons name="chatbubble-ellipses-outline" size={13} color="#2563eb" />
+                      <Text style={styles.appRemarksText}>
+                        Reason / Remarks: <Text style={{ color: '#1e293b' }}>{app.remarks}</Text>
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
 
                 <View style={styles.stepperContainer}>
@@ -1840,6 +1858,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
+    flexShrink: 1,
   },
   hdfcLogoBox: {
     width: 14,
@@ -2055,6 +2074,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 2,
+    overflow: 'hidden',
   },
   cardHeaderRow: {
     flexDirection: 'row',
@@ -2108,6 +2128,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     color: '#854d0e',
+  },
+  pendingReviewPill: {
+    backgroundColor: '#fef3c7',
+    borderRadius: 20,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: '#fde68a',
+  },
+  pendingReviewPillText: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: '#b45309',
   },
   rejectedRedPill: {
     backgroundColor: '#fee2e2',
@@ -2180,6 +2213,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     color: '#0f172a',
+    flexShrink: 1,
   },
   loanAmountValue: {
     fontSize: 13,
@@ -2212,7 +2246,7 @@ const styles = StyleSheet.create({
   },
   nodeItem: {
     alignItems: 'center',
-    width: 72,
+    width: 62,
   },
   greenCheckCircle: {
     width: 22,

@@ -26,6 +26,13 @@ import { cityLocationService, CityResultItem } from '../../services/cityLocation
 import { BankLogo } from '../common/BankLogo';
 import { COMPANY_INFO } from '../../data/mockData';
 import { LoanIcon } from '../common/LoanIcon';
+import { isUserDocUploaded, findUserDocument } from '../../utils/formPreFill';
+import { LoanDocItemRow } from '../common/LoanDocItemRow';
+import { DocumentViewPreviewModal } from '../common/DocumentViewPreviewModal';
+import { CalendarPickerModal } from '../common/CalendarPickerModal';
+import { DocumentItem } from '../../types';
+import { documentService } from '../../services/documentService';
+import { Platform } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -53,41 +60,43 @@ export const AgricultureLoanApplyScreen: React.FC<AgricultureLoanApplyScreenProp
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
   // ---------------- STEP 1: Basic Details ----------------
-  const [fullName, setFullName] = useState<string>(user?.name || '');
+  const [fullName, setFullName] = useState<string>(user?.name && user.name !== 'Valued Customer' ? user.name : '');
   const [mobileNumber, setMobileNumber] = useState<string>(user?.mobile || '');
   const [emailId, setEmailId] = useState<string>(user?.email || '');
-  const [dob, setDob] = useState<string>('01/06/1982');
+  const [dob, setDob] = useState<string>('');
   const [city, setCity] = useState<string>(user?.city || '');
   const [isAgreedStep1, setIsAgreedStep1] = useState<boolean>(true);
 
   // ---------------- STEP 2: Agriculture & Land Details ----------------
-  const [landHoldingAcres, setLandHoldingAcres] = useState<string>('5 Acres (Bagayat / Irrigated)');
-  const [talukaVillage, setTalukaVillage] = useState<string>('Village Taroda, Taluka & Dist Nanded');
-  const [gatNumber, setGatNumber] = useState<string>('Gat No. 142/A & 143');
-  const [irrigationSource, setIrrigationSource] = useState<string>('Borewell & Canal Water');
-  const [primaryCrops, setPrimaryCrops] = useState<string>('Soybean, Cotton, Tur & Sugarcane');
-  const [hasKccCard, setHasKccCard] = useState<'Yes' | 'No'>('Yes');
-  const [farmingType, setFarmingType] = useState<string>('Crop Cultivation & Allied Dairy');
+  const [landHoldingAcres, setLandHoldingAcres] = useState<string>('');
+  const [talukaVillage, setTalukaVillage] = useState<string>(user?.city ? `Taluka & Dist ${user.city}` : '');
+  const [gatNumber, setGatNumber] = useState<string>('');
+  const [irrigationSource, setIrrigationSource] = useState<string>('');
+  const [primaryCrops, setPrimaryCrops] = useState<string>('');
+  const [hasKccCard, setHasKccCard] = useState<'Yes' | 'No'>('No');
+  const [farmingType, setFarmingType] = useState<string>('');
 
   // ---------------- STEP 3: Loan Purpose & Credit Details ----------------
-  const [agriLoanType, setAgriLoanType] = useState<string>('Kisan Credit Card (KCC Crop Loan)');
-  const [requiredLoanAmount, setRequiredLoanAmount] = useState<string>('₹5,00,000');
-  const [loanTenure, setLoanTenure] = useState<string>('3 Years (Renewable Annually)');
-  const [repaymentPattern, setRepaymentPattern] = useState<string>('Seasonal (Post Harvest Clearance)');
-  const [primaryAgriBank, setPrimaryAgriBank] = useState<string>('State Bank of India (Agri Branch, Nanded)');
-  const [cibilScoreRange, setCibilScoreRange] = useState<string>('750 and Above (Excellent)');
+  const [agriLoanType, setAgriLoanType] = useState<string>('');
+  const [requiredLoanAmount, setRequiredLoanAmount] = useState<string>('');
+  const [loanTenure, setLoanTenure] = useState<string>('');
+  const [repaymentPattern, setRepaymentPattern] = useState<string>('');
+  const [primaryAgriBank, setPrimaryAgriBank] = useState<string>('');
+  const [cibilScoreRange, setCibilScoreRange] = useState<string>(
+    user?.cibilEstimateScore ? (user.cibilEstimateScore >= 750 ? '750 and Above (Excellent)' : '700 - 749 (Good)') : ''
+  );
 
-  // ---------------- STEP 4: Documents ----------------
+  // ---------------- STEP 4: Documents (Pre-fill ONLY if authentic document exists in database) ----------------
   const [panNumber, setPanNumber] = useState<string>(user?.panNumber || '');
   const [aadhaarNumber, setAadhaarNumber] = useState<string>(user?.aadhaarNumber || '');
   const [uploadedDocs, setUploadedDocs] = useState<UploadedDocState>({
-    panCard: true,
-    aadhaarCard: true,
-    satbara712: true,
-    ferfar8A: true,
-    cropPikPahani: true,
-    tractorQuotation: true,
-    bankPassbook: true,
+    panCard: isUserDocUploaded(user, 'pan_card', ['pan']),
+    aadhaarCard: isUserDocUploaded(user, 'aadhaar_card', ['aadhaar', 'uidai']),
+    satbara712: isUserDocUploaded(user, 'land_records_712', ['7/12', 'satbara', 'land']),
+    ferfar8A: isUserDocUploaded(user, 'land_records_712', ['8a', 'ferfar']),
+    cropPikPahani: isUserDocUploaded(user, 'crop_cultivation_cert', ['crop', 'pik pahani']),
+    tractorQuotation: isUserDocUploaded(user, 'purchase_quotation', ['quotation', 'invoice', 'tractor']),
+    bankPassbook: isUserDocUploaded(user, 'bank_statement', ['passbook', 'statement', 'bank']),
   });
 
   // ---------------- STEP 5: Final Confirmation & Submission ----------------
@@ -95,6 +104,164 @@ export const AgricultureLoanApplyScreen: React.FC<AgricultureLoanApplyScreenProp
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submittedApp, setSubmittedApp] = useState<LoanApplication | null>(null);
   const [submittedDateString, setSubmittedDateString] = useState<string>('');
+
+  // Calendar & Document Preview & Upload State
+  const [showDobCalendar, setShowDobCalendar] = useState<boolean>(false);
+  const [previewDoc, setPreviewDoc] = useState<DocumentItem | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState<boolean>(false);
+  const [isDocUploading, setIsDocUploading] = useState<boolean>(false);
+
+  const handleViewDocument = (doc: DocumentItem) => {
+    setPreviewDoc(doc);
+    setShowPreviewModal(true);
+  };
+
+  const handleUploadOrReuploadDoc = (docKey: string, defaultTitle: string, category: DocumentItem['category']) => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.pdf,.jpg,.jpeg,.png,image/*,application/pdf';
+      input.onchange = async (e: Event) => {
+        const target = e.target as HTMLInputElement;
+        const file = target?.files?.[0];
+        if (!file) return;
+
+        const validation = documentService.validateFile({
+          name: file.name,
+          size: file.size,
+          type: file.type || 'application/pdf',
+        });
+
+        if (!validation.valid) {
+          Alert.alert('Invalid File', validation.error || 'Please select a valid PDF, JPG, or PNG under 5MB.');
+          return;
+        }
+
+        setIsDocUploading(true);
+        const reader = new FileReader();
+        reader.onload = async () => {
+          try {
+            const newDoc = await documentService.uploadDocument(
+              {
+                name: defaultTitle || file.name,
+                size: file.size,
+                type: file.type || 'application/pdf',
+                uri: reader.result as string,
+              },
+              category,
+              user?.mobile,
+              docKey
+            );
+            if (user) {
+              if (!user.documents) user.documents = [];
+              const idx = user.documents.findIndex((d) => d.docKey === docKey || d.name.toLowerCase().includes(docKey.replace(/_/g, ' ')));
+              if (idx >= 0) {
+                user.documents[idx] = newDoc;
+              } else {
+                user.documents.push(newDoc);
+              }
+            }
+            Alert.alert('Success', `"${defaultTitle}" uploaded successfully!`);
+          } catch {
+            Alert.alert('Error', 'Document upload failed. Please try again.');
+          } finally {
+            setIsDocUploading(false);
+          }
+        };
+        reader.readAsDataURL(file);
+      };
+      input.click();
+      return;
+    }
+
+    Alert.alert(
+      'Upload Document',
+      `Upload authentic file for ${defaultTitle}:`,
+      [
+        {
+          text: 'Choose Document (PDF/Doc)',
+          onPress: async () => {
+            try {
+              const DocumentPicker = require('expo-document-picker');
+              const res = await DocumentPicker.getDocumentAsync({
+                type: ['application/pdf', 'image/*'],
+                copyToCacheDirectory: true,
+              });
+              if (res.canceled || !res.assets || res.assets.length === 0) return;
+              const asset = res.assets[0];
+              setIsDocUploading(true);
+              const newDoc = await documentService.uploadDocument(
+                {
+                  name: defaultTitle || asset.name,
+                  size: asset.size || 0,
+                  type: asset.mimeType || 'application/pdf',
+                  uri: asset.uri,
+                },
+                category,
+                user?.mobile,
+                docKey
+              );
+              if (user) {
+                if (!user.documents) user.documents = [];
+                const idx = user.documents.findIndex((d) => d.docKey === docKey || d.name.toLowerCase().includes(docKey.replace(/_/g, ' ')));
+                if (idx >= 0) {
+                  user.documents[idx] = newDoc;
+                } else {
+                  user.documents.push(newDoc);
+                }
+              }
+              Alert.alert('Success', `"${defaultTitle}" uploaded successfully!`);
+            } catch (err) {
+              Alert.alert('Error', 'Unable to pick or upload document.');
+            } finally {
+              setIsDocUploading(false);
+            }
+          },
+        },
+        {
+          text: 'Take Photo / Choose Photo',
+          onPress: async () => {
+            try {
+              const ImagePicker = require('expo-image-picker');
+              const res = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                quality: 0.8,
+              });
+              if (res.canceled || !res.assets || res.assets.length === 0) return;
+              const asset = res.assets[0];
+              setIsDocUploading(true);
+              const newDoc = await documentService.uploadDocument(
+                {
+                  name: `${defaultTitle}.jpg`,
+                  size: asset.fileSize || 0,
+                  type: 'image/jpeg',
+                  uri: asset.uri,
+                },
+                category,
+                user?.mobile,
+                docKey
+              );
+              if (user) {
+                if (!user.documents) user.documents = [];
+                const idx = user.documents.findIndex((d) => d.docKey === docKey || d.name.toLowerCase().includes(docKey.replace(/_/g, ' ')));
+                if (idx >= 0) {
+                  user.documents[idx] = newDoc;
+                } else {
+                  user.documents.push(newDoc);
+                }
+              }
+              Alert.alert('Success', `"${defaultTitle}" photo uploaded successfully!`);
+            } catch (err) {
+              Alert.alert('Error', 'Unable to choose photo.');
+            } finally {
+              setIsDocUploading(false);
+            }
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
 
   // ---------------- Modals State ----------------
   const [showCityModal, setShowCityModal] = useState<boolean>(false);
@@ -210,10 +377,7 @@ export const AgricultureLoanApplyScreen: React.FC<AgricultureLoanApplyScreenProp
       setFormError('Please enter a valid 10-digit mobile number');
       return;
     }
-    if (!city.trim()) {
-      setFormError('Please select your district/city');
-      return;
-    }
+    // City is optional
     if (!isAgreedStep1) {
       setFormError('Please accept terms & conditions');
       return;
@@ -274,6 +438,7 @@ export const AgricultureLoanApplyScreen: React.FC<AgricultureLoanApplyScreenProp
         city: city.trim(),
         panNumber: panNumber.trim().toUpperCase() || undefined,
         aadhaarNumber: aadhaarNumber.replace(/\D/g, '') || undefined,
+        bankName: primaryAgriBank || undefined,
         purpose: `Agriculture Loan | Scheme: ${agriLoanType} | Land: ${landHoldingAcres} (${gatNumber}) | Location: ${talukaVillage} | Crops: ${primaryCrops} | Irrigation: ${irrigationSource} | Bank: ${primaryAgriBank} | KCC Active: ${hasKccCard}`,
       });
 
@@ -488,35 +653,36 @@ export const AgricultureLoanApplyScreen: React.FC<AgricultureLoanApplyScreenProp
             <View style={styles.rowTwoCols}>
               <View style={[styles.fieldGroup, { flex: 1, marginRight: 8 }]}>
                 <Text style={styles.fieldLabel}>Date of Birth <Text style={styles.asterisk}>*</Text></Text>
-                <View style={styles.inputWrapper}>
-                  <View style={styles.inputIconBox}>
-                    <Ionicons name="calendar-outline" size={18} color="#64748b" />
-                  </View>
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="DD/MM/YYYY"
-                    placeholderTextColor="#94a3b8"
-                    value={dob}
-                    onChangeText={setDob}
-                  />
-                </View>
-              </View>
-
-              <View style={[styles.fieldGroup, { flex: 1, marginLeft: 8 }]}>
-                <Text style={styles.fieldLabel}>District / City <Text style={styles.asterisk}>*</Text></Text>
                 <TouchableOpacity
                   style={styles.dropdownPickerBox}
-                  onPress={() => setShowCityModal(true)}
+                  onPress={() => setShowDobCalendar(true)}
                   activeOpacity={0.8}
                 >
                   <View style={styles.inputIconBox}>
+                    <Ionicons name="calendar-outline" size={18} color="#64748b" />
+                  </View>
+                  <Text style={[styles.dropdownPickerText, !dob && { color: '#94a3b8' }]} numberOfLines={1}>
+                    {dob || 'DD/MM/YYYY'}
+                  </Text>
+                  <Ionicons name="calendar" size={16} color="#004aad" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={[styles.fieldGroup, { flex: 1, marginLeft: 8 }]}>
+                <Text style={styles.fieldLabel}>District / City (Optional)</Text>
+                <View style={styles.inputWrapper}>
+                  <View style={styles.inputIconBox}>
                     <Ionicons name="location-outline" size={18} color="#64748b" />
                   </View>
-                  <Text style={styles.dropdownPickerText} numberOfLines={1}>
-                    {city || 'Select District'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={16} color="#64748b" />
-                </TouchableOpacity>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Enter district/city"
+                    placeholderTextColor="#94a3b8"
+                    value={city}
+                    onChangeText={setCity}
+                    autoCapitalize="words"
+                  />
+                </View>
               </View>
             </View>
 
@@ -881,8 +1047,11 @@ export const AgricultureLoanApplyScreen: React.FC<AgricultureLoanApplyScreenProp
             {/* Document List (7 Rows) */}
             <View style={styles.docListContainer}>
               {/* Row 1: PAN Card (Mandatory) */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              <LoanDocItemRow
+                title="Farmer PAN Card"
+                subtitle="Copy of applicant PAN Card (Front Side)"
+                isMandatory
+                iconNode={
                   <View style={styles.panBadgeFrame}>
                     <Text style={styles.panBadgeText}>PAN</Text>
                     <View style={styles.panBadgeLines}>
@@ -890,208 +1059,105 @@ export const AgricultureLoanApplyScreen: React.FC<AgricultureLoanApplyScreenProp
                       <View style={[styles.panBadgeLine, { width: '60%' }]} />
                     </View>
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <View style={styles.docTitleWithBadgeRow}>
-                    <Text style={styles.docRowTitle}>Farmer PAN Card</Text>
-                    <View style={styles.mandatoryPill}>
-                      <Text style={styles.mandatoryPillText}>Mandatory</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.docRowSubtitle}>Copy of Farmer / Borrower PAN Card (Front Side)</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.panCard && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('panCard')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.panCard ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.panCard ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.panCard && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.panCard ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'pan_card', ['pan'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('pan_card', 'PAN Card', 'Identity Proof')}
+              />
               <View style={styles.docRowDivider} />
 
               {/* Row 2: Aadhaar Card (Mandatory) */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              <LoanDocItemRow
+                title="Farmer Aadhaar Card"
+                subtitle="Front & Back (Both Sides)"
+                isMandatory
+                iconNode={
                   <View style={styles.aadhaarBadgeFrame}>
                     <Ionicons name="sunny-outline" size={14} color="#dc2626" />
                     <Text style={styles.aadhaarBadgeText}>AADHAAR</Text>
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <View style={styles.docTitleWithBadgeRow}>
-                    <Text style={styles.docRowTitle}>Farmer Aadhaar Card</Text>
-                    <View style={styles.mandatoryPill}>
-                      <Text style={styles.mandatoryPillText}>Mandatory</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.docRowSubtitle}>Front & Back (Both Sides)</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.aadhaarCard && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('aadhaarCard')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.aadhaarCard ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.aadhaarCard ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.aadhaarCard && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.aadhaarCard ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'aadhaar_card', ['aadhaar', 'uidai'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('aadhaar_card', 'Aadhaar Card', 'Identity Proof')}
+              />
               <View style={styles.docRowDivider} />
 
               {/* Row 3: 7/12 (Satbara) Extract */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              <LoanDocItemRow
+                title="7/12 (Satbara) Extract"
+                subtitle="Digitally signed latest 7/12 land record showing land ownership"
+                isMandatory
+                iconNode={
                   <View style={styles.docRoundIconWrap}>
                     <MaterialCommunityIcons name="file-document-outline" size={24} color="#002e75" />
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <Text style={styles.docRowTitle}>Latest 7/12 (Satbara) Extract</Text>
-                  <Text style={styles.docRowSubtitle}>Digitally signed or certified recent 7/12 land extract</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.satbara712 && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('satbara712')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.satbara712 ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.satbara712 ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.satbara712 && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.satbara712 ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'satbara_712', ['7/12', 'satbara', 'land'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('satbara_712', '7/12 (Satbara) Extract', 'Property Document')}
+              />
               <View style={styles.docRowDivider} />
 
               {/* Row 4: 8A Land Holding Extract */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              <LoanDocItemRow
+                title="8A Land Holding Extract"
+                subtitle="Village Form 8-A displaying total land holding and khata number"
+                isMandatory
+                iconNode={
                   <View style={styles.docRoundIconWrap}>
-                    <MaterialCommunityIcons name="file-certificate-outline" size={24} color="#002e75" />
+                    <MaterialCommunityIcons name="file-chart-outline" size={24} color="#002e75" />
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <Text style={styles.docRowTitle}>8A Land Holding Certificate</Text>
-                  <Text style={styles.docRowSubtitle}>Total agricultural land holding khata extract</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.ferfar8A && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('ferfar8A')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.ferfar8A ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.ferfar8A ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.ferfar8A && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.ferfar8A ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'ferfar_8a', ['8a', 'khata', 'holding'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('ferfar_8a', '8A Extract', 'Property Document')}
+              />
               <View style={styles.docRowDivider} />
 
               {/* Row 5: Crop Inspection (Pik Pahani) */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              <LoanDocItemRow
+                title="Crop Inspection (Pik Pahani)"
+                subtitle="E-Pik Pahani registered entry or Talathi verification certificate"
+                iconNode={
                   <View style={styles.docRoundIconWrap}>
-                    <MaterialCommunityIcons name="sprout" size={24} color="#002e75" />
+                    <MaterialCommunityIcons name="sprout-outline" size={24} color="#002e75" />
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <Text style={styles.docRowTitle}>Crop Inspection Certificate (Pik Pahani)</Text>
-                  <Text style={styles.docRowSubtitle}>e-Pik Pahani mobile entry or Talathi crop certificate</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.cropPikPahani && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('cropPikPahani')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.cropPikPahani ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.cropPikPahani ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.cropPikPahani && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.cropPikPahani ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'crop_pik_pahani', ['crop', 'pik pahani', 'cultivation'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('crop_pik_pahani', 'Crop Inspection (Pik Pahani)', 'Other')}
+              />
               <View style={styles.docRowDivider} />
 
-              {/* Row 6: Bank Passbook */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              {/* Row 6: Bank Passbook Front Page */}
+              <LoanDocItemRow
+                title="Bank Passbook Front Page"
+                subtitle="Active savings account passbook with IFSC code"
+                iconNode={
                   <View style={styles.docRoundIconWrap}>
                     <MaterialCommunityIcons name="bank" size={24} color="#002e75" />
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <Text style={styles.docRowTitle}>Bank Passbook Front Page</Text>
-                  <Text style={styles.docRowSubtitle}>Active savings account passbook with IFSC code</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.bankPassbook && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('bankPassbook')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.bankPassbook ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.bankPassbook ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.bankPassbook && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.bankPassbook ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'bank_statement', ['passbook', 'statement', 'bank'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('bank_statement', 'Bank Passbook', 'Income Proof')}
+              />
               <View style={styles.docRowDivider} />
 
               {/* Row 7: Equipment / Tractor Quotation (if Available) */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              <LoanDocItemRow
+                title="Tractor / Equipment Quotation"
+                subtitle="Dealer proforma invoice for machinery or solar pump (if any)"
+                iconNode={
                   <View style={styles.docRoundIconWrap}>
                     <MaterialCommunityIcons name="tractor" size={24} color="#002e75" />
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <View style={styles.docTitleWithBadgeRow}>
-                    <Text style={styles.docRowTitle}>Tractor / Equipment Quotation</Text>
-                    <Text style={styles.ifAvailableItalic}> (if Available)</Text>
-                  </View>
-                  <Text style={styles.docRowSubtitle}>Dealer proforma invoice for machinery or solar pump (if any)</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.tractorQuotation && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('tractorQuotation')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.tractorQuotation ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.tractorQuotation ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.tractorQuotation && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.tractorQuotation ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'tractor_quotation', ['tractor', 'machinery', 'quotation'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('tractor_quotation', 'Equipment Quotation', 'Other')}
+              />
             </View>
 
             {/* Bottom 100% Safe & Secure Card */}
@@ -1544,6 +1610,27 @@ export const AgricultureLoanApplyScreen: React.FC<AgricultureLoanApplyScreenProp
           </View>
         )}
       </ScrollView>
+
+      {/* Calendar Picker Modal for DOB */}
+      <CalendarPickerModal
+        visible={showDobCalendar}
+        currentDateStr={dob}
+        onSelectDate={(selectedDate) => {
+          setDob(selectedDate);
+          setShowDobCalendar(false);
+        }}
+        onClose={() => setShowDobCalendar(false)}
+      />
+
+      {/* Document View Preview Modal */}
+      <DocumentViewPreviewModal
+        visible={showPreviewModal}
+        doc={previewDoc}
+        onClose={() => {
+          setShowPreviewModal(false);
+          setPreviewDoc(null);
+        }}
+      />
 
       {/* City Modal */}
       <Modal visible={showCityModal} animationType="slide" transparent onRequestClose={() => setShowCityModal(false)}>

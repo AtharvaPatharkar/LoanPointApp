@@ -24,6 +24,13 @@ import { UserProfile, LoanApplication } from '../../types';
 import { loanService } from '../../services/loanService';
 import { cityLocationService, CityResultItem } from '../../services/cityLocationService';
 import { COMPANY_INFO } from '../../data/mockData';
+import { isUserDocUploaded, findUserDocument } from '../../utils/formPreFill';
+import { LoanDocItemRow } from '../common/LoanDocItemRow';
+import { DocumentViewPreviewModal } from '../common/DocumentViewPreviewModal';
+import { CalendarPickerModal } from '../common/CalendarPickerModal';
+import { DocumentItem } from '../../types';
+import { documentService } from '../../services/documentService';
+import { Platform } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -51,42 +58,44 @@ export const EducationLoanApplyScreen: React.FC<EducationLoanApplyScreenProps> =
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
   // ---------------- STEP 1: Student Basic Details ----------------
-  const [fullName, setFullName] = useState<string>(user?.name || '');
+  const [fullName, setFullName] = useState<string>(user?.name && user.name !== 'Valued Customer' ? user.name : '');
   const [mobileNumber, setMobileNumber] = useState<string>(user?.mobile || '');
   const [emailId, setEmailId] = useState<string>(user?.email || '');
-  const [dob, setDob] = useState<string>('12/04/2003');
+  const [dob, setDob] = useState<string>('');
   const [city, setCity] = useState<string>(user?.city || '');
   const [isAgreedStep1, setIsAgreedStep1] = useState<boolean>(true);
 
   // ---------------- STEP 2: Education & Course Details ----------------
   const [studyDestination, setStudyDestination] = useState<'India' | 'Abroad / Overseas'>('India');
-  const [courseLevel, setCourseLevel] = useState<string>('Post-Graduate (Master / MBA / MS)');
-  const [courseName, setCourseName] = useState<string>('Master of Business Administration (MBA)');
-  const [instituteName, setInstituteName] = useState<string>('Symbiosis International University, Pune');
-  const [courseDuration, setCourseDuration] = useState<string>('2 Years');
-  const [admissionStatus, setAdmissionStatus] = useState<string>('Confirmed / Offer Letter Received');
-  const [totalCourseCost, setTotalCourseCost] = useState<string>('₹18,00,000');
+  const [courseLevel, setCourseLevel] = useState<string>('');
+  const [courseName, setCourseName] = useState<string>('');
+  const [instituteName, setInstituteName] = useState<string>('');
+  const [courseDuration, setCourseDuration] = useState<string>('');
+  const [admissionStatus, setAdmissionStatus] = useState<string>('');
+  const [totalCourseCost, setTotalCourseCost] = useState<string>('');
 
   // ---------------- STEP 3: Co-Applicant & Financing Details ----------------
-  const [coApplicantRelation, setCoApplicantRelation] = useState<string>('Father / Mother');
-  const [coApplicantName, setCoApplicantName] = useState<string>('Suresh Patil');
-  const [coApplicantIncome, setCoApplicantIncome] = useState<string>('₹95,000 / month');
-  const [requiredLoanAmount, setRequiredLoanAmount] = useState<string>('₹15,00,000');
-  const [loanTenure, setLoanTenure] = useState<string>('7 Years (84 Months)');
-  const [moratoriumPeriod, setMoratoriumPeriod] = useState<string>('Course Duration + 1 Year');
-  const [cibilScoreRange, setCibilScoreRange] = useState<string>('750 and Above (Excellent)');
+  const [coApplicantRelation, setCoApplicantRelation] = useState<string>('');
+  const [coApplicantName, setCoApplicantName] = useState<string>('');
+  const [coApplicantIncome, setCoApplicantIncome] = useState<string>('');
+  const [requiredLoanAmount, setRequiredLoanAmount] = useState<string>('');
+  const [loanTenure, setLoanTenure] = useState<string>('');
+  const [moratoriumPeriod, setMoratoriumPeriod] = useState<string>('');
+  const [cibilScoreRange, setCibilScoreRange] = useState<string>(
+    user?.cibilEstimateScore ? (user.cibilEstimateScore >= 750 ? '750 and Above (Excellent)' : '700 - 749 (Good)') : ''
+  );
 
-  // ---------------- STEP 4: Documents ----------------
+  // ---------------- STEP 4: Documents (Pre-fill ONLY if authentic document exists in database) ----------------
   const [panNumber, setPanNumber] = useState<string>(user?.panNumber || '');
   const [aadhaarNumber, setAadhaarNumber] = useState<string>(user?.aadhaarNumber || '');
   const [uploadedDocs, setUploadedDocs] = useState<UploadedDocState>({
-    studentPanAadhaar: true,
-    coApplicantKyc: true,
-    admissionLetter: true,
-    academicRecords: true,
-    coApplicantIncome: true,
-    bankStatements: true,
-    photograph: true,
+    studentPanAadhaar: isUserDocUploaded(user, 'pan_card', ['pan']) || isUserDocUploaded(user, 'aadhaar_card', ['aadhaar']),
+    coApplicantKyc: false,
+    admissionLetter: isUserDocUploaded(user, 'admission_letter', ['admission', 'offer', 'bonafide']),
+    academicRecords: isUserDocUploaded(user, 'academic_marksheets', ['mark', 'academic', 'degree', 'ssc', 'hsc']),
+    coApplicantIncome: isUserDocUploaded(user, 'salary_slips', ['salary', 'itr']),
+    bankStatements: isUserDocUploaded(user, 'bank_statement', ['statement', 'passbook']),
+    photograph: isUserDocUploaded(user, 'passport_photo', ['photo', 'passport']),
   });
 
   // ---------------- STEP 5: Final Confirmation & Submission ----------------
@@ -94,6 +103,164 @@ export const EducationLoanApplyScreen: React.FC<EducationLoanApplyScreenProps> =
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submittedApp, setSubmittedApp] = useState<LoanApplication | null>(null);
   const [submittedDateString, setSubmittedDateString] = useState<string>('');
+
+  // Calendar & Document Preview & Upload State
+  const [showDobCalendar, setShowDobCalendar] = useState<boolean>(false);
+  const [previewDoc, setPreviewDoc] = useState<DocumentItem | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState<boolean>(false);
+  const [isDocUploading, setIsDocUploading] = useState<boolean>(false);
+
+  const handleViewDocument = (doc: DocumentItem) => {
+    setPreviewDoc(doc);
+    setShowPreviewModal(true);
+  };
+
+  const handleUploadOrReuploadDoc = (docKey: string, defaultTitle: string, category: DocumentItem['category']) => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.pdf,.jpg,.jpeg,.png,image/*,application/pdf';
+      input.onchange = async (e: Event) => {
+        const target = e.target as HTMLInputElement;
+        const file = target?.files?.[0];
+        if (!file) return;
+
+        const validation = documentService.validateFile({
+          name: file.name,
+          size: file.size,
+          type: file.type || 'application/pdf',
+        });
+
+        if (!validation.valid) {
+          Alert.alert('Invalid File', validation.error || 'Please select a valid PDF, JPG, or PNG under 5MB.');
+          return;
+        }
+
+        setIsDocUploading(true);
+        const reader = new FileReader();
+        reader.onload = async () => {
+          try {
+            const newDoc = await documentService.uploadDocument(
+              {
+                name: defaultTitle || file.name,
+                size: file.size,
+                type: file.type || 'application/pdf',
+                uri: reader.result as string,
+              },
+              category,
+              user?.mobile,
+              docKey
+            );
+            if (user) {
+              if (!user.documents) user.documents = [];
+              const idx = user.documents.findIndex((d) => d.docKey === docKey || d.name.toLowerCase().includes(docKey.replace(/_/g, ' ')));
+              if (idx >= 0) {
+                user.documents[idx] = newDoc;
+              } else {
+                user.documents.push(newDoc);
+              }
+            }
+            Alert.alert('Success', `"${defaultTitle}" uploaded successfully!`);
+          } catch {
+            Alert.alert('Error', 'Document upload failed. Please try again.');
+          } finally {
+            setIsDocUploading(false);
+          }
+        };
+        reader.readAsDataURL(file);
+      };
+      input.click();
+      return;
+    }
+
+    Alert.alert(
+      'Upload Document',
+      `Upload authentic file for ${defaultTitle}:`,
+      [
+        {
+          text: 'Choose Document (PDF/Doc)',
+          onPress: async () => {
+            try {
+              const DocumentPicker = require('expo-document-picker');
+              const res = await DocumentPicker.getDocumentAsync({
+                type: ['application/pdf', 'image/*'],
+                copyToCacheDirectory: true,
+              });
+              if (res.canceled || !res.assets || res.assets.length === 0) return;
+              const asset = res.assets[0];
+              setIsDocUploading(true);
+              const newDoc = await documentService.uploadDocument(
+                {
+                  name: defaultTitle || asset.name,
+                  size: asset.size || 0,
+                  type: asset.mimeType || 'application/pdf',
+                  uri: asset.uri,
+                },
+                category,
+                user?.mobile,
+                docKey
+              );
+              if (user) {
+                if (!user.documents) user.documents = [];
+                const idx = user.documents.findIndex((d) => d.docKey === docKey || d.name.toLowerCase().includes(docKey.replace(/_/g, ' ')));
+                if (idx >= 0) {
+                  user.documents[idx] = newDoc;
+                } else {
+                  user.documents.push(newDoc);
+                }
+              }
+              Alert.alert('Success', `"${defaultTitle}" uploaded successfully!`);
+            } catch (err) {
+              Alert.alert('Error', 'Unable to pick or upload document.');
+            } finally {
+              setIsDocUploading(false);
+            }
+          },
+        },
+        {
+          text: 'Take Photo / Choose Photo',
+          onPress: async () => {
+            try {
+              const ImagePicker = require('expo-image-picker');
+              const res = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                quality: 0.8,
+              });
+              if (res.canceled || !res.assets || res.assets.length === 0) return;
+              const asset = res.assets[0];
+              setIsDocUploading(true);
+              const newDoc = await documentService.uploadDocument(
+                {
+                  name: `${defaultTitle}.jpg`,
+                  size: asset.fileSize || 0,
+                  type: 'image/jpeg',
+                  uri: asset.uri,
+                },
+                category,
+                user?.mobile,
+                docKey
+              );
+              if (user) {
+                if (!user.documents) user.documents = [];
+                const idx = user.documents.findIndex((d) => d.docKey === docKey || d.name.toLowerCase().includes(docKey.replace(/_/g, ' ')));
+                if (idx >= 0) {
+                  user.documents[idx] = newDoc;
+                } else {
+                  user.documents.push(newDoc);
+                }
+              }
+              Alert.alert('Success', `"${defaultTitle}" photo uploaded successfully!`);
+            } catch (err) {
+              Alert.alert('Error', 'Unable to choose photo.');
+            } finally {
+              setIsDocUploading(false);
+            }
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
 
   // ---------------- Modals State ----------------
   const [showCityModal, setShowCityModal] = useState<boolean>(false);
@@ -206,10 +373,7 @@ export const EducationLoanApplyScreen: React.FC<EducationLoanApplyScreenProps> =
       setFormError('Please enter a valid 10-digit mobile number');
       return;
     }
-    if (!city.trim()) {
-      setFormError('Please select city');
-      return;
-    }
+    // City is optional
     if (!isAgreedStep1) {
       setFormError('Please accept terms & conditions');
       return;
@@ -278,6 +442,7 @@ export const EducationLoanApplyScreen: React.FC<EducationLoanApplyScreenProps> =
         city: city.trim(),
         panNumber: panNumber.trim().toUpperCase() || undefined,
         aadhaarNumber: aadhaarNumber.replace(/\D/g, '') || undefined,
+        bankName: 'State Bank of India',
         purpose: `Education Loan | Student: ${fullName.trim()} | Destination: ${studyDestination} | Course: ${courseName} (${courseLevel}) | University: ${instituteName} | Total Cost: ${totalCourseCost} | Co-Applicant: ${coApplicantName} (${coApplicantRelation}) | Moratorium: ${moratoriumPeriod}`,
       });
 
@@ -429,13 +594,14 @@ export const EducationLoanApplyScreen: React.FC<EducationLoanApplyScreenProps> =
                   <Text style={styles.fieldLabel}>
                     Student Full Name <Text style={styles.requiredStar}>*</Text>
                   </Text>
-                  <View style={styles.inputBox}>
+                  <View style={[styles.inputBox, { backgroundColor: '#f8fafc' }]}>
                     <TextInput
-                      style={styles.textInput}
+                      style={[styles.textInput, { color: '#475569' }]}
                       placeholder="Enter student full name"
                       placeholderTextColor="#94a3b8"
                       value={fullName}
                       onChangeText={setFullName}
+                      editable={false}
                     />
                   </View>
                 </View>
@@ -495,15 +661,16 @@ export const EducationLoanApplyScreen: React.FC<EducationLoanApplyScreenProps> =
                     <Text style={styles.fieldLabel} numberOfLines={1}>
                       Date of Birth <Text style={styles.requiredStar}>*</Text>
                     </Text>
-                    <View style={styles.inputBox}>
-                      <TextInput
-                        style={styles.textInput}
-                        placeholder="DD/MM/YYYY"
-                        placeholderTextColor="#94a3b8"
-                        value={dob}
-                        onChangeText={setDob}
-                      />
-                    </View>
+                    <TouchableOpacity
+                      style={styles.dropdownBox}
+                      onPress={() => setShowDobCalendar(true)}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={[styles.dropdownText, !dob && { color: '#94a3b8' }]} numberOfLines={1}>
+                        {dob || 'DD/MM/YYYY'}
+                      </Text>
+                      <Ionicons name="calendar" size={16} color="#004aad" />
+                    </TouchableOpacity>
                   </View>
                 </View>
 
@@ -513,18 +680,18 @@ export const EducationLoanApplyScreen: React.FC<EducationLoanApplyScreenProps> =
                   </View>
                   <View style={styles.twoColRight}>
                     <Text style={styles.fieldLabel} numberOfLines={1}>
-                      City <Text style={styles.requiredStar}>*</Text>
+                      City (Optional)
                     </Text>
-                    <TouchableOpacity
-                      style={styles.dropdownBox}
-                      onPress={() => setShowCityModal(true)}
-                      activeOpacity={0.75}
-                    >
-                      <Text style={styles.dropdownText} numberOfLines={1}>
-                        {city || 'Select City'}
-                      </Text>
-                      <Ionicons name="chevron-down" size={16} color="#0f172a" />
-                    </TouchableOpacity>
+                    <View style={styles.inputBox}>
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="Enter city name"
+                        placeholderTextColor="#94a3b8"
+                        value={city}
+                        onChangeText={setCity}
+                        autoCapitalize="words"
+                      />
+                    </View>
                   </View>
                 </View>
               </View>
@@ -914,8 +1081,11 @@ export const EducationLoanApplyScreen: React.FC<EducationLoanApplyScreenProps> =
             {/* Document List (7 Rows) */}
             <View style={styles.docListContainer}>
               {/* Row 1: Student KYC (PAN / Aadhaar) */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              <LoanDocItemRow
+                title="Student PAN & Aadhaar"
+                subtitle="Clear copy of Student KYC (Front & Back)"
+                isMandatory
+                iconNode={
                   <View style={styles.panBadgeFrame}>
                     <Text style={styles.panBadgeText}>PAN</Text>
                     <View style={styles.panBadgeLines}>
@@ -923,205 +1093,104 @@ export const EducationLoanApplyScreen: React.FC<EducationLoanApplyScreenProps> =
                       <View style={[styles.panBadgeLine, { width: '60%' }]} />
                     </View>
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <View style={styles.docTitleWithBadgeRow}>
-                    <Text style={styles.docRowTitle}>Student PAN & Aadhaar</Text>
-                    <View style={styles.mandatoryPill}>
-                      <Text style={styles.mandatoryPillText}>Mandatory</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.docRowSubtitle}>Clear copy of Student KYC (Front & Back)</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.studentPanAadhaar && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('studentPanAadhaar')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.studentPanAadhaar ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.studentPanAadhaar ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.studentPanAadhaar && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.studentPanAadhaar ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'student_pan_aadhaar', ['student kyc', 'pan', 'aadhaar'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('student_pan_aadhaar', 'Student PAN & Aadhaar', 'Identity Proof')}
+              />
               <View style={styles.docRowDivider} />
 
               {/* Row 2: Co-Applicant KYC (Mandatory) */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              <LoanDocItemRow
+                title="Co-Applicant KYC (Parent / Guardian)"
+                subtitle="PAN & Aadhaar card of parent or co-borrower"
+                isMandatory
+                iconNode={
                   <View style={styles.aadhaarBadgeFrame}>
                     <Ionicons name="sunny-outline" size={14} color="#dc2626" />
                     <Text style={styles.aadhaarBadgeText}>AADHAAR</Text>
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <View style={styles.docTitleWithBadgeRow}>
-                    <Text style={styles.docRowTitle}>Co-Applicant KYC (Parent/Guarantor)</Text>
-                    <View style={styles.mandatoryPill}>
-                      <Text style={styles.mandatoryPillText}>Mandatory</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.docRowSubtitle}>PAN Card & Aadhaar of parent / spouse</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.coApplicantKyc && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('coApplicantKyc')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.coApplicantKyc ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.coApplicantKyc ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.coApplicantKyc && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.coApplicantKyc ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'co_applicant_kyc', ['co-applicant', 'parent', 'guardian', 'aadhaar'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('co_applicant_kyc', 'Co-Applicant KYC', 'Identity Proof')}
+              />
               <View style={styles.docRowDivider} />
 
               {/* Row 3: Admission Letter & Fee Schedule */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              <LoanDocItemRow
+                title="Admission Letter & Fee Structure"
+                subtitle="Offer letter from College/University and breakdown of fees"
+                isMandatory
+                iconNode={
                   <View style={styles.docRoundIconWrap}>
                     <MaterialCommunityIcons name="school-outline" size={24} color="#002e75" />
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <Text style={styles.docRowTitle}>Admission Letter & Fee Schedule</Text>
-                  <Text style={styles.docRowSubtitle}>University offer letter with semester-wise fee breakdown</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.admissionLetter && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('admissionLetter')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.admissionLetter ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.admissionLetter ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.admissionLetter && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.admissionLetter ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'admission_letter', ['admission', 'fee structure', 'offer letter', 'college'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('admission_letter', 'Admission Letter', 'Other')}
+              />
               <View style={styles.docRowDivider} />
 
               {/* Row 4: Academic Records */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              <LoanDocItemRow
+                title="Academic Records (10th, 12th, Degree)"
+                subtitle="Mark sheets & passing certificates / Entrance exam scorecard"
+                iconNode={
                   <View style={styles.docRoundIconWrap}>
                     <MaterialCommunityIcons name="certificate-outline" size={24} color="#002e75" />
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <Text style={styles.docRowTitle}>Academic Mark Sheets & Scorecard</Text>
-                  <Text style={styles.docRowSubtitle}>10th, 12th, Degree mark sheets & GRE/IELTS/CAT score</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.academicRecords && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('academicRecords')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.academicRecords ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.academicRecords ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.academicRecords && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.academicRecords ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'academic_records', ['mark sheet', 'academic', 'degree', '10th', '12th'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('academic_records', 'Academic Records', 'Other')}
+              />
               <View style={styles.docRowDivider} />
 
               {/* Row 5: Co-Applicant Income Proof */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              <LoanDocItemRow
+                title="Co-Applicant Income Proof"
+                subtitle="Salary slips (last 3 months) or 2 years ITR with computation"
+                iconNode={
                   <View style={styles.docRoundIconWrap}>
                     <MaterialCommunityIcons name="file-document-outline" size={24} color="#002e75" />
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <Text style={styles.docRowTitle}>Co-Applicant Income Proof</Text>
-                  <Text style={styles.docRowSubtitle}>Last 3 months' salary slips / Form 16 / 2 Years ITR</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.coApplicantIncome && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('coApplicantIncome')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.coApplicantIncome ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.coApplicantIncome ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.coApplicantIncome && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.coApplicantIncome ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'salary_slips', ['salary', 'payslip', 'itr', 'income'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('salary_slips', 'Co-Applicant Income Proof', 'Income Proof')}
+              />
               <View style={styles.docRowDivider} />
 
               {/* Row 6: Bank Statements */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              <LoanDocItemRow
+                title="Bank Statements (Last 6 Months)"
+                subtitle="Co-applicant salary / savings bank account PDF"
+                iconNode={
                   <View style={styles.docRoundIconWrap}>
                     <MaterialCommunityIcons name="bank" size={24} color="#002e75" />
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <Text style={styles.docRowTitle}>Bank Statements (Last 6 Months)</Text>
-                  <Text style={styles.docRowSubtitle}>Co-applicant salary / savings bank account PDF</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.bankStatements && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('bankStatements')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.bankStatements ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.bankStatements ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.bankStatements && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.bankStatements ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'bank_statement', ['statement', 'passbook'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('bank_statement', 'Bank Statement', 'Income Proof')}
+              />
               <View style={styles.docRowDivider} />
 
-              {/* Row 7: Photograph (Student) */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              {/* Row 7: Photograph */}
+              <LoanDocItemRow
+                title="Photograph (Student & Co-Applicant)"
+                subtitle="Recent passport size photos (clear & front facing)"
+                iconNode={
                   <View style={styles.docRoundIconWrap}>
                     <Ionicons name="person-outline" size={24} color="#002e75" />
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <Text style={styles.docRowTitle}>Photograph (Student & Co-Applicant)</Text>
-                  <Text style={styles.docRowSubtitle}>Recent passport size photos (clear & front facing)</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.photograph && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('photograph')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.photograph ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.photograph ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.photograph && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.photograph ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'passport_photo', ['photo', 'passport'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('passport_photo', 'Passport Size Photo', 'Identity Proof')}
+              />
             </View>
 
             {/* Bottom 100% Safe & Secure Card */}
@@ -1562,6 +1631,27 @@ export const EducationLoanApplyScreen: React.FC<EducationLoanApplyScreenProps> =
           </View>
         )}
       </ScrollView>
+
+      {/* Calendar Picker Modal for DOB */}
+      <CalendarPickerModal
+        visible={showDobCalendar}
+        currentDateStr={dob}
+        onSelectDate={(selectedDate) => {
+          setDob(selectedDate);
+          setShowDobCalendar(false);
+        }}
+        onClose={() => setShowDobCalendar(false)}
+      />
+
+      {/* Document View Preview Modal */}
+      <DocumentViewPreviewModal
+        visible={showPreviewModal}
+        doc={previewDoc}
+        onClose={() => {
+          setShowPreviewModal(false);
+          setPreviewDoc(null);
+        }}
+      />
 
       {/* City Modal */}
       <Modal visible={showCityModal} animationType="slide" transparent onRequestClose={() => setShowCityModal(false)}>

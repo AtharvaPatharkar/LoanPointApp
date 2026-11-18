@@ -12,6 +12,7 @@ interface TopBarProps {
   onOpenSupport?: () => void;
   onOpenProfile?: () => void;
   userName?: string;
+  userAvatar?: string;
   isHomeScreen?: boolean;
 }
 
@@ -24,6 +25,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onOpenSupport,
   onOpenProfile,
   userName = 'Rahul',
+  userAvatar,
   isHomeScreen = true,
 }) => {
   // Continuous breathing pulse animation for notifications and call buttons
@@ -165,7 +167,15 @@ export const TopBar: React.FC<TopBarProps> = ({
             style={styles.avatarTouch}
           >
             <View style={styles.avatarCircleWrap}>
-              <Ionicons name="person" size={20} color="#008ecc" />
+              {userAvatar ? (
+                <Image
+                  source={{ uri: userAvatar }}
+                  style={styles.avatarImage}
+                  resizeMode="cover"
+                />
+              ) : (
+                <Ionicons name="person" size={20} color="#008ecc" />
+              )}
             </View>
           </TouchableOpacity>
         )}
@@ -284,6 +294,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1.5,
     borderColor: '#bae6fd',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 19,
   },
   badgeCountPill: {
     position: 'absolute',

@@ -14,6 +14,7 @@ export type LoanType =
   | 'mudra';
 
 export type ApplicationStatus =
+  | 'Application Sent'
   | 'Enquiry Received'
   | 'Documents Pending'
   | 'Application Submitted'
@@ -61,6 +62,7 @@ export interface LoanApplication {
   applicantName?: string;
   applicantMobile?: string;
   bankName?: string;
+  documents?: DocumentItem[];
   interestRate?: string;
   emiAmount?: string;
   disbursementDate?: string;
@@ -94,12 +96,15 @@ export interface UserProfile {
   referralCode: string;
   referredBy?: string;
   role?: 'customer' | 'admin';
+  avatar?: string;
+  isKycCompleted?: boolean;
   documents?: DocumentItem[];
 }
 
 export interface DocumentItem {
   id: string;
   name: string;
+  docKey?: string; // Standard key matching checklist: pan_card, aadhaar_card, passport_photo, salary_slips, bank_statement, etc.
   category: 'Identity Proof' | 'Address Proof' | 'Income Proof' | 'Property Document' | 'Other';
   fileType: string;
   fileSizeKb: number;

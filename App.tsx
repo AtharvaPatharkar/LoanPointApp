@@ -270,8 +270,9 @@ function MainApp() {
     }
   };
 
+  // Only count pending documents if specifically requested or if documents are actually pending
   const pendingDocsCount = applications.reduce(
-    (acc, a) => acc + (a.pendingDocuments?.length || 0),
+    (acc, a) => (a.status === 'Documents Pending' ? acc + (a.pendingDocuments?.length || 1) : acc),
     0
   );
 
@@ -297,8 +298,9 @@ function MainApp() {
               setActiveSubScreen('admin');
               setShowCompleteProfileModal(false);
             } else {
-              // First time login after OTP verify -> display popup for "Complete Your Profile"
-              setShowCompleteProfileModal(true);
+              // Only display "Complete Your Profile" popup on genuine first-time login when profile is incomplete
+              const isProfileIncomplete = !authedUser.isKycCompleted && (!authedUser.city || !authedUser.panNumber);
+              setShowCompleteProfileModal(isProfileIncomplete);
             }
           }}
           onSkipToDemo={() => {
@@ -329,6 +331,7 @@ function MainApp() {
                 setActiveSubScreen('profile_settings');
               }}
               userName={user?.name && user.name !== 'Valued Customer' ? user.name : (user?.mobile ? `User ${user.mobile.slice(-4)}` : 'Customer')}
+              userAvatar={user?.avatar}
               isHomeScreen={!activeSubScreen && currentTab === 'home'}
             />
           )}
@@ -346,7 +349,7 @@ function MainApp() {
                   setSelectedCategory(cat);
                   goToSubScreen('emi_calculator');
                 }}
-                onOpenWhatsApp={handleOpenWhatsApp}
+                onOpenWhatsApp={(phone, text) => handleOpenWhatsApp(phone, text)}
                 onBack={handleBack}
               />
             )}
@@ -542,7 +545,14 @@ function MainApp() {
               />
             )}
 
-            {activeSubScreen === 'documents' && <DocumentsScreen user={user} />}
+            {activeSubScreen === 'documents' && (
+              <DocumentsScreen
+                user={user}
+                onUpdateAvatar={(avatarUrl) => {
+                  setUser((prev) => (prev ? { ...prev, avatar: avatarUrl } : prev));
+                }}
+              />
+            )}
 
             {activeSubScreen === 'support' && <SupportScreen user={user} />}
 

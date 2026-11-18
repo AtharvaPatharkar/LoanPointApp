@@ -26,6 +26,13 @@ import { cityLocationService, CityResultItem } from '../../services/cityLocation
 import { BankLogo } from '../common/BankLogo';
 import { COMPANY_INFO } from '../../data/mockData';
 import { LoanIcon } from '../common/LoanIcon';
+import { isUserDocUploaded, getUserIncomeFormatted, findUserDocument } from '../../utils/formPreFill';
+import { LoanDocItemRow } from '../common/LoanDocItemRow';
+import { DocumentViewPreviewModal } from '../common/DocumentViewPreviewModal';
+import { CalendarPickerModal } from '../common/CalendarPickerModal';
+import { DocumentItem } from '../../types';
+import { documentService } from '../../services/documentService';
+import { Platform } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -53,41 +60,47 @@ export const MortgageLoanApplyScreen: React.FC<MortgageLoanApplyScreenProps> = (
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
   // ---------------- STEP 1: Basic Details ----------------
-  const [fullName, setFullName] = useState<string>(user?.name || '');
+  const [fullName, setFullName] = useState<string>(user?.name && user.name !== 'Valued Customer' ? user.name : '');
   const [mobileNumber, setMobileNumber] = useState<string>(user?.mobile || '');
   const [emailId, setEmailId] = useState<string>(user?.email || '');
-  const [dob, setDob] = useState<string>('18/09/1984');
+  const [dob, setDob] = useState<string>('');
   const [city, setCity] = useState<string>(user?.city || '');
   const [isAgreedStep1, setIsAgreedStep1] = useState<boolean>(true);
 
   // ---------------- STEP 2: Mortgage Property Details ----------------
-  const [propertyType, setPropertyType] = useState<string>('Self-Occupied Residential House / Villa');
-  const [propertyLocation, setPropertyLocation] = useState<string>('Shivaji Nagar, Nanded');
-  const [marketValuation, setMarketValuation] = useState<string>('₹85,00,000');
-  const [propertyOwnership, setPropertyOwnership] = useState<string>('Sole Ownership (Applicant)');
+  const [propertyType, setPropertyType] = useState<string>('');
+  const [propertyLocation, setPropertyLocation] = useState<string>(user?.city || '');
+  const [marketValuation, setMarketValuation] = useState<string>('');
+  const [propertyOwnership, setPropertyOwnership] = useState<string>('');
   const [isPropertyFreehold, setIsPropertyFreehold] = useState<'Yes' | 'No'>('Yes');
   const [hasExistingLoanOnProperty, setHasExistingLoanOnProperty] = useState<'No' | 'Yes'>('No');
 
   // ---------------- STEP 3: Income & Financing Details ----------------
-  const [occupationType, setOccupationType] = useState<'Self-Employed / Business' | 'Salaried'>('Self-Employed / Business');
-  const [monthlyIncome, setMonthlyIncome] = useState<string>('₹1,50,000');
-  const [requiredLoanAmount, setRequiredLoanAmount] = useState<string>('₹45,00,000');
-  const [loanTenure, setLoanTenure] = useState<string>('10 Years (120 Months)');
-  const [lapPurpose, setLapPurpose] = useState<string>('Business Expansion & Working Capital');
-  const [bankAccount, setBankAccount] = useState<string>('State Bank of India');
-  const [cibilScoreRange, setCibilScoreRange] = useState<string>('750 and Above (Excellent)');
+  const [occupationType, setOccupationType] = useState<'Self-Employed / Business' | 'Salaried'>(
+    user?.employmentType && (user.employmentType.includes('Business') || user.employmentType.includes('Self'))
+      ? 'Self-Employed / Business'
+      : 'Salaried'
+  );
+  const [monthlyIncome, setMonthlyIncome] = useState<string>(getUserIncomeFormatted(user));
+  const [requiredLoanAmount, setRequiredLoanAmount] = useState<string>('');
+  const [loanTenure, setLoanTenure] = useState<string>('');
+  const [lapPurpose, setLapPurpose] = useState<string>('');
+  const [bankAccount, setBankAccount] = useState<string>('');
+  const [cibilScoreRange, setCibilScoreRange] = useState<string>(
+    user?.cibilEstimateScore ? (user.cibilEstimateScore >= 750 ? '750 and Above (Excellent)' : '700 - 749 (Good)') : ''
+  );
 
-  // ---------------- STEP 4: Documents ----------------
+  // ---------------- STEP 4: Documents (Pre-fill ONLY if authentic document exists in database) ----------------
   const [panNumber, setPanNumber] = useState<string>(user?.panNumber || '');
   const [aadhaarNumber, setAadhaarNumber] = useState<string>(user?.aadhaarNumber || '');
   const [uploadedDocs, setUploadedDocs] = useState<UploadedDocState>({
-    panCard: true,
-    aadhaarCard: true,
-    propertyTitleDeed: true,
-    sanctionPlanTaxReceipt: true,
-    incomeProofItrSlips: true,
-    bankStatements: true,
-    photograph: true,
+    panCard: isUserDocUploaded(user, 'pan_card', ['pan']),
+    aadhaarCard: isUserDocUploaded(user, 'aadhaar_card', ['aadhaar', 'uidai']),
+    propertyTitleDeed: isUserDocUploaded(user, 'property_papers', ['deed', 'title', 'property', 'registry']),
+    sanctionPlanTaxReceipt: isUserDocUploaded(user, 'noc_certificate', ['tax', 'receipt', 'blueprint', 'sanction']),
+    incomeProofItrSlips: isUserDocUploaded(user, 'salary_slips', ['salary', 'itr', 'payslip', 'computation']),
+    bankStatements: isUserDocUploaded(user, 'bank_statement', ['statement', 'passbook']),
+    photograph: isUserDocUploaded(user, 'passport_photo', ['photo', 'passport']),
   });
 
   // ---------------- STEP 5: Final Confirmation & Submission ----------------
@@ -95,6 +108,164 @@ export const MortgageLoanApplyScreen: React.FC<MortgageLoanApplyScreenProps> = (
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submittedApp, setSubmittedApp] = useState<LoanApplication | null>(null);
   const [submittedDateString, setSubmittedDateString] = useState<string>('');
+
+  // Calendar & Document Preview & Upload State
+  const [showDobCalendar, setShowDobCalendar] = useState<boolean>(false);
+  const [previewDoc, setPreviewDoc] = useState<DocumentItem | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState<boolean>(false);
+  const [isDocUploading, setIsDocUploading] = useState<boolean>(false);
+
+  const handleViewDocument = (doc: DocumentItem) => {
+    setPreviewDoc(doc);
+    setShowPreviewModal(true);
+  };
+
+  const handleUploadOrReuploadDoc = (docKey: string, defaultTitle: string, category: DocumentItem['category']) => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.pdf,.jpg,.jpeg,.png,image/*,application/pdf';
+      input.onchange = async (e: Event) => {
+        const target = e.target as HTMLInputElement;
+        const file = target?.files?.[0];
+        if (!file) return;
+
+        const validation = documentService.validateFile({
+          name: file.name,
+          size: file.size,
+          type: file.type || 'application/pdf',
+        });
+
+        if (!validation.valid) {
+          Alert.alert('Invalid File', validation.error || 'Please select a valid PDF, JPG, or PNG under 5MB.');
+          return;
+        }
+
+        setIsDocUploading(true);
+        const reader = new FileReader();
+        reader.onload = async () => {
+          try {
+            const newDoc = await documentService.uploadDocument(
+              {
+                name: defaultTitle || file.name,
+                size: file.size,
+                type: file.type || 'application/pdf',
+                uri: reader.result as string,
+              },
+              category,
+              user?.mobile,
+              docKey
+            );
+            if (user) {
+              if (!user.documents) user.documents = [];
+              const idx = user.documents.findIndex((d) => d.docKey === docKey || d.name.toLowerCase().includes(docKey.replace(/_/g, ' ')));
+              if (idx >= 0) {
+                user.documents[idx] = newDoc;
+              } else {
+                user.documents.push(newDoc);
+              }
+            }
+            Alert.alert('Success', `"${defaultTitle}" uploaded successfully!`);
+          } catch {
+            Alert.alert('Error', 'Document upload failed. Please try again.');
+          } finally {
+            setIsDocUploading(false);
+          }
+        };
+        reader.readAsDataURL(file);
+      };
+      input.click();
+      return;
+    }
+
+    Alert.alert(
+      'Upload Document',
+      `Upload authentic file for ${defaultTitle}:`,
+      [
+        {
+          text: 'Choose Document (PDF/Doc)',
+          onPress: async () => {
+            try {
+              const DocumentPicker = require('expo-document-picker');
+              const res = await DocumentPicker.getDocumentAsync({
+                type: ['application/pdf', 'image/*'],
+                copyToCacheDirectory: true,
+              });
+              if (res.canceled || !res.assets || res.assets.length === 0) return;
+              const asset = res.assets[0];
+              setIsDocUploading(true);
+              const newDoc = await documentService.uploadDocument(
+                {
+                  name: defaultTitle || asset.name,
+                  size: asset.size || 0,
+                  type: asset.mimeType || 'application/pdf',
+                  uri: asset.uri,
+                },
+                category,
+                user?.mobile,
+                docKey
+              );
+              if (user) {
+                if (!user.documents) user.documents = [];
+                const idx = user.documents.findIndex((d) => d.docKey === docKey || d.name.toLowerCase().includes(docKey.replace(/_/g, ' ')));
+                if (idx >= 0) {
+                  user.documents[idx] = newDoc;
+                } else {
+                  user.documents.push(newDoc);
+                }
+              }
+              Alert.alert('Success', `"${defaultTitle}" uploaded successfully!`);
+            } catch (err) {
+              Alert.alert('Error', 'Unable to pick or upload document.');
+            } finally {
+              setIsDocUploading(false);
+            }
+          },
+        },
+        {
+          text: 'Take Photo / Choose Photo',
+          onPress: async () => {
+            try {
+              const ImagePicker = require('expo-image-picker');
+              const res = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                quality: 0.8,
+              });
+              if (res.canceled || !res.assets || res.assets.length === 0) return;
+              const asset = res.assets[0];
+              setIsDocUploading(true);
+              const newDoc = await documentService.uploadDocument(
+                {
+                  name: `${defaultTitle}.jpg`,
+                  size: asset.fileSize || 0,
+                  type: 'image/jpeg',
+                  uri: asset.uri,
+                },
+                category,
+                user?.mobile,
+                docKey
+              );
+              if (user) {
+                if (!user.documents) user.documents = [];
+                const idx = user.documents.findIndex((d) => d.docKey === docKey || d.name.toLowerCase().includes(docKey.replace(/_/g, ' ')));
+                if (idx >= 0) {
+                  user.documents[idx] = newDoc;
+                } else {
+                  user.documents.push(newDoc);
+                }
+              }
+              Alert.alert('Success', `"${defaultTitle}" photo uploaded successfully!`);
+            } catch (err) {
+              Alert.alert('Error', 'Unable to choose photo.');
+            } finally {
+              setIsDocUploading(false);
+            }
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
 
   // ---------------- Modals State ----------------
   const [showCityModal, setShowCityModal] = useState<boolean>(false);
@@ -204,10 +375,7 @@ export const MortgageLoanApplyScreen: React.FC<MortgageLoanApplyScreenProps> = (
       setFormError('Please enter a valid 10-digit mobile number');
       return;
     }
-    if (!city.trim()) {
-      setFormError('Please select your city');
-      return;
-    }
+    // City is optional
     if (!isAgreedStep1) {
       setFormError('Please accept terms & conditions');
       return;
@@ -268,6 +436,7 @@ export const MortgageLoanApplyScreen: React.FC<MortgageLoanApplyScreenProps> = (
         city: city.trim(),
         panNumber: panNumber.trim().toUpperCase() || undefined,
         aadhaarNumber: aadhaarNumber.replace(/\D/g, '') || undefined,
+        bankName: bankAccount || undefined,
         purpose: `Mortgage Loan (LAP) | Property: ${propertyType} | Location: ${propertyLocation} | Valuation: ${marketValuation} | Ownership: ${propertyOwnership} | Freehold: ${isPropertyFreehold} | Purpose: ${lapPurpose} | Bank: ${bankAccount}`,
       });
 
@@ -482,35 +651,36 @@ export const MortgageLoanApplyScreen: React.FC<MortgageLoanApplyScreenProps> = (
             <View style={styles.rowTwoCols}>
               <View style={[styles.fieldGroup, { flex: 1, marginRight: 8 }]}>
                 <Text style={styles.fieldLabel}>Date of Birth <Text style={styles.asterisk}>*</Text></Text>
-                <View style={styles.inputWrapper}>
-                  <View style={styles.inputIconBox}>
-                    <Ionicons name="calendar-outline" size={18} color="#64748b" />
-                  </View>
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="DD/MM/YYYY"
-                    placeholderTextColor="#94a3b8"
-                    value={dob}
-                    onChangeText={setDob}
-                  />
-                </View>
-              </View>
-
-              <View style={[styles.fieldGroup, { flex: 1, marginLeft: 8 }]}>
-                <Text style={styles.fieldLabel}>City <Text style={styles.asterisk}>*</Text></Text>
                 <TouchableOpacity
                   style={styles.dropdownPickerBox}
-                  onPress={() => setShowCityModal(true)}
+                  onPress={() => setShowDobCalendar(true)}
                   activeOpacity={0.8}
                 >
                   <View style={styles.inputIconBox}>
+                    <Ionicons name="calendar-outline" size={18} color="#64748b" />
+                  </View>
+                  <Text style={[styles.dropdownPickerText, !dob && { color: '#94a3b8' }]} numberOfLines={1}>
+                    {dob || 'DD/MM/YYYY'}
+                  </Text>
+                  <Ionicons name="calendar" size={16} color="#004aad" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={[styles.fieldGroup, { flex: 1, marginLeft: 8 }]}>
+                <Text style={styles.fieldLabel}>City (Optional)</Text>
+                <View style={styles.inputWrapper}>
+                  <View style={styles.inputIconBox}>
                     <Ionicons name="location-outline" size={18} color="#64748b" />
                   </View>
-                  <Text style={styles.dropdownPickerText} numberOfLines={1}>
-                    {city || 'Select City'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={16} color="#64748b" />
-                </TouchableOpacity>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Enter city name"
+                    placeholderTextColor="#94a3b8"
+                    value={city}
+                    onChangeText={setCity}
+                    autoCapitalize="words"
+                  />
+                </View>
               </View>
             </View>
 
@@ -953,8 +1123,11 @@ export const MortgageLoanApplyScreen: React.FC<MortgageLoanApplyScreenProps> = (
             {/* Document List (7 Rows) */}
             <View style={styles.docListContainer}>
               {/* Row 1: PAN Card (Mandatory) */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              <LoanDocItemRow
+                title="Borrower PAN Card"
+                subtitle="Copy of Borrower PAN Card (Front Side)"
+                isMandatory
+                iconNode={
                   <View style={styles.panBadgeFrame}>
                     <Text style={styles.panBadgeText}>PAN</Text>
                     <View style={styles.panBadgeLines}>
@@ -962,205 +1135,104 @@ export const MortgageLoanApplyScreen: React.FC<MortgageLoanApplyScreenProps> = (
                       <View style={[styles.panBadgeLine, { width: '60%' }]} />
                     </View>
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <View style={styles.docTitleWithBadgeRow}>
-                    <Text style={styles.docRowTitle}>Borrower PAN Card</Text>
-                    <View style={styles.mandatoryPill}>
-                      <Text style={styles.mandatoryPillText}>Mandatory</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.docRowSubtitle}>Copy of Borrower PAN Card (Front Side)</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.panCard && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('panCard')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.panCard ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.panCard ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.panCard && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.panCard ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'pan_card', ['pan'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('pan_card', 'PAN Card', 'Identity Proof')}
+              />
               <View style={styles.docRowDivider} />
 
               {/* Row 2: Aadhaar Card (Mandatory) */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              <LoanDocItemRow
+                title="Borrower Aadhaar Card"
+                subtitle="Front & Back (Both Sides)"
+                isMandatory
+                iconNode={
                   <View style={styles.aadhaarBadgeFrame}>
                     <Ionicons name="sunny-outline" size={14} color="#dc2626" />
                     <Text style={styles.aadhaarBadgeText}>AADHAAR</Text>
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <View style={styles.docTitleWithBadgeRow}>
-                    <Text style={styles.docRowTitle}>Borrower Aadhaar Card</Text>
-                    <View style={styles.mandatoryPill}>
-                      <Text style={styles.mandatoryPillText}>Mandatory</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.docRowSubtitle}>Front & Back (Both Sides)</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.aadhaarCard && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('aadhaarCard')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.aadhaarCard ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.aadhaarCard ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.aadhaarCard && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.aadhaarCard ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'aadhaar_card', ['aadhaar', 'uidai'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('aadhaar_card', 'Aadhaar Card', 'Identity Proof')}
+              />
               <View style={styles.docRowDivider} />
 
               {/* Row 3: Registered Title Deed Chain */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              <LoanDocItemRow
+                title="Registered Title Deed Chain"
+                subtitle="Sale Deed / Conveyance Deed / Gift Deed of the property"
+                isMandatory
+                iconNode={
                   <View style={styles.docRoundIconWrap}>
-                    <Ionicons name="home-outline" size={24} color="#002e75" />
+                    <MaterialCommunityIcons name="file-certificate-outline" size={24} color="#002e75" />
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <Text style={styles.docRowTitle}>Registered Title Deed Chain (13+ Years)</Text>
-                  <Text style={styles.docRowSubtitle}>Sale deed, conveyance deed, gift deed or lease deed</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.propertyTitleDeed && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('propertyTitleDeed')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.propertyTitleDeed ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.propertyTitleDeed ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.propertyTitleDeed && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.propertyTitleDeed ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'property_title_deed', ['title deed', 'sale deed', 'deed', 'property'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('property_title_deed', 'Title Deed', 'Property Document')}
+              />
               <View style={styles.docRowDivider} />
 
               {/* Row 4: Sanctioned Plan & Municipal Tax Receipt */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              <LoanDocItemRow
+                title="Sanctioned Plan & Municipal Tax Receipt"
+                subtitle="Approved building blueprint & latest paid property tax receipt"
+                iconNode={
                   <View style={styles.docRoundIconWrap}>
-                    <MaterialCommunityIcons name="floor-plan" size={24} color="#002e75" />
+                    <MaterialCommunityIcons name="home-city-outline" size={24} color="#002e75" />
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <Text style={styles.docRowTitle}>Sanctioned Plan & Property Tax Receipt</Text>
-                  <Text style={styles.docRowSubtitle}>Approved building layout plan & latest property tax paid challan</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.sanctionPlanTaxReceipt && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('sanctionPlanTaxReceipt')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.sanctionPlanTaxReceipt ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.sanctionPlanTaxReceipt ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.sanctionPlanTaxReceipt && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.sanctionPlanTaxReceipt ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'sanction_plan_tax_receipt', ['sanction', 'blueprint', 'tax receipt', 'municipal'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('sanction_plan_tax_receipt', 'Sanctioned Plan & Tax Receipt', 'Property Document')}
+              />
               <View style={styles.docRowDivider} />
 
               {/* Row 5: Income Proof */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              <LoanDocItemRow
+                title="Income Proof (ITR / Salary Slips)"
+                subtitle="Last 3 years ITR with computation or 6 months salary slips"
+                iconNode={
                   <View style={styles.docRoundIconWrap}>
                     <MaterialCommunityIcons name="file-document-outline" size={24} color="#002e75" />
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <Text style={styles.docRowTitle}>Income Proof (ITR / Salary Slips)</Text>
-                  <Text style={styles.docRowSubtitle}>Last 3 years ITR with computation or 6 months salary slips</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.incomeProofItrSlips && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('incomeProofItrSlips')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.incomeProofItrSlips ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.incomeProofItrSlips ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.incomeProofItrSlips && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.incomeProofItrSlips ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'salary_slips', ['salary', 'payslip', 'itr', 'income'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('salary_slips', 'Income Proof', 'Income Proof')}
+              />
               <View style={styles.docRowDivider} />
 
               {/* Row 6: Bank Statements */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              <LoanDocItemRow
+                title="Bank Statements (Last 12 Months)"
+                subtitle="Operating savings / current account statements (PDF)"
+                iconNode={
                   <View style={styles.docRoundIconWrap}>
                     <MaterialCommunityIcons name="bank" size={24} color="#002e75" />
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <Text style={styles.docRowTitle}>Bank Statements (Last 12 Months)</Text>
-                  <Text style={styles.docRowSubtitle}>Operating savings / current account statements (PDF)</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.bankStatements && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('bankStatements')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.bankStatements ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.bankStatements ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.bankStatements && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.bankStatements ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'bank_statement', ['statement', 'passbook'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('bank_statement', 'Bank Statement', 'Income Proof')}
+              />
               <View style={styles.docRowDivider} />
 
-              {/* Row 7: Property Photograph */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              {/* Row 7: Property Elevation Photograph */}
+              <LoanDocItemRow
+                title="Property Elevation Photograph"
+                subtitle="Front view exterior & interior photograph of mortgaged property"
+                iconNode={
                   <View style={styles.docRoundIconWrap}>
                     <Ionicons name="image-outline" size={24} color="#002e75" />
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <Text style={styles.docRowTitle}>Property Elevation Photograph</Text>
-                  <Text style={styles.docRowSubtitle}>Front view exterior & interior photograph of mortgaged property</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.photograph && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('photograph')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.photograph ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.photograph ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.photograph && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.photograph ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'property_photo', ['property photo', 'elevation', 'photo'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('property_photo', 'Property Elevation Photo', 'Property Document')}
+              />
             </View>
 
             {/* Bottom 100% Safe & Secure Card */}
@@ -1600,6 +1672,27 @@ export const MortgageLoanApplyScreen: React.FC<MortgageLoanApplyScreenProps> = (
           </View>
         )}
       </ScrollView>
+
+      {/* Calendar Picker Modal for DOB */}
+      <CalendarPickerModal
+        visible={showDobCalendar}
+        currentDateStr={dob}
+        onSelectDate={(selectedDate) => {
+          setDob(selectedDate);
+          setShowDobCalendar(false);
+        }}
+        onClose={() => setShowDobCalendar(false)}
+      />
+
+      {/* Document View Preview Modal */}
+      <DocumentViewPreviewModal
+        visible={showPreviewModal}
+        doc={previewDoc}
+        onClose={() => {
+          setShowPreviewModal(false);
+          setPreviewDoc(null);
+        }}
+      />
 
       {/* City Modal */}
       <Modal visible={showCityModal} animationType="slide" transparent onRequestClose={() => setShowCityModal(false)}>

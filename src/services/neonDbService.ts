@@ -12,5 +12,5 @@ export const getDbClient = () => {
   if (!databaseUrl) {
     throw new Error('DATABASE_URL is not configured in environment variables');
   }
-  return neon(databaseUrl);
+  return neon(databaseUrl, { disableWarningInBrowsers: true });
 };

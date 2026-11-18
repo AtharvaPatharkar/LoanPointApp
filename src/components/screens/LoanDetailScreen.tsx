@@ -8,6 +8,7 @@ import {
   Image,
   Dimensions,
 } from 'react-native';
+import * as Linking from 'expo-linking';
 import {
   Ionicons,
   MaterialCommunityIcons,
@@ -15,12 +16,13 @@ import {
 } from '@expo/vector-icons';
 import { LoanCategory } from '../../types';
 import { formatINR } from '../../utils/calculator';
+import { COMPANY_INFO } from '../../data/mockData';
 
 interface LoanDetailScreenProps {
   category: LoanCategory;
   onApplyNow: (category: LoanCategory) => void;
   onOpenCalculator: (category: LoanCategory) => void;
-  onOpenWhatsApp?: () => void;
+  onOpenWhatsApp?: (phone?: string, text?: string) => void;
   onBack: () => void;
 }
 
@@ -277,6 +279,24 @@ export const LoanDetailScreen: React.FC<LoanDetailScreenProps> = ({
 
   const benefits = getBenefits();
 
+  const handleWhatsAppChat = () => {
+    const rawPhone = COMPANY_INFO.contactPhoneRaw || '9545555999';
+    const message = `Hello Loan Point, I want to talk to a loan expert regarding ${category.title} options. Please assist me.`;
+    if (typeof onOpenWhatsApp === 'function') {
+      try {
+        onOpenWhatsApp(`91${rawPhone}`, message);
+        return;
+      } catch (err) {
+        console.warn('onOpenWhatsApp error:', err);
+      }
+    }
+    const cleanPhone = `91${rawPhone}`;
+    const encoded = encodeURIComponent(message);
+    Linking.openURL(`whatsapp://send?phone=${cleanPhone}&text=${encoded}`).catch(() => {
+      Linking.openURL(`https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encoded}`).catch(() => {});
+    });
+  };
+
   return (
     <ScrollView
       style={styles.root}
@@ -445,7 +465,7 @@ export const LoanDetailScreen: React.FC<LoanDetailScreenProps> = ({
 
         <TouchableOpacity
           style={styles.chatNowBtn}
-          onPress={onOpenWhatsApp}
+          onPress={handleWhatsAppChat}
           activeOpacity={0.85}
         >
           <Ionicons name="logo-whatsapp" size={14} color="#16a34a" style={{ marginRight: 4 }} />

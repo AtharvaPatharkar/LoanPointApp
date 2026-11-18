@@ -20,7 +20,7 @@ export const COMPANY_INFO = {
   primaryEmail: 'arvind@loanpoint.in',
   additionalEmail: 'arvindpatil555999@gmail.com',
   website: 'https://loanpoint.in/',
-  workingHours: 'Monday – Saturday: 10:00 AM – 7:00 PM (Sunday Closed)',
+  workingHours: '24/7 (Always Available for Assistance)',
   leadRelationshipManager: 'Arvind Patil',
   disclaimer: 'Loan Point is a loan consultancy and financial services facilitator. Loan sanctions, interest rates, and disbursements are at the sole discretion of partner banks and NBFCs based on underwriting and RBI guidelines.',
 };

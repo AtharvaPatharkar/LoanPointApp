@@ -280,11 +280,6 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
           </TouchableOpacity>
         </View>
       )}
-
-      {/* Skip to Demo Customer */}
-      <TouchableOpacity style={styles.demoBtn} onPress={onSkipToDemo} activeOpacity={0.7}>
-        <Text style={styles.demoBtnText}>Explore App as Demo Customer (Skip)</Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 };

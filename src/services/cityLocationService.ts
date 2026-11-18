@@ -132,12 +132,54 @@ class CityLocationService {
   }
 
   /**
-   * Suggest cities matching the query (especially after 3+ characters).
+   * Fetch city suggestions via Google Places Autocomplete API (using EXPO_PUBLIC_GOOGLE_PLACES_API_KEY from .env).
+   * Restricts search strictly to cities in India.
+   * Seamlessly falls back to local all-India districts dataset if offline or API limit reached.
+   */
+  public async fetchGoogleCitySuggestions(query: string, maxResults: number = 6): Promise<CityResultItem[]> {
+    const clean = query.trim();
+    if (clean.length < 2) return [];
+
+    const apiKey = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY;
+
+    if (apiKey) {
+      try {
+        const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
+          clean
+        )}&types=(cities)&components=country:in&key=${apiKey}`;
+
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.status === 'OK' && Array.isArray(data.predictions) && data.predictions.length > 0) {
+            const googleResults: CityResultItem[] = data.predictions.slice(0, maxResults).map((pred: any) => {
+              const mainText = pred.structured_formatting?.main_text || pred.description.split(',')[0];
+              const secondaryText = pred.structured_formatting?.secondary_text || '';
+              return {
+                city: mainText.trim(),
+                state: secondaryText.replace(', India', '').trim(),
+                stateCode: 'IN',
+              };
+            });
+            return googleResults;
+          }
+        }
+      } catch (err) {
+        // Fallback to local Indian dataset below
+      }
+    }
+
+    // Fallback to local dataset
+    return this.searchSuggestions(clean, maxResults);
+  }
+
+  /**
+   * Suggest cities matching the query (especially after 2+ characters).
    * Prioritizes exact prefix matches, followed by word starts and general contains.
    */
   public searchSuggestions(query: string, maxResults: number = 8): CityResultItem[] {
     const clean = query.trim().toLowerCase();
-    if (clean.length < 3) {
+    if (clean.length < 2) {
       return [];
     }
 

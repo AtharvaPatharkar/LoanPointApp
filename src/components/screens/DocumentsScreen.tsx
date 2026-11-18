@@ -10,8 +10,14 @@ import {
   Modal,
   Alert,
   Platform,
+  Image,
 } from 'react-native';
+import * as Linking from 'expo-linking';
+import * as FileSystemLegacy from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
 import { DocumentItem, UserProfile } from '../../types';
 import { documentService } from '../../services/documentService';
 import { authService } from '../../services/authService';
@@ -22,12 +28,13 @@ import { colors } from '../../theme/colors';
 interface DocumentsScreenProps {
   user?: UserProfile | null;
   onBack?: () => void;
+  onUpdateAvatar?: (avatarUrl: string) => void;
 }
 
 // 3 Universal KYC Documents mandatory across ALL loan categories
 const UNIVERSAL_MANDATORY_KYC = [
   {
-    id: 'pan_card',
+    docKey: 'pan_card',
     title: 'PAN Card',
     category: 'Identity Proof' as DocumentItem['category'],
     sub: 'Income Tax permanent account number for credit check',
@@ -35,7 +42,7 @@ const UNIVERSAL_MANDATORY_KYC = [
     iconType: 'fa5' as const,
   },
   {
-    id: 'aadhaar_card',
+    docKey: 'aadhaar_card',
     title: 'Aadhaar Card',
     category: 'Identity Proof' as DocumentItem['category'],
     sub: 'UIDAI government identity & residence verification',
@@ -43,7 +50,7 @@ const UNIVERSAL_MANDATORY_KYC = [
     iconType: 'mci' as const,
   },
   {
-    id: 'passport_photo',
+    docKey: 'passport_photo',
     title: 'Passport Size Photograph',
     category: 'Identity Proof' as DocumentItem['category'],
     sub: 'Recent passport photo with clean light background',
@@ -52,7 +59,28 @@ const UNIVERSAL_MANDATORY_KYC = [
   },
 ];
 
-export const DocumentsScreen: React.FC<DocumentsScreenProps> = ({ user: propUser }) => {
+// Helper to generate normalized docKey from loan checklist string
+export const getDocKeyFromTitle = (title: string): string => {
+  const lower = title.toLowerCase();
+  if (lower.includes('salary')) return 'salary_slips';
+  if (lower.includes('bank statement') || lower.includes('banking records') || lower.includes('passbook') || lower.includes('bank account statement')) return 'bank_statement';
+  if (lower.includes('itr') || lower.includes('tax return')) return 'itr_acknowledgement';
+  if (lower.includes('residence') || lower.includes('electricity') || lower.includes('utility')) return 'address_proof';
+  if (lower.includes('registration') || lower.includes('udyam') || lower.includes('shop act')) return 'business_registration';
+  if (lower.includes('gst')) return 'gst_returns';
+  if (lower.includes('property') || lower.includes('sale agreement') || lower.includes('title deed') || lower.includes('blueprint')) return 'property_papers';
+  if (lower.includes('7/12') || lower.includes('satbara') || lower.includes('8a') || lower.includes('ferfar')) return 'land_records_712';
+  if (lower.includes('noc')) return 'noc_certificate';
+  if (lower.includes('quotation') || lower.includes('proforma invoice')) return 'purchase_quotation';
+  if (lower.includes('rc book') || lower.includes('vehicle insurance')) return 'rc_vehicle_copy';
+  if (lower.includes('admission')) return 'admission_letter';
+  if (lower.includes('mark sheet') || lower.includes('academic')) return 'academic_marksheets';
+  if (lower.includes('crop') || lower.includes('pik pahani')) return 'crop_cultivation_cert';
+  if (lower.includes('project') || lower.includes('business outline')) return 'project_outline';
+  return lower.replace(/[^a-z0-9]/g, '_').slice(0, 30);
+};
+
+export const DocumentsScreen: React.FC<DocumentsScreenProps> = ({ user: propUser, onUpdateAvatar }) => {
   const currentUser = propUser || authService.getUser();
   const [documents, setDocuments] = useState<DocumentItem[]>(currentUser?.documents || documentService.getDocuments());
   const [selectedCategory, setSelectedCategory] = useState<DocumentItem['category']>('Identity Proof');
@@ -124,21 +152,42 @@ export const DocumentsScreen: React.FC<DocumentsScreenProps> = ({ user: propUser
     { category: 'Property Document', icon: 'shield-home', iconType: 'mci', activeColor: '#2d3091', lightColor: '#e0e7ff' },
   ];
 
-  // Specific finder for uploaded documents
-  const findUploadedDoc = (targetKeyword: string): DocumentItem | undefined => {
-    const lowerKey = targetKeyword.toLowerCase().trim();
+  // Specific finder for mandatory KYC: PAN, Aadhaar, Photo
+  const findUploadedKycDoc = (docKey: string): DocumentItem | undefined => {
     return documents.find((d) => {
-      const dName = d.name.toLowerCase();
-      if (lowerKey === 'pan card') {
-        return dName.includes('pan');
+      if (d.docKey) return d.docKey === docKey;
+      return d.name.toLowerCase().includes(docKey.replace('_', ' '));
+    });
+  };
+
+  // Specific finder for loan checklist item
+  const findUploadedLoanDoc = (reqDocTitle: string): DocumentItem | undefined => {
+    const key = getDocKeyFromTitle(reqDocTitle);
+    return documents.find((d) => {
+      // 1. Strict match on docKey takes highest priority to avoid cross-talk
+      if (d.docKey) {
+        return d.docKey === key;
       }
-      if (lowerKey === 'aadhaar card') {
-        return dName.includes('aadhaar') || dName.includes('aadhar');
+      // 2. Strict keyword matching when docKey is missing
+      const lower = d.name.toLowerCase();
+      if (key === 'salary_slips') {
+        return lower.includes('salary') && !lower.includes('bank') && !lower.includes('statement');
       }
-      if (lowerKey === 'passport size photograph') {
-        return dName.includes('photo') || dName.includes('photograph') || dName.includes('passport size');
+      if (key === 'bank_statement') {
+        return (lower.includes('bank') || lower.includes('statement') || lower.includes('passbook')) && !lower.includes('salary');
       }
-      return dName.includes(lowerKey);
+      if (key === 'itr_acknowledgement' && lower.includes('itr')) return true;
+      if (key === 'business_registration' && (lower.includes('udyam') || lower.includes('shop') || lower.includes('registration'))) return true;
+      if (key === 'gst_returns' && lower.includes('gst')) return true;
+      if (key === 'property_papers' && (lower.includes('title') || lower.includes('deed') || lower.includes('sale agreement'))) return true;
+      if (key === 'land_records_712' && (lower.includes('7/12') || lower.includes('satbara') || lower.includes('8a') || lower.includes('ferfar'))) return true;
+      if (key === 'purchase_quotation' && (lower.includes('quotation') || lower.includes('invoice'))) return true;
+      if (key === 'rc_vehicle_copy' && (lower.includes('rc') || lower.includes('insurance'))) return true;
+      if (key === 'admission_letter' && lower.includes('admission')) return true;
+      if (key === 'academic_marksheets' && (lower.includes('mark') || lower.includes('academic'))) return true;
+      if (key === 'crop_cultivation_cert' && lower.includes('crop')) return true;
+      if (key === 'project_outline' && (lower.includes('project') || lower.includes('outline'))) return true;
+      return false;
     });
   };
 
@@ -174,33 +223,14 @@ export const DocumentsScreen: React.FC<DocumentsScreenProps> = ({ user: propUser
   const currentLoan = LOAN_CATEGORIES.find((l) => l.id === selectedLoanId) || LOAN_CATEGORIES[0];
   const requiredDocsForLoan = currentLoan.requiredDocuments || [];
 
-  // Check if a specific loan checklist item is already uploaded
-  const isDocItemUploaded = (docTitle: string): boolean => {
-    const lower = docTitle.toLowerCase();
-    return documents.some((d) => {
-      const dName = d.name.toLowerCase();
-      const dCategory = d.category.toLowerCase();
-      if (lower.includes('salary') && (dName.includes('salary') || dCategory.includes('income'))) return true;
-      if (lower.includes('itr') && (dName.includes('itr') || dCategory.includes('income'))) return true;
-      if (lower.includes('bank') && (dName.includes('bank') || dCategory.includes('income'))) return true;
-      if (lower.includes('gst') && (dName.includes('gst') || dCategory.includes('income'))) return true;
-      if (lower.includes('udyam') && (dName.includes('udyam') || dName.includes('shop') || dName.includes('registration'))) return true;
-      if ((lower.includes('property') || lower.includes('deed') || lower.includes('7/12') || lower.includes('sale agreement')) && dCategory.includes('property')) return true;
-      if (lower.includes('address') && dCategory.includes('address')) return true;
-      if (lower.includes('quotation') && (dName.includes('quotation') || dName.includes('invoice'))) return true;
-      if (lower.includes('admission') && dName.includes('admission')) return true;
-      if (lower.includes('mark sheet') && (dName.includes('mark') || dName.includes('academic'))) return true;
-      return dName.includes(lower.slice(0, 10));
-    });
-  };
-
-  // Open local file explorer to choose an authentic file
-  const handlePickAndUploadFile = (categoryOverride?: DocumentItem['category'], defaultDocName?: string) => {
+  // Central File Upload Handler - authentic picker, no dummy generation
+  const handlePickAndUploadFile = (categoryOverride?: DocumentItem['category'], defaultDocName?: string, docKeyOverride?: string) => {
     const targetCategory = categoryOverride || selectedCategory;
     const labelForFile = defaultDocName || targetCategory;
+    const finalDocKey = docKeyOverride || (defaultDocName ? getDocKeyFromTitle(defaultDocName) : undefined);
     setUploadingTargetName(labelForFile);
 
-    // Web / Desktop / Mobile Browser File Picker
+    // 1. Web File Picker via Input Element
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
       const input = document.createElement('input');
       input.type = 'file';
@@ -208,7 +238,10 @@ export const DocumentsScreen: React.FC<DocumentsScreenProps> = ({ user: propUser
       input.onchange = async (e: Event) => {
         const target = e.target as HTMLInputElement;
         const file = target?.files?.[0];
-        if (!file) return;
+        if (!file) {
+          setUploadingTargetName('');
+          return;
+        }
 
         const validation = documentService.validateFile({
           name: file.name,
@@ -218,6 +251,7 @@ export const DocumentsScreen: React.FC<DocumentsScreenProps> = ({ user: propUser
 
         if (!validation.valid) {
           Alert.alert('Invalid File', validation.error || 'Please select a valid PDF, JPG, or PNG under 5MB.');
+          setUploadingTargetName('');
           return;
         }
 
@@ -237,10 +271,21 @@ export const DocumentsScreen: React.FC<DocumentsScreenProps> = ({ user: propUser
                 uri: fileDataUri,
               },
               targetCategory,
-              currentUser?.mobile
+              currentUser?.mobile,
+              finalDocKey
             );
             setDocuments(documentService.getDocuments());
             setSuccessMessage(`Document "${newDoc.name}" uploaded and saved to your database vault.`);
+
+            // If passport size photo was uploaded, update profile avatar in top header
+            if (finalDocKey === 'passport_photo' && newDoc.fileUri) {
+              if (onUpdateAvatar) {
+                onUpdateAvatar(newDoc.fileUri);
+              }
+              if (currentUser) {
+                currentUser.avatar = newDoc.fileUri;
+              }
+            }
           } catch {
             Alert.alert('Upload Error', 'Document upload failed. Please try again.');
           } finally {
@@ -259,73 +304,227 @@ export const DocumentsScreen: React.FC<DocumentsScreenProps> = ({ user: propUser
       return;
     }
 
-    // Fallback for native platform when document-picker package isn't linked
+    // 2. Native Mobile Platform Document & Image Picker
     Alert.alert(
-      'Upload Document',
-      `Select authentic file for ${labelForFile}:`,
+      'Choose Document Source',
+      `Upload authentic file for ${labelForFile}:`,
       [
         {
-          text: 'Upload File / Photo',
+          text: 'Choose Document (PDF/Doc)',
           onPress: async () => {
-            const ext = 'pdf';
-            const fileName = `${labelForFile.replace(/\s+/g, '_')}.${ext}`;
-            setIsUploading(true);
             try {
+              const res = await DocumentPicker.getDocumentAsync({
+                type: ['application/pdf', 'image/*'],
+                copyToCacheDirectory: true,
+              });
+
+              if (res.canceled || !res.assets || res.assets.length === 0) {
+                setUploadingTargetName('');
+                return;
+              }
+
+              const asset = res.assets[0];
+              setIsUploading(true);
+
               const newDoc = await documentService.uploadDocument(
-                { name: defaultDocName || labelForFile, size: 1024 * 240, type: 'application/pdf' },
+                {
+                  name: defaultDocName || asset.name,
+                  size: asset.size || 250 * 1024,
+                  type: asset.mimeType || 'application/pdf',
+                  uri: asset.uri,
+                },
                 targetCategory,
-                currentUser?.mobile
+                currentUser?.mobile,
+                finalDocKey
               );
               setDocuments(documentService.getDocuments());
-              setSuccessMessage(`Document "${newDoc.name}" uploaded and saved to your database vault.`);
+              setSuccessMessage(`Document "${newDoc.name}" uploaded to vault.`);
+            } catch {
+              Alert.alert('Upload Failed', 'Could not access document picker.');
             } finally {
               setIsUploading(false);
               setUploadingTargetName('');
             }
           },
         },
-        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Take Photo / Gallery',
+          onPress: async () => {
+            try {
+              const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+              if (!permission.granted) {
+                Alert.alert('Permission Denied', 'Camera roll permission is required to select photos.');
+                setUploadingTargetName('');
+                return;
+              }
+
+              const isPassportPhoto = finalDocKey === 'passport_photo' || labelForFile.toLowerCase().includes('passport') || labelForFile.toLowerCase().includes('photo');
+              const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images'],
+                allowsEditing: isPassportPhoto,
+                aspect: isPassportPhoto ? [1, 1] : undefined,
+                quality: 0.85,
+              });
+
+              if (result.canceled || !result.assets || result.assets.length === 0) {
+                setUploadingTargetName('');
+                return;
+              }
+
+              const asset = result.assets[0];
+              setIsUploading(true);
+
+              const newDoc = await documentService.uploadDocument(
+                {
+                  name: defaultDocName || `${labelForFile}.jpg`,
+                  size: asset.fileSize || 300 * 1024,
+                  type: 'image/jpeg',
+                  uri: asset.uri,
+                },
+                targetCategory,
+                currentUser?.mobile,
+                finalDocKey
+              );
+              setDocuments(documentService.getDocuments());
+              setSuccessMessage(`Photo "${newDoc.name}" uploaded to vault.`);
+
+              // If passport size photo, automatically sync with user top profile avatar circle
+              if (isPassportPhoto && newDoc.fileUri) {
+                if (onUpdateAvatar) {
+                  onUpdateAvatar(newDoc.fileUri);
+                }
+                if (currentUser) {
+                  currentUser.avatar = newDoc.fileUri;
+                }
+              }
+            } catch {
+              Alert.alert('Upload Failed', 'Could not open image picker.');
+            } finally {
+              setIsUploading(false);
+              setUploadingTargetName('');
+            }
+          },
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+          onPress: () => {
+            setUploadingTargetName('');
+          },
+        },
       ]
     );
   };
 
-  // View uploaded document - opens in clean browser new tab or modal viewer
+  // View uploaded document - opens directly in current app modal viewer
   const handleViewDocument = (doc: DocumentItem) => {
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      if (doc.fileUri) {
-        const win = window.open();
-        if (win) {
-          if (doc.fileType === 'PDF') {
-            win.document.write(
-              `<iframe src="${doc.fileUri}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`
-            );
-          } else {
-            win.document.write(
-              `<div style="display:flex;justify-content:center;align-items:center;min-height:100vh;background:#111;"><img src="${doc.fileUri}" style="max-width:90%;max-height:90vh;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,0.5);"/></div>`
-            );
-          }
-          win.document.title = doc.name;
-          return;
-        }
-      }
-    }
-    // Mobile or popup fallback
+    // Open in-app modal viewer directly inside the application (no external browser redirect)
     setPreviewDoc(doc);
   };
 
-  // Download uploaded document
-  const handleDownloadUploadedDoc = (doc: DocumentItem) => {
-    if (Platform.OS === 'web' && typeof document !== 'undefined') {
-      const link = document.createElement('a');
-      link.href = doc.fileUri || `data:text/plain;charset=utf-8,${encodeURIComponent(`Document: ${doc.name}\nCategory: ${doc.category}\nFormat: ${doc.fileType}\nUploaded: ${doc.uploadDate}`)}`;
-      link.download = doc.fileName || `${doc.name}.${doc.fileType.toLowerCase()}`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      Alert.alert('Download Started', `"${doc.fileName || doc.name}" downloaded successfully.`);
-      return;
+  // Download uploaded document - Web direct download or Native mobile download
+  const handleDownloadUploadedDoc = async (doc: DocumentItem) => {
+    const uri = doc.fileUri;
+    
+    // Determine exact file extension & MIME type to prevent Android saving as .bin
+    let ext = (doc.fileType || 'pdf').toLowerCase().replace('.', '');
+    if (ext !== 'pdf' && ext !== 'jpg' && ext !== 'jpeg' && ext !== 'png') {
+      if (doc.mimeType?.includes('png')) ext = 'png';
+      else if (doc.mimeType?.includes('jpeg') || doc.mimeType?.includes('jpg')) ext = 'jpg';
+      else ext = 'pdf';
     }
-    Alert.alert('Download', `Downloading ${doc.fileName || doc.name}...`);
+    const cleanBaseName = (doc.name || 'document').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const downloadName = `${cleanBaseName}.${ext}`;
+    const targetMime = ext === 'pdf' ? 'application/pdf' : ext === 'png' ? 'image/png' : 'image/jpeg';
+
+    // 1. Web Platform Download
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      if (uri && uri.startsWith('http')) {
+        // Fetch blob and download cleanly to avoid CORS direct link blocks
+        try {
+          const res = await fetch(uri);
+          const blob = await res.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = downloadName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+          Alert.alert('Download Complete', `"${downloadName}" downloaded to your device.`);
+          return;
+        } catch {
+          window.open(uri, '_blank');
+          return;
+        }
+      } else {
+        const link = document.createElement('a');
+        link.href = uri || `data:text/plain;charset=utf-8,${encodeURIComponent(`Document: ${doc.name}\nCategory: ${doc.category}`)}`;
+        link.download = downloadName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        Alert.alert('Download Complete', `"${downloadName}" downloaded to your device.`);
+        return;
+      }
+    }
+
+    // 2. Native Mobile Platform Download / Local Device Save
+    try {
+      if (uri && uri.startsWith('http')) {
+        // Direct browser download in mobile browser (Chrome/Safari downloads authentic file directly)
+        const canOpen = await Linking.canOpenURL(uri);
+        if (canOpen) {
+          await Linking.openURL(uri);
+          Alert.alert('Downloading Document', `Opening browser to download ${downloadName} to your local device.`);
+          return;
+        }
+
+        // Local cache/document download fallback
+        const baseDir = FileSystemLegacy.documentDirectory || FileSystemLegacy.cacheDirectory || '';
+        const targetPath = `${baseDir}${downloadName}`;
+        const downloadRes = await FileSystemLegacy.downloadAsync(uri, targetPath);
+        if (downloadRes.status === 200) {
+          if (await Sharing.isAvailableAsync()) {
+            await Sharing.shareAsync(downloadRes.uri, {
+              dialogTitle: `Save or Download ${downloadName}`,
+              mimeType: targetMime,
+              UTI: ext === 'pdf' ? 'com.adobe.pdf' : 'public.jpeg',
+            });
+          } else {
+            Alert.alert('File Saved', `Document saved to device storage: ${downloadName}`);
+          }
+          return;
+        }
+      } else if (uri && (uri.startsWith('file://') || uri.startsWith('content://'))) {
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(uri, {
+            dialogTitle: `Save ${downloadName}`,
+            mimeType: targetMime,
+            UTI: ext === 'pdf' ? 'com.adobe.pdf' : 'public.jpeg',
+          });
+          return;
+        }
+      }
+
+      if (uri && uri.startsWith('http')) {
+        await Linking.openURL(uri);
+        return;
+      }
+      Alert.alert('Download', `Document ready: ${downloadName}`);
+    } catch (e) {
+      console.warn('Native download error:', e);
+      if (uri && uri.startsWith('http')) {
+        try {
+          await Linking.openURL(uri);
+          return;
+        } catch {
+          // fallback
+        }
+      }
+      Alert.alert('Download Error', 'Could not complete download to device storage.');
+    }
   };
 
   const handleRemove = async (id: string) => {
@@ -358,7 +557,7 @@ Document Name: ${doc.name}
 Category: ${doc.category}
 File Format: ${doc.fileType} (${doc.fileSizeKb} KB)
 Verification Status: ${doc.status}
-Facilitator: Loan Point (Nanded Head Office)
+${doc.fileUri && doc.fileUri.startsWith('http') ? `Cloud URL: ${doc.fileUri}\n` : ''}Facilitator: Loan Point (Nanded Head Office)
 Advisor: ${COMPANY_INFO.leadRelationshipManager}
 Helpline: ${COMPANY_INFO.contactNumber}
 =============================================
@@ -391,7 +590,7 @@ Document Name      : ${viewingReceiptDoc.name}
 Category           : ${viewingReceiptDoc.category}
 File Format        : ${viewingReceiptDoc.fileType} (${viewingReceiptDoc.fileSizeKb} KB)
 Verification Status: ${viewingReceiptDoc.status}
-
+${viewingReceiptDoc.fileUri && viewingReceiptDoc.fileUri.startsWith('http') ? `Cloud CDN URL      : ${viewingReceiptDoc.fileUri}\n` : ''}
 Facilitator Desk   : ${COMPANY_INFO.name}
 Branch Office      : ${COMPANY_INFO.address}
 Relationship Head  : ${COMPANY_INFO.leadRelationshipManager}
@@ -540,7 +739,7 @@ DIGITALLY RECORDED & VERIFIED BY LOAN POINT SYSTEM
               <View style={{ alignItems: 'center', padding: 8 }}>
                 <ActivityIndicator color={colors.primary} />
                 <Text style={styles.uploadTitle}>
-                  Uploading {uploadingTargetName || selectedCategory} to Vault...
+                  Uploading {uploadingTargetName || selectedCategory} to ImageKit & Vault...
                 </Text>
               </View>
             ) : (
@@ -581,12 +780,12 @@ DIGITALLY RECORDED & VERIFIED BY LOAN POINT SYSTEM
 
           <View style={styles.mandatoryKycList}>
             {UNIVERSAL_MANDATORY_KYC.map((kyc) => {
-              const uploadedDoc = findUploadedDoc(kyc.title);
+              const uploadedDoc = findUploadedKycDoc(kyc.docKey);
               const isDone = !!uploadedDoc;
 
               return (
                 <View
-                  key={kyc.id}
+                  key={kyc.docKey}
                   style={[styles.kycCard, isDone && styles.kycCardDone]}
                 >
                   <View style={styles.kycCardLeft}>
@@ -639,7 +838,7 @@ DIGITALLY RECORDED & VERIFIED BY LOAN POINT SYSTEM
                         {/* Re-upload option */}
                         <TouchableOpacity
                           style={styles.kycReuploadBtn}
-                          onPress={() => handlePickAndUploadFile(kyc.category, kyc.title)}
+                          onPress={() => handlePickAndUploadFile(kyc.category, kyc.title, kyc.docKey)}
                           activeOpacity={0.7}
                         >
                           <Ionicons name="cloud-upload-outline" size={13} color={colors.text} />
@@ -649,7 +848,7 @@ DIGITALLY RECORDED & VERIFIED BY LOAN POINT SYSTEM
                     ) : (
                       <TouchableOpacity
                         style={styles.kycUploadBtn}
-                        onPress={() => handlePickAndUploadFile(kyc.category, kyc.title)}
+                        onPress={() => handlePickAndUploadFile(kyc.category, kyc.title, kyc.docKey)}
                         activeOpacity={0.7}
                       >
                         <Ionicons name="cloud-upload" size={14} color="#ffffff" />
@@ -698,62 +897,144 @@ DIGITALLY RECORDED & VERIFIED BY LOAN POINT SYSTEM
 
           {/* Active Checklist Items */}
           <View style={styles.checklistItems}>
-            {requiredDocsForLoan.map((reqDoc, idx) => {
-              const uploaded = isDocItemUploaded(reqDoc);
-              const inferredCat = inferCategoryFromDocName(reqDoc);
+            {(() => {
+              // Check if both salary slip and bank statement exist in the checklist for this loan
+              const salaryIdx = requiredDocsForLoan.findIndex((d) => d.toLowerCase().includes('salary'));
+              const bankIdx = requiredDocsForLoan.findIndex(
+                (d) =>
+                  d.toLowerCase().includes('bank') &&
+                  (d.toLowerCase().includes('statement') || d.toLowerCase().includes('passbook'))
+              );
 
-              return (
-                <View
-                  key={idx}
-                  style={[
-                    styles.checkItemRow,
-                    idx === requiredDocsForLoan.length - 1 && { borderBottomWidth: 0 },
-                    uploaded && styles.checkItemRowDone,
-                  ]}
-                >
+              // Render individual row helper
+              const renderDocRow = (reqDoc: string, idx: number, isLast: boolean, customBorder = true) => {
+                const uploadedDoc = findUploadedLoanDoc(reqDoc);
+                const isDone = !!uploadedDoc;
+                const inferredCat = inferCategoryFromDocName(reqDoc);
+                const docKey = getDocKeyFromTitle(reqDoc);
+
+                return (
                   <View
+                    key={idx}
                     style={[
-                      styles.checkItemIconWrap,
-                      uploaded && { backgroundColor: '#dcfce7' },
+                      styles.checkItemRow,
+                      customBorder && isLast && { borderBottomWidth: 0 },
+                      isDone && styles.checkItemRowDone,
                     ]}
                   >
-                    <Ionicons
-                      name={uploaded ? 'checkmark-circle' : 'time-outline'}
-                      size={17}
-                      color={uploaded ? '#16a34a' : '#d97706'}
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.checkItemTitle, uploaded && styles.checkItemTitleDone]}>
-                      {reqDoc}
-                    </Text>
-                    <View style={styles.checkItemMetaRow}>
-                      <View style={styles.checkItemCatBadge}>
-                        <Text style={styles.checkItemCatBadgeText}>{inferredCat}</Text>
-                      </View>
-                      <Text style={[styles.checkItemStatusText, { color: uploaded ? '#16a34a' : '#d97706' }]}>
-                        {uploaded ? '✓ Attached in Vault' : 'Pending Upload'}
+                    <View
+                      style={[
+                        styles.checkItemIconWrap,
+                        isDone && { backgroundColor: '#dcfce7' },
+                      ]}
+                    >
+                      <Ionicons
+                        name={isDone ? 'checkmark-circle' : 'time-outline'}
+                        size={17}
+                        color={isDone ? '#16a34a' : '#d97706'}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.checkItemTitle, isDone && styles.checkItemTitleDone]}>
+                        {reqDoc}
                       </Text>
+                      <View style={styles.checkItemMetaRow}>
+                        <View style={styles.checkItemCatBadge}>
+                          <Text style={styles.checkItemCatBadgeText}>{inferredCat}</Text>
+                        </View>
+                        <Text style={[styles.checkItemStatusText, { color: isDone ? '#16a34a' : '#d97706' }]}>
+                          {isDone ? '✓ Attached in Vault' : 'Pending Upload'}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      {isDone && uploadedDoc && (
+                        <TouchableOpacity
+                          style={styles.viewMiniBtn}
+                          onPress={() => handleViewDocument(uploadedDoc)}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="eye" size={13} color="#ffffff" />
+                          <Text style={styles.viewMiniText}>View</Text>
+                        </TouchableOpacity>
+                      )}
+                      <TouchableOpacity
+                        style={[
+                          styles.uploadMiniBtn,
+                          isDone && { backgroundColor: '#059669' },
+                        ]}
+                        onPress={() => handlePickAndUploadFile(inferredCat, reqDoc, docKey)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons
+                          name={isDone ? 'cloud-done-outline' : 'cloud-upload-outline'}
+                          size={13}
+                          color="#ffffff"
+                        />
+                        <Text style={styles.uploadMiniText}>{isDone ? 'Re-upload' : 'Upload'}</Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
-                  <TouchableOpacity
-                    style={[
-                      styles.uploadMiniBtn,
-                      uploaded && { backgroundColor: '#059669' },
-                    ]}
-                    onPress={() => handlePickAndUploadFile(inferredCat, reqDoc)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons
-                      name={uploaded ? 'cloud-done-outline' : 'cloud-upload-outline'}
-                      size={13}
-                      color="#ffffff"
-                    />
-                    <Text style={styles.uploadMiniText}>{uploaded ? 'Re-upload' : 'Upload'}</Text>
-                  </TouchableOpacity>
-                </View>
+                );
+              };
+
+              // If both salary slip and bank statement exist, group them in a clear combination card with " OR "
+              if (salaryIdx !== -1 && bankIdx !== -1) {
+                const salaryDoc = requiredDocsForLoan[salaryIdx];
+                const bankDoc = requiredDocsForLoan[bankIdx];
+                const otherDocs = requiredDocsForLoan.filter((_, i) => i !== salaryIdx && i !== bankIdx);
+
+                const salaryUploaded = findUploadedLoanDoc(salaryDoc);
+                const bankUploaded = findUploadedLoanDoc(bankDoc);
+                const comboDone = !!(salaryUploaded || bankUploaded);
+
+                return (
+                  <>
+                    {/* Combined Income Proof Card (Salary Slips OR Bank Statement) */}
+                    <View style={[styles.comboCard, comboDone && styles.comboCardDone]}>
+                      <View style={styles.comboHeaderRow}>
+                        <View style={styles.comboBadge}>
+                          <Ionicons name="wallet-outline" size={13} color="#b45309" />
+                          <Text style={styles.comboBadgeText}>INCOME / BANKING PROOF</Text>
+                        </View>
+                        <Text style={[styles.comboSubtitleText, comboDone && { color: '#16a34a', fontWeight: '800' }]}>
+                          {salaryUploaded && bankUploaded
+                            ? '✓ Both Documents Uploaded'
+                            : comboDone
+                            ? '✓ Income Proof Satisfied'
+                            : 'Upload either or both for higher loan sanction'}
+                        </Text>
+                      </View>
+
+                      {/* Salary Slip Sub-Card */}
+                      {renderDocRow(salaryDoc, salaryIdx, false, false)}
+
+                      {/* Prominent "OR" Divider */}
+                      <View style={styles.orDividerContainer}>
+                        <View style={styles.orDividerLine} />
+                        <View style={styles.orBadge}>
+                          <Text style={styles.orBadgeText}>OR</Text>
+                        </View>
+                        <View style={styles.orDividerLine} />
+                      </View>
+
+                      {/* Bank Statement Sub-Card */}
+                      {renderDocRow(bankDoc, bankIdx, false, false)}
+                    </View>
+
+                    {/* Remaining Checklist Items */}
+                    {otherDocs.map((reqDoc, idx) =>
+                      renderDocRow(reqDoc, idx + 100, idx === otherDocs.length - 1)
+                    )}
+                  </>
+                );
+              }
+
+              // Standard render if not both present
+              return requiredDocsForLoan.map((reqDoc, idx) =>
+                renderDocRow(reqDoc, idx, idx === requiredDocsForLoan.length - 1)
               );
-            })}
+            })()}
           </View>
         </View>
 
@@ -921,24 +1202,48 @@ DIGITALLY RECORDED & VERIFIED BY LOAN POINT SYSTEM
 
             {previewDoc && (
               <View style={styles.previewBody}>
-                <View style={styles.previewFileBanner}>
-                  <MaterialCommunityIcons
-                    name={previewDoc.fileType === 'PDF' ? 'file-pdf-box' : 'file-image-outline'}
-                    size={48}
-                    color={colors.primary}
-                  />
-                  <Text style={styles.previewFileName}>{previewDoc.fileName || previewDoc.name}</Text>
-                  <Text style={styles.previewFileMeta}>
-                    {previewDoc.category} · {previewDoc.fileType} Format · {previewDoc.fileSizeKb} KB
-                  </Text>
-                  <View style={[styles.statusBadge, { backgroundColor: '#ecfdf5', borderColor: '#a7f3d0', marginTop: 6 }]}>
-                    <Text style={[styles.statusBadgeText, { color: '#065f46' }]}>
-                      Status: {previewDoc.status}
-                    </Text>
+                {/* Visual Image / Document Preview Banner */}
+                {previewDoc.fileUri && (previewDoc.fileUri.startsWith('http') || previewDoc.fileUri.startsWith('data:image')) && previewDoc.fileType !== 'PDF' ? (
+                  <View style={styles.imagePreviewWrap}>
+                    <Image
+                      source={{ uri: previewDoc.fileUri }}
+                      style={styles.actualImagePreview}
+                      resizeMode="contain"
+                    />
                   </View>
-                </View>
+                ) : (
+                  <View style={styles.previewFileBanner}>
+                    <MaterialCommunityIcons
+                      name={previewDoc.fileType === 'PDF' ? 'file-pdf-box' : 'file-image-outline'}
+                      size={52}
+                      color={colors.primary}
+                    />
+                    <Text style={styles.previewFileName}>{previewDoc.fileName || previewDoc.name}</Text>
+                    <Text style={styles.previewFileMeta}>
+                      {previewDoc.category} · {previewDoc.fileType} Format · {previewDoc.fileSizeKb} KB
+                    </Text>
+                    <View style={[styles.statusBadge, { backgroundColor: '#ecfdf5', borderColor: '#a7f3d0', marginTop: 6 }]}>
+                      <Text style={[styles.statusBadgeText, { color: '#065f46' }]}>
+                        Status: {previewDoc.status}
+                      </Text>
+                    </View>
+                  </View>
+                )}
 
                 <View style={styles.previewActions}>
+                  {previewDoc.fileUri && previewDoc.fileUri.startsWith('http') && (
+                    <TouchableOpacity
+                      style={styles.openInBrowserBtn}
+                      onPress={() => {
+                        if (previewDoc.fileUri) Linking.openURL(previewDoc.fileUri);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="open-outline" size={16} color={colors.white} />
+                      <Text style={styles.openInBrowserText}>Open in Browser</Text>
+                    </TouchableOpacity>
+                  )}
+
                   <TouchableOpacity
                     style={styles.downloadCtaBtn}
                     onPress={() => {
@@ -960,7 +1265,7 @@ DIGITALLY RECORDED & VERIFIED BY LOAN POINT SYSTEM
                     activeOpacity={0.8}
                   >
                     <Ionicons name="receipt-outline" size={16} color={colors.primary} />
-                    <Text style={styles.receiptActionBtnText}>View Receipt</Text>
+                    <Text style={styles.receiptActionBtnText}>Receipt</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -1464,6 +1769,80 @@ const styles = StyleSheet.create({
   checklistItems: {
     gap: 8,
   },
+  /* Combination Card for Salary Slips OR Bank Statement */
+  comboCard: {
+    backgroundColor: '#fffbeb',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#fde68a',
+    padding: 12,
+    gap: 8,
+    marginBottom: 4,
+  },
+  comboCardDone: {
+    backgroundColor: '#f0fdf4',
+    borderColor: '#86efac',
+  },
+  comboHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(217, 119, 6, 0.12)',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  comboBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fef3c7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    gap: 4,
+  },
+  comboBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#b45309',
+    letterSpacing: 0.5,
+  },
+  comboSubtitleText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#92400e',
+  },
+  orDividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 4,
+    gap: 8,
+  },
+  orDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#f59e0b',
+    opacity: 0.35,
+  },
+  orBadge: {
+    backgroundColor: '#f59e0b',
+    paddingHorizontal: 10,
+    paddingVertical: 2.5,
+    borderRadius: 12,
+    shadowColor: '#f59e0b',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  orBadgeText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
   checkItemRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1515,6 +1894,25 @@ const styles = StyleSheet.create({
   checkItemStatusText: {
     fontSize: 10.5,
     fontWeight: '700',
+  },
+  viewMiniBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  viewMiniText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.white,
   },
   uploadMiniBtn: {
     flexDirection: 'row',
@@ -1767,10 +2165,11 @@ const styles = StyleSheet.create({
   },
   previewModalCard: {
     backgroundColor: colors.white,
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     padding: 18,
     paddingBottom: 32,
+    maxHeight: '92%',
   },
   modalTopRow: {
     flexDirection: 'row',
@@ -1785,16 +2184,33 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   previewTitleText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '800',
     color: colors.text,
     flex: 1,
   },
   modalCloseBtn: {
-    padding: 4,
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: colors.surfaceSubtle,
   },
   previewBody: {
     gap: 16,
+  },
+  imagePreviewWrap: {
+    width: '100%',
+    height: 320,
+    backgroundColor: '#0f172a',
+    borderRadius: 14,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  actualImagePreview: {
+    width: '100%',
+    height: '100%',
   },
   previewFileBanner: {
     alignItems: 'center',
@@ -1818,7 +2234,24 @@ const styles = StyleSheet.create({
   },
   previewActions: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  openInBrowserBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0284c7',
+    paddingVertical: 12,
+    borderRadius: 8,
+    gap: 6,
+    minWidth: 120,
+  },
+  openInBrowserText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.white,
   },
   receiptActionBtn: {
     flex: 1,
@@ -1831,6 +2264,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.primaryBorder,
     gap: 6,
+    minWidth: 100,
   },
   receiptActionBtnText: {
     fontSize: 12,
@@ -1939,6 +2373,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     gap: 6,
+    minWidth: 110,
   },
   downloadCtaText: {
     fontSize: 12,

@@ -27,6 +27,12 @@ import { BankLogo } from '../common/BankLogo';
 import { calculateEMI, formatINR } from '../../utils/calculator';
 import { COMPANY_INFO } from '../../data/mockData';
 import { LoanIcon } from '../common/LoanIcon';
+import { isUserDocUploaded, getUserIncomeFormatted, getUserEmploymentType, findUserDocument } from '../../utils/formPreFill';
+import { LoanDocItemRow } from '../common/LoanDocItemRow';
+import { DocumentViewPreviewModal } from '../common/DocumentViewPreviewModal';
+import { DocumentItem } from '../../types';
+import { documentService } from '../../services/documentService';
+import { Platform } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -55,42 +61,46 @@ export const PersonalLoanApplyScreen: React.FC<PersonalLoanApplyScreenProps> = (
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
   // ---------------- STEP 1: Basic Details ----------------
-  const [fullName, setFullName] = useState<string>(user?.name || '');
+  const [fullName, setFullName] = useState<string>(user?.name && user.name !== 'Valued Customer' ? user.name : '');
   const [mobileNumber, setMobileNumber] = useState<string>(user?.mobile || '');
   const [emailId, setEmailId] = useState<string>(user?.email || '');
-  const [monthlyIncome, setMonthlyIncome] = useState<string>('₹1,20,000');
+  const [monthlyIncome, setMonthlyIncome] = useState<string>(getUserIncomeFormatted(user));
   const [city, setCity] = useState<string>(user?.city || '');
-  const [loanAmount, setLoanAmount] = useState<string>('₹5,00,000');
-  const [loanTenure, setLoanTenure] = useState<string>('3 Years (36 Months)');
+  const [loanAmount, setLoanAmount] = useState<string>('');
+  const [loanTenure, setLoanTenure] = useState<string>('');
   const [isAgreedStep1, setIsAgreedStep1] = useState<boolean>(true);
 
   // ---------------- STEP 2: Employment Details ----------------
-  const [employmentType, setEmploymentType] = useState<'Salaried' | 'Self-Employed'>('Salaried');
-  const [companyName, setCompanyName] = useState<string>('Tech Mahindra Ltd');
-  const [workExperience, setWorkExperience] = useState<string>('5 - 10 Years');
-  const [monthlySalaryInHand, setMonthlySalaryInHand] = useState<string>('120000');
-  const [salaryBankAccount, setSalaryBankAccount] = useState<string>('HDFC Bank');
-  const [companyType, setCompanyType] = useState<string>('Private Limited (Pvt Ltd)');
+  const [employmentType, setEmploymentType] = useState<'Salaried' | 'Self-Employed'>(getUserEmploymentType(user));
+  const [companyName, setCompanyName] = useState<string>('');
+  const [workExperience, setWorkExperience] = useState<string>('');
+  const [monthlySalaryInHand, setMonthlySalaryInHand] = useState<string>(
+    user?.monthlyIncome && user.monthlyIncome > 0 ? String(user.monthlyIncome) : ''
+  );
+  const [salaryBankAccount, setSalaryBankAccount] = useState<string>('');
+  const [companyType, setCompanyType] = useState<string>('');
 
   // ---------------- STEP 3: Loan Details ----------------
-  const [detailedLoanAmount, setDetailedLoanAmount] = useState<string>(loanAmount || '₹5,00,000');
-  const [detailedTenure, setDetailedTenure] = useState<string>(loanTenure || '3 Years (36 Months)');
-  const [loanPurpose, setLoanPurpose] = useState<string>('Debt Consolidation');
-  const [existingEmi, setExistingEmi] = useState<string>('No Existing EMI');
-  const [cibilScoreRange, setCibilScoreRange] = useState<string>('750 and Above (Excellent)');
-  const [hasCreditCard, setHasCreditCard] = useState<'Yes' | 'No'>('Yes');
+  const [detailedLoanAmount, setDetailedLoanAmount] = useState<string>('');
+  const [detailedTenure, setDetailedTenure] = useState<string>('');
+  const [loanPurpose, setLoanPurpose] = useState<string>('');
+  const [existingEmi, setExistingEmi] = useState<string>('');
+  const [cibilScoreRange, setCibilScoreRange] = useState<string>(
+    user?.cibilEstimateScore ? (user.cibilEstimateScore >= 750 ? '750 and Above (Excellent)' : '700 - 749 (Good)') : ''
+  );
+  const [hasCreditCard, setHasCreditCard] = useState<'Yes' | 'No'>('No');
 
-  // ---------------- STEP 4: Documents ----------------
+  // ---------------- STEP 4: Documents (Pre-fill ONLY if authentic document exists in database) ----------------
   const [panNumber, setPanNumber] = useState<string>(user?.panNumber || '');
   const [aadhaarNumber, setAadhaarNumber] = useState<string>(user?.aadhaarNumber || '');
   const [uploadedDocs, setUploadedDocs] = useState<UploadedDocState>({
-    panCard: true,
-    aadhaarCard: true,
-    addressProof: true,
-    incomeProof: true,
-    bankStatements: true,
-    existingLoanStatement: true,
-    photograph: true,
+    panCard: isUserDocUploaded(user, 'pan_card', ['pan']),
+    aadhaarCard: isUserDocUploaded(user, 'aadhaar_card', ['aadhaar', 'uidai']),
+    addressProof: isUserDocUploaded(user, 'address_proof', ['electricity', 'utility', 'rent']),
+    incomeProof: isUserDocUploaded(user, 'salary_slips', ['salary', 'payslip']),
+    bankStatements: isUserDocUploaded(user, 'bank_statement', ['statement', 'passbook']),
+    existingLoanStatement: false,
+    photograph: isUserDocUploaded(user, 'passport_photo', ['photo', 'passport']),
   });
 
   // ---------------- STEP 5: Final Confirmation Checkbox & Submitted Data ----------------
@@ -98,6 +108,165 @@ export const PersonalLoanApplyScreen: React.FC<PersonalLoanApplyScreenProps> = (
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submittedApp, setSubmittedApp] = useState<LoanApplication | null>(null);
   const [submittedDateString, setSubmittedDateString] = useState<string>('');
+
+  // Document Preview & Upload State
+  const [previewDoc, setPreviewDoc] = useState<DocumentItem | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState<boolean>(false);
+  const [isDocUploading, setIsDocUploading] = useState<boolean>(false);
+
+  // Handle View Document Modal
+  const handleViewDocument = (doc: DocumentItem) => {
+    setPreviewDoc(doc);
+    setShowPreviewModal(true);
+  };
+
+  // Central Document Upload & Re-upload Handler
+  const handleUploadOrReuploadDoc = (docKey: string, defaultTitle: string, category: DocumentItem['category']) => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.pdf,.jpg,.jpeg,.png,image/*,application/pdf';
+      input.onchange = async (e: Event) => {
+        const target = e.target as HTMLInputElement;
+        const file = target?.files?.[0];
+        if (!file) return;
+
+        const validation = documentService.validateFile({
+          name: file.name,
+          size: file.size,
+          type: file.type || 'application/pdf',
+        });
+
+        if (!validation.valid) {
+          Alert.alert('Invalid File', validation.error || 'Please select a valid PDF, JPG, or PNG under 5MB.');
+          return;
+        }
+
+        setIsDocUploading(true);
+        const reader = new FileReader();
+        reader.onload = async () => {
+          try {
+            const newDoc = await documentService.uploadDocument(
+              {
+                name: defaultTitle || file.name,
+                size: file.size,
+                type: file.type || 'application/pdf',
+                uri: reader.result as string,
+              },
+              category,
+              user?.mobile,
+              docKey
+            );
+            if (user) {
+              if (!user.documents) user.documents = [];
+              const idx = user.documents.findIndex((d) => d.docKey === docKey || d.name.toLowerCase().includes(docKey.replace(/_/g, ' ')));
+              if (idx >= 0) {
+                user.documents[idx] = newDoc;
+              } else {
+                user.documents.push(newDoc);
+              }
+            }
+            Alert.alert('Success', `"${defaultTitle}" uploaded successfully!`);
+          } catch {
+            Alert.alert('Error', 'Document upload failed. Please try again.');
+          } finally {
+            setIsDocUploading(false);
+          }
+        };
+        reader.readAsDataURL(file);
+      };
+      input.click();
+      return;
+    }
+
+    Alert.alert(
+      'Upload Document',
+      `Upload authentic file for ${defaultTitle}:`,
+      [
+        {
+          text: 'Choose Document (PDF/Doc)',
+          onPress: async () => {
+            try {
+              const DocumentPicker = require('expo-document-picker');
+              const res = await DocumentPicker.getDocumentAsync({
+                type: ['application/pdf', 'image/*'],
+                copyToCacheDirectory: true,
+              });
+              if (res.canceled || !res.assets || res.assets.length === 0) return;
+              const asset = res.assets[0];
+              setIsDocUploading(true);
+              const newDoc = await documentService.uploadDocument(
+                {
+                  name: defaultTitle || asset.name,
+                  size: asset.size || 0,
+                  type: asset.mimeType || 'application/pdf',
+                  uri: asset.uri,
+                },
+                category,
+                user?.mobile,
+                docKey
+              );
+              if (user) {
+                if (!user.documents) user.documents = [];
+                const idx = user.documents.findIndex((d) => d.docKey === docKey || d.name.toLowerCase().includes(docKey.replace(/_/g, ' ')));
+                if (idx >= 0) {
+                  user.documents[idx] = newDoc;
+                } else {
+                  user.documents.push(newDoc);
+                }
+              }
+              Alert.alert('Success', `"${defaultTitle}" uploaded successfully!`);
+            } catch (err) {
+              Alert.alert('Error', 'Unable to pick or upload document.');
+            } finally {
+              setIsDocUploading(false);
+            }
+          },
+        },
+        {
+          text: 'Take Photo / Choose Photo',
+          onPress: async () => {
+            try {
+              const ImagePicker = require('expo-image-picker');
+              const res = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                quality: 0.8,
+              });
+              if (res.canceled || !res.assets || res.assets.length === 0) return;
+              const asset = res.assets[0];
+              setIsDocUploading(true);
+              const newDoc = await documentService.uploadDocument(
+                {
+                  name: `${defaultTitle}.jpg`,
+                  size: asset.fileSize || 0,
+                  type: 'image/jpeg',
+                  uri: asset.uri,
+                },
+                category,
+                user?.mobile,
+                docKey
+              );
+              if (user) {
+                if (!user.documents) user.documents = [];
+                const idx = user.documents.findIndex((d) => d.docKey === docKey || d.name.toLowerCase().includes(docKey.replace(/_/g, ' ')));
+                if (idx >= 0) {
+                  user.documents[idx] = newDoc;
+                } else {
+                  user.documents.push(newDoc);
+                }
+              }
+              Alert.alert('Success', `"${defaultTitle}" photo uploaded successfully!`);
+            } catch (err) {
+              Alert.alert('Error', 'Unable to choose photo.');
+            } finally {
+              setIsDocUploading(false);
+            }
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
 
   // ---------------- Modals State ----------------
   const [showIncomeModal, setShowIncomeModal] = useState<boolean>(false);
@@ -272,10 +441,7 @@ export const PersonalLoanApplyScreen: React.FC<PersonalLoanApplyScreenProps> = (
       return;
     }
 
-    if (!city.trim()) {
-      setFormError('Please select your city');
-      return;
-    }
+    // City is optional
 
     if (!loanAmount) {
       setFormError('Please select loan amount requirement');
@@ -398,6 +564,7 @@ export const PersonalLoanApplyScreen: React.FC<PersonalLoanApplyScreenProps> = (
         city: city.trim(),
         panNumber: panNumber.trim().toUpperCase() || undefined,
         aadhaarNumber: aadhaarNumber.replace(/\D/g, '') || undefined,
+        bankName: salaryBankAccount || undefined,
         purpose: `Personal Loan | ${companyName.trim()} (${companyType}) | Bank: ${salaryBankAccount} | Purpose: ${loanPurpose} | Existing EMI: ${existingEmi} | CIBIL: ${cibilScoreRange}`,
       });
 
@@ -548,13 +715,14 @@ export const PersonalLoanApplyScreen: React.FC<PersonalLoanApplyScreenProps> = (
                   <Text style={styles.fieldLabel}>
                     Full Name <Text style={styles.requiredStar}>*</Text>
                   </Text>
-                  <View style={styles.inputBox}>
+                  <View style={[styles.inputBox, { backgroundColor: '#f8fafc' }]}>
                     <TextInput
-                      style={styles.textInput}
+                      style={[styles.textInput, { color: '#475569' }]}
                       placeholder="Enter your full name"
                       placeholderTextColor="#94a3b8"
                       value={fullName}
                       onChangeText={setFullName}
+                      editable={false}
                     />
                   </View>
                 </View>
@@ -630,18 +798,18 @@ export const PersonalLoanApplyScreen: React.FC<PersonalLoanApplyScreenProps> = (
                   </View>
                   <View style={styles.twoColRight}>
                     <Text style={styles.fieldLabel} numberOfLines={1}>
-                      City <Text style={styles.requiredStar}>*</Text>
+                      City (Optional)
                     </Text>
-                    <TouchableOpacity
-                      style={styles.dropdownBox}
-                      onPress={() => setShowCityModal(true)}
-                      activeOpacity={0.75}
-                    >
-                      <Text style={styles.dropdownText} numberOfLines={1}>
-                        {city || 'Select City'}
-                      </Text>
-                      <Ionicons name="chevron-down" size={16} color="#0f172a" />
-                    </TouchableOpacity>
+                    <View style={styles.inputBox}>
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="Enter city name"
+                        placeholderTextColor="#94a3b8"
+                        value={city}
+                        onChangeText={setCity}
+                        autoCapitalize="words"
+                      />
+                    </View>
                   </View>
                 </View>
               </View>
@@ -1107,8 +1275,11 @@ export const PersonalLoanApplyScreen: React.FC<PersonalLoanApplyScreenProps> = (
             {/* Document List (7 Rows) */}
             <View style={styles.docListContainer}>
               {/* Row 1: PAN Card (Mandatory) */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              <LoanDocItemRow
+                title="PAN Card"
+                subtitle="Copy of your PAN Card (Front Side)"
+                isMandatory
+                iconNode={
                   <View style={styles.panBadgeFrame}>
                     <Text style={styles.panBadgeText}>PAN</Text>
                     <View style={styles.panBadgeLines}>
@@ -1116,208 +1287,103 @@ export const PersonalLoanApplyScreen: React.FC<PersonalLoanApplyScreenProps> = (
                       <View style={[styles.panBadgeLine, { width: '60%' }]} />
                     </View>
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <View style={styles.docTitleWithBadgeRow}>
-                    <Text style={styles.docRowTitle}>PAN Card</Text>
-                    <View style={styles.mandatoryPill}>
-                      <Text style={styles.mandatoryPillText}>Mandatory</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.docRowSubtitle}>Copy of your PAN Card (Front Side)</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.panCard && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('panCard', 'PAN Card')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.panCard ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.panCard ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.panCard && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.panCard ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'pan_card', ['pan'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('pan_card', 'PAN Card', 'Identity Proof')}
+              />
               <View style={styles.docRowDivider} />
 
               {/* Row 2: Aadhaar Card (Mandatory) */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              <LoanDocItemRow
+                title="Aadhaar Card"
+                subtitle="Front & Back (Both Sides)"
+                isMandatory
+                iconNode={
                   <View style={styles.aadhaarBadgeFrame}>
                     <Ionicons name="sunny-outline" size={14} color="#dc2626" />
                     <Text style={styles.aadhaarBadgeText}>AADHAAR</Text>
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <View style={styles.docTitleWithBadgeRow}>
-                    <Text style={styles.docRowTitle}>Aadhaar Card</Text>
-                    <View style={styles.mandatoryPill}>
-                      <Text style={styles.mandatoryPillText}>Mandatory</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.docRowSubtitle}>Front & Back (Both Sides)</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.aadhaarCard && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('aadhaarCard', 'Aadhaar Card')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.aadhaarCard ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.aadhaarCard ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.aadhaarCard && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.aadhaarCard ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'aadhaar_card', ['aadhaar', 'uidai'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('aadhaar_card', 'Aadhaar Card', 'Identity Proof')}
+              />
               <View style={styles.docRowDivider} />
 
               {/* Row 3: Address Proof */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              <LoanDocItemRow
+                title="Address Proof"
+                subtitle="Utility bill (Electricity / Water / Gas) / Rent Agreement"
+                iconNode={
                   <View style={styles.docRoundIconWrap}>
                     <Ionicons name="home-outline" size={24} color="#002e75" />
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <Text style={styles.docRowTitle}>Address Proof</Text>
-                  <Text style={styles.docRowSubtitle}>Utility bill (Electricity / Water / Gas) / Rent Agreement</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.addressProof && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('addressProof', 'Address Proof')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.addressProof ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.addressProof ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.addressProof && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.addressProof ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'address_proof', ['electricity', 'utility', 'rent'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('address_proof', 'Address Proof', 'Address Proof')}
+              />
               <View style={styles.docRowDivider} />
 
               {/* Row 4: Income Proof */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              <LoanDocItemRow
+                title="Income Proof"
+                subtitle="Last 3 months' salary slips / Form 16 / ITR"
+                iconNode={
                   <View style={styles.docRoundIconWrap}>
                     <MaterialCommunityIcons name="file-document-outline" size={24} color="#002e75" />
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <Text style={styles.docRowTitle}>Income Proof</Text>
-                  <Text style={styles.docRowSubtitle}>Last 3 months' salary slips / Form 16 / ITR</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.incomeProof && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('incomeProof', 'Income Proof')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.incomeProof ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.incomeProof ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.incomeProof && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.incomeProof ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'salary_slips', ['salary', 'payslip', 'itr', 'income'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('salary_slips', 'Income Proof', 'Income Proof')}
+              />
               <View style={styles.docRowDivider} />
 
               {/* Row 5: Bank Statements */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              <LoanDocItemRow
+                title="Bank Statements"
+                subtitle="Last 6 months' salary account bank statements"
+                iconNode={
                   <View style={styles.docRoundIconWrap}>
                     <MaterialCommunityIcons name="bank" size={24} color="#002e75" />
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <Text style={styles.docRowTitle}>Bank Statements</Text>
-                  <Text style={styles.docRowSubtitle}>Last 6 months' salary account bank statements</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.bankStatements && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('bankStatements', 'Bank Statements')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.bankStatements ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.bankStatements ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.bankStatements && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.bankStatements ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'bank_statement', ['statement', 'passbook'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('bank_statement', 'Income Proof', 'Income Proof')}
+              />
               <View style={styles.docRowDivider} />
 
               {/* Row 6: Existing Loan Statement (if Available) */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              <LoanDocItemRow
+                title="Existing Loan Statement"
+                subtitle="Latest statement of your existing loan / credit card (if any)"
+                iconNode={
                   <View style={styles.docRoundIconWrap}>
                     <MaterialCommunityIcons name="file-check-outline" size={24} color="#002e75" />
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <View style={styles.docTitleWithBadgeRow}>
-                    <Text style={styles.docRowTitle}>Existing Loan Statement</Text>
-                    <Text style={styles.ifAvailableItalic}> (if Available)</Text>
-                  </View>
-                  <Text style={styles.docRowSubtitle}>Latest statement of your existing loan / credit card (if any)</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.existingLoanStatement && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('existingLoanStatement', 'Existing Loan Statement')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.existingLoanStatement ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.existingLoanStatement ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.existingLoanStatement && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.existingLoanStatement ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'existing_loan', ['existing loan', 'loan statement'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('existing_loan', 'Existing Loan Statement', 'Other')}
+              />
               <View style={styles.docRowDivider} />
 
               {/* Row 7: Photograph (Applicant) */}
-              <View style={styles.docRowItem}>
-                <View style={styles.docLeftIconBadge}>
+              <LoanDocItemRow
+                title="Photograph (Applicant)"
+                subtitle="Recent passport-size photo (clear and front facing)"
+                iconNode={
                   <View style={styles.docRoundIconWrap}>
                     <Ionicons name="person-outline" size={24} color="#002e75" />
                   </View>
-                </View>
-                <View style={styles.docInfoCol}>
-                  <Text style={styles.docRowTitle}>Photograph (Applicant)</Text>
-                  <Text style={styles.docRowSubtitle}>Recent passport-size photo (clear and front facing)</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.uploadPillBtn, uploadedDocs.photograph && styles.uploadPillBtnDone]}
-                  onPress={() => handleToggleDocUpload('photograph', 'Photograph')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons
-                    name={uploadedDocs.photograph ? 'checkmark-circle' : 'arrow-up'}
-                    size={16}
-                    color={uploadedDocs.photograph ? '#16a34a' : '#004aad'}
-                  />
-                  <Text style={[styles.uploadPillBtnText, uploadedDocs.photograph && styles.uploadPillBtnTextDone]}>
-                    {uploadedDocs.photograph ? 'Uploaded' : 'Upload'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }
+                uploadedDoc={findUserDocument(user, 'passport_photo', ['photo', 'passport'])}
+                onView={handleViewDocument}
+                onUploadOrReupload={() => handleUploadOrReuploadDoc('passport_photo', 'Passport Size Photo', 'Identity Proof')}
+              />
             </View>
 
             {/* Bottom 100% Safe & Secure Card */}
@@ -1844,6 +1910,16 @@ export const PersonalLoanApplyScreen: React.FC<PersonalLoanApplyScreenProps> = (
           </View>
         </View>
       </Modal>
+
+      {/* Document View Preview Modal */}
+      <DocumentViewPreviewModal
+        visible={showPreviewModal}
+        doc={previewDoc}
+        onClose={() => {
+          setShowPreviewModal(false);
+          setPreviewDoc(null);
+        }}
+      />
 
       {/* City Modal */}
       <Modal visible={showCityModal} transparent animationType="slide">

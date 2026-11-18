@@ -1,5 +1,6 @@
 import { DocumentItem } from '../types';
 import { dbSyncService } from './dbSyncService';
+import { imageKitService } from './imageKitService';
 
 class DocumentService {
   private documents: DocumentItem[] = [];
@@ -33,39 +34,63 @@ class DocumentService {
     file: { name: string; size: number; type: string; uri?: string },
     category: DocumentItem['category'],
     userMobile?: string,
+    docKey?: string,
     onProgress?: (progressPercent: number) => void
   ): Promise<DocumentItem> {
-    if (onProgress) onProgress(25);
-    await new Promise((r) => setTimeout(r, 100));
+    if (onProgress) onProgress(20);
 
-    if (onProgress) onProgress(65);
-    await new Promise((r) => setTimeout(r, 100));
+    let remoteFileUrl = file.uri;
+    const keyPrefix = docKey || category.replace(/\s+/g, '_');
+    const sanitizedFileName = `${keyPrefix}_${Date.now()}.${file.name.split('.').pop() || 'pdf'}`;
 
-    if (onProgress) onProgress(90);
-    await new Promise((r) => setTimeout(r, 100));
+    // 1. Upload to ImageKit CDN Storage if URI / Base64 is available
+    if (file.uri) {
+      try {
+        if (onProgress) onProgress(50);
+        const imageKitRes = await imageKitService.uploadFile(
+          file.uri,
+          sanitizedFileName,
+          userMobile ? `/loanpoint_vault/${userMobile}` : '/loanpoint_vault'
+        );
+        if (imageKitRes && imageKitRes.url) {
+          remoteFileUrl = imageKitRes.url;
+        }
+      } catch (uploadErr) {
+        console.warn('ImageKit upload fallback:', uploadErr);
+        // If ImageKit network fails, keep local URI as fallback
+      }
+    }
 
-    if (onProgress) onProgress(100);
+    if (onProgress) onProgress(85);
 
     const ext = file.name.split('.').pop()?.toUpperCase() || 'PDF';
     const newDoc: DocumentItem = {
       id: `DOC-${Math.floor(100000 + Math.random() * 900000)}`,
       name: file.name.replace(/\.[^/.]+$/, ''),
+      docKey: docKey,
       category,
       fileType: ext,
-      fileSizeKb: Math.round(file.size / 1024),
+      fileSizeKb: Math.round(file.size / 1024) || 120,
       uploadDate: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
       status: 'Under Review',
       fileName: file.name,
-      fileUri: file.uri,
+      fileUri: remoteFileUrl,
       mimeType: file.type,
     };
 
+    // Remove old version if docKey matches
+    if (docKey) {
+      this.documents = this.documents.filter((d) => d.docKey !== docKey);
+    }
+
     this.documents.unshift(newDoc);
 
-    // If userMobile is provided, directly persist document to the users table in Neon Postgres
+    // 2. Persist to Neon Postgres DB with the ImageKit URL stored in users.documents
     if (userMobile) {
       await dbSyncService.saveUserDocument(userMobile, newDoc);
     }
+
+    if (onProgress) onProgress(100);
 
     return newDoc;
   }

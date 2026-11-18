@@ -24,6 +24,7 @@ import { dbSyncService } from '../../services/dbSyncService';
 import { cityLocationService } from '../../services/cityLocationService';
 import { COMPANY_INFO } from '../../data/mockData';
 import { colors } from '../../theme/colors';
+import { DigitalVisitingCard } from '../common/DigitalVisitingCard';
 import {
   validatePAN,
   validateAadhaar,
@@ -39,7 +40,7 @@ interface ProfileScreenProps {
   onLanguageChange?: (lang: 'en' | 'mr' | 'hi') => void;
   onLogout: () => void;
   onNavigate: (screen: string) => void;
-  onResetDemoData: () => void;
+  onResetDemoData?: () => void;
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -275,46 +276,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           resizeMode="contain"
         />
       </View>
-      {/* 1. Profile Summary Spotlight Hero Card */}
-      <View style={styles.headerHeroCard}>
-        <View style={styles.heroGlowCircle} />
-
-        <View style={styles.userHeader}>
-          {/* Static Clean Avatar */}
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {user?.name ? user.name.slice(0, 2).toUpperCase() : 'CU'}
-            </Text>
-          </View>
-
-          <View style={styles.userInfo}>
-            {/* Verified Borrower Shield Badge */}
-            <View style={styles.customerBadge}>
-              <View style={styles.customerBadgeDot} />
-              <Text style={styles.customerBadgeText}>VERIFIED BORROWER</Text>
-            </View>
-
-            <Text style={styles.userName}>{user?.name && user.name !== 'Valued Customer' ? user.name : (user?.mobile ? `User ${user.mobile.slice(-4)}` : 'Customer')}</Text>
-            <Text style={styles.userMobile}>{user?.mobile ? `+91 ${user.mobile}` : 'Mobile not linked'}</Text>
-            <Text style={styles.userCity}>
-              {user?.city ? `${user.city} · ` : ''}{user?.employmentType || 'Salaried'}
-            </Text>
-          </View>
-        </View>
-
-        {/* Edit Profile Button Pill */}
-        <TouchableOpacity
-          style={styles.editProfileBtn}
-          onPress={() => openEditModal(1)}
-          activeOpacity={0.82}
-        >
-          <View style={styles.editIconCircle}>
-            <Ionicons name="create" size={14} color="#008ecc" />
-          </View>
-          <Text style={styles.editProfileBtnText}>Edit Profile & Income Details</Text>
-          <Ionicons name="chevron-forward" size={15} color="#008ecc" />
-        </TouchableOpacity>
-      </View>
+      {/* 1. Digital Visiting / Debit Card Spotlight Card */}
+      <DigitalVisitingCard
+        user={user}
+        onEditProfile={() => openEditModal(1)}
+        onEditIncome={() => openEditModal(2)}
+      />
 
       {/* 1B. Profile Completion Stepper / Progress Tracker Widget */}
       {(() => {
@@ -790,21 +757,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         </View>
       </View>
 
-      {/* Logout & Reset Buttons */}
+      {/* Logout Action */}
       <View style={styles.actionSection}>
         <TouchableOpacity style={styles.logoutBtn} onPress={onLogout} activeOpacity={0.8}>
           <Ionicons name="log-out-outline" size={18} color={colors.danger} />
           <Text style={styles.logoutText}>Sign Out</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity style={styles.resetBtn} onPress={onResetDemoData} activeOpacity={0.7}>
-          <Ionicons name="refresh-circle-outline" size={16} color={colors.textMuted} />
-          <Text style={styles.resetText}>Reset Demo Customer State</Text>
-        </TouchableOpacity>
       </View>
 
       <Text style={styles.versionText}>
-        {COMPANY_INFO.name} · v2.4.0 · Nanded, Maharashtra
+        {COMPANY_INFO.name} · Version 1.0
       </Text>
 
       {/* EDIT & CHANGE PROFILE MODAL */}

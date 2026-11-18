@@ -49,6 +49,7 @@ class LoanService {
     panNumber?: string;
     aadhaarNumber?: string;
     purpose?: string;
+    bankName?: string;
   }): Promise<LoanApplication> {
     const category = this.getCategoryById(params.loanType);
     const categoryTitle = category ? category.title : 'Loan';
@@ -71,6 +72,29 @@ class LoanService {
     const seq = String(Math.floor(10 + Math.random() * 900)).padStart(4, '0');
     const generatedId = `${prefix}-${yyyy}${mm}${dd}-${seq}`;
 
+    // Extract selected bank name from params or from purpose string if provided
+    let detectedBank = params.bankName;
+    if (!detectedBank && params.purpose) {
+      const match = params.purpose.match(/Bank:\s*([^|]+)/i);
+      if (match && match[1].trim()) {
+        detectedBank = match[1].trim();
+      }
+    }
+    if (!detectedBank) {
+      // Default bank based on loan category
+      const defaultBanks: Record<LoanType, string> = {
+        home: 'HDFC Bank',
+        personal: 'ICICI Bank',
+        business: 'State Bank of India',
+        car: 'Axis Bank',
+        education: 'Canara Bank',
+        agriculture: 'State Bank of India',
+        mortgage: 'HDFC Bank',
+        mudra: 'Bank of Maharashtra',
+      };
+      detectedBank = defaultBanks[params.loanType] || 'State Bank of India';
+    }
+
     const newApp: LoanApplication = {
       id: generatedId,
       loanType: params.loanType,
@@ -78,17 +102,18 @@ class LoanService {
       requestedAmount: params.requestedAmount,
       tenureMonths: params.tenureMonths,
       submissionDate: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-      status: 'Enquiry Received',
+      status: 'Application Sent',
       statusUpdatedDate: 'Just now',
+      bankName: detectedBank,
       assignedManager: {
         name: COMPANY_INFO.leadRelationshipManager,
         role: 'Principal Loan Advisor & Branch Head',
         phone: COMPANY_INFO.contactNumber,
         email: COMPANY_INFO.primaryEmail,
       },
-      pendingDocuments: category ? category.requiredDocuments.slice(0, 3) : ['PAN & Aadhaar Card', '3 Months Bank Statement'],
+      pendingDocuments: [],
       submittedDocuments: ['Initial KYC Form'],
-      nextAction: 'Loan Point advisor will review and call you within 2-4 business hours for preliminary document verification.',
+      nextAction: 'Application submitted. Awaiting review and verification by Loan Point admin.',
       remarks: `Online portal enquiry for ${categoryTitle}. Stated monthly income: ₹${params.monthlyIncome.toLocaleString('en-IN')}.`,
       applicantName: params.applicantName,
       applicantMobile: params.mobile,

@@ -48,6 +48,7 @@ export class DbSyncService {
       const row = existing[0];
       const validCode = row.referral_code && !row.referral_code.startsWith('LP') ? row.referral_code : (row.referral_code && row.referral_code.length >= 8 ? row.referral_code : fallbackCode);
       const docs = typeof row.documents === 'string' ? JSON.parse(row.documents) : row.documents || [];
+      const passportDoc = Array.isArray(docs) ? docs.find((d: any) => d.docKey === 'passport_photo' || d.name?.toLowerCase().includes('passport')) : undefined;
       return {
         user: {
           id: row.id,
@@ -66,6 +67,8 @@ export class DbSyncService {
           referralCode: row.referral_code || validCode,
           referredBy: row.referred_by || undefined,
           role: 'customer',
+          avatar: passportDoc?.fileUri || undefined,
+          isKycCompleted: Boolean(row.is_kyc_completed),
           documents: Array.isArray(docs) ? docs : [],
         },
         isFirstTime: !row.is_kyc_completed && !row.city,
@@ -105,6 +108,57 @@ export class DbSyncService {
   }
 
   /**
+   * Fetch all registered users / customers directly from Neon DB (for Admin)
+   */
+  public async getAllUsers(): Promise<UserProfile[]> {
+    if (!isDatabaseConfigured) return [];
+    try {
+      const sql = getDbClient();
+      const rows = await sql.query(
+        `SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, is_kyc_completed, documents, created_at
+         FROM users
+         ORDER BY created_at DESC;`
+      );
+
+      return rows.map((row: any) => {
+        const docs = typeof row.documents === 'string' ? JSON.parse(row.documents) : row.documents || [];
+        const passportDoc = Array.isArray(docs)
+          ? docs.find((d: any) => d.docKey === 'passport_photo' || d.name?.toLowerCase().includes('passport'))
+          : undefined;
+
+        return {
+          id: row.id,
+          name: row.full_name || 'Valued Customer',
+          mobile: row.mobile,
+          email: row.email || '',
+          city: row.city || '',
+          pincode: '',
+          employmentType: (row.employment_type as any) || 'Salaried',
+          monthlyIncome: Number(row.monthly_income) || 0,
+          panNumber: row.pan_number || '',
+          aadhaarNumber: row.aadhaar_last_four ? `XXXX-XXXX-${row.aadhaar_last_four}` : '',
+          aadhaarLinked: Boolean(row.aadhaar_last_four),
+          cibilEstimateScore: 740,
+          memberSince: new Date(row.created_at).toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+          }),
+          referralCode: row.referral_code || generateRandomCustomerCode(),
+          referredBy: row.referred_by || undefined,
+          role: 'customer',
+          avatar: passportDoc?.fileUri || undefined,
+          isKycCompleted: Boolean(row.is_kyc_completed),
+          documents: Array.isArray(docs) ? docs : [],
+        } as UserProfile;
+      });
+    } catch (err) {
+      console.warn('Neon DB getAllUsers error:', err);
+      return [];
+    }
+  }
+
+  /**
    * Fetch current user profile directly from Neon DB by mobile number
    */
   public async getUserByMobile(mobile: string): Promise<UserProfile | null> {
@@ -122,6 +176,7 @@ export class DbSyncService {
       if (!rows || rows.length === 0) return null;
       const row = rows[0];
       const docs = typeof row.documents === 'string' ? JSON.parse(row.documents) : row.documents || [];
+      const passportDoc = Array.isArray(docs) ? docs.find((d: any) => d.docKey === 'passport_photo' || d.name?.toLowerCase().includes('passport')) : undefined;
       return {
         id: row.id,
         name: row.full_name,
@@ -139,6 +194,8 @@ export class DbSyncService {
         referralCode: row.referral_code || generateRandomCustomerCode(),
         referredBy: row.referred_by || undefined,
         role: 'customer',
+        avatar: passportDoc?.fileUri || undefined,
+        isKycCompleted: Boolean(row.is_kyc_completed),
         documents: Array.isArray(docs) ? docs : [],
       };
     } catch (err) {
@@ -342,6 +399,19 @@ export class DbSyncService {
             })
           : parsedData.statusUpdatedDate || 'Recently';
 
+        // Detect or fallback bank name by loan type
+        const defaultBanks: Record<string, string> = {
+          home: 'HDFC Bank',
+          personal: 'ICICI Bank',
+          business: 'State Bank of India',
+          car: 'Axis Bank',
+          education: 'Canara Bank',
+          agriculture: 'State Bank of India',
+          mortgage: 'HDFC Bank',
+          mudra: 'Bank of Maharashtra',
+        };
+        const detectedBank = parsedData.bankName || defaultBanks[r.loan_type] || 'State Bank of India';
+
         return {
           id: r.id,
           loanType: r.loan_type,
@@ -358,7 +428,7 @@ export class DbSyncService {
           remarks: r.remarks || parsedData.remarks || '',
           applicantName: r.applicant_name,
           applicantMobile: r.mobile,
-          bankName: parsedData.bankName,
+          bankName: detectedBank,
         } as LoanApplication;
       });
     } catch (err) {
@@ -378,6 +448,18 @@ export class DbSyncService {
 
       return rows.map((r: any) => {
         const parsedData = typeof r.data === 'string' ? JSON.parse(r.data) : r.data || {};
+        const defaultBanks: Record<string, string> = {
+          home: 'HDFC Bank',
+          personal: 'ICICI Bank',
+          business: 'State Bank of India',
+          car: 'Axis Bank',
+          education: 'Canara Bank',
+          agriculture: 'State Bank of India',
+          mortgage: 'HDFC Bank',
+          mudra: 'Bank of Maharashtra',
+        };
+        const detectedBank = parsedData.bankName || defaultBanks[r.loan_type] || 'State Bank of India';
+
         return {
           id: r.id,
           loanType: r.loan_type,
@@ -394,7 +476,8 @@ export class DbSyncService {
           remarks: parsedData.remarks || '',
           applicantName: r.applicant_name,
           applicantMobile: r.mobile,
-          bankName: parsedData.bankName,
+          bankName: detectedBank,
+          documents: parsedData.documents || [],
         } as LoanApplication;
       });
     } catch (err) {
