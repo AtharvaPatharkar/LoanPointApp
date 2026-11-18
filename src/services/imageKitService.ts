@@ -1,9 +1,11 @@
 /**
  * ImageKit Upload and Media Storage Service
- * Handles direct upload of documents, photos, and PDFs to ImageKit.io CDN storage
+ * Uses Secure Backend Authentication Parameters or Backend Relay
+ * Eliminates client-side private key and basic authentication exposure
  */
 import { Platform } from 'react-native';
 import * as FileSystemLegacy from 'expo-file-system/legacy';
+import { apiRequest } from './apiClient';
 
 export interface ImageKitUploadResponse {
   fileId: string;
@@ -19,13 +21,6 @@ export interface ImageKitUploadResponse {
 
 const IMAGEKIT_UPLOAD_ENDPOINT = 'https://upload.imagekit.io/api/v1/files/upload';
 
-const getPrivateKey = (): string => {
-  return (
-    process.env.EXPO_PUBLIC_IMAGEKIT_PRIVATE_KEY ||
-    'private_LGd0VI3JkHxbCnN9SiygnCeSDGY='
-  );
-};
-
 const getPublicKey = (): string => {
   return (
     process.env.EXPO_PUBLIC_IMAGEKIT_PUBLIC_KEY ||
@@ -40,47 +35,31 @@ const getUrlEndpoint = (): string => {
   );
 };
 
-// Cross-platform Base64 encoder for browser, React Native, and Node environments
-const encodeBase64 = (str: string): string => {
-  if (typeof btoa !== 'undefined') {
-    return btoa(str);
-  }
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-  let output = '';
-  for (
-    let block = 0, charCode, i = 0, map = chars;
-    str.charAt(i | 0) || ((map = '='), i % 1);
-    output += map.charAt(63 & (block >> (8 - (i % 1) * 8)))
-  ) {
-    charCode = str.charCodeAt((i += 3 / 4));
-    if (charCode > 0xff) {
-      throw new Error("'btoa' failed: The string contains characters outside Latin1.");
-    }
-    block = (block << 8) | charCode;
-  }
-  return output;
-};
-
 export const imageKitService = {
   getPublicKey,
-  getPrivateKey,
   getUrlEndpoint,
 
   /**
-   * Upload file to ImageKit CDN
-   * Uses URL-encoded Base64 string payload on React Native to avoid FormData multipart engine bugs.
-   * @param fileData base64 data URI string or binary Blob/File or native file URI
-   * @param fileName desired file name
-   * @param folder destination folder on ImageKit (e.g. /loanpoint_vault)
+   * Fetch secure ImageKit upload authentication parameters from backend
+   */
+  async getAuthParameters(): Promise<{ token: string; expire: number; signature: string; publicKey: string }> {
+    const res = await apiRequest('/imagekit/auth', { method: 'GET' });
+    return {
+      token: res.token,
+      expire: res.expire,
+      signature: res.signature,
+      publicKey: res.publicKey || getPublicKey(),
+    };
+  },
+
+  /**
+   * Upload file to ImageKit CDN using secure backend-signed parameters
    */
   async uploadFile(
     fileData: string | Blob,
     fileName: string,
     folder: string = '/loanpoint_vault'
   ): Promise<ImageKitUploadResponse> {
-    const privateKey = getPrivateKey();
-    const authHeader = `Basic ${encodeBase64(`${privateKey}:`)}`;
-
     let base64Payload = '';
 
     // 1. Convert native file:// or content:// URI to Base64
@@ -103,20 +82,40 @@ export const imageKitService = {
       base64Payload = fileData;
     }
 
-    // 2. On Web: If we have a binary Blob/File, use standard Web FormData
+    // Try Backend relay upload first (safest, handles all platform boundaries)
+    try {
+      const backendRes = await apiRequest('/imagekit/upload', {
+        method: 'POST',
+        body: {
+          fileData: base64Payload,
+          fileName,
+          folder,
+        },
+      });
+      if (backendRes.file) {
+        return backendRes.file;
+      }
+    } catch (backendUploadErr) {
+      console.warn('Backend upload relay failed, attempting direct upload with signed parameters:', backendUploadErr);
+    }
+
+    // Direct Upload using backend-signed auth parameters
+    const authParams = await this.getAuthParameters();
+
     if (Platform.OS === 'web' && typeof Blob !== 'undefined' && fileData instanceof Blob) {
       const formData = new FormData();
       formData.append('file', fileData, fileName);
       formData.append('fileName', fileName);
       formData.append('folder', folder);
       formData.append('useUniqueFileName', 'true');
+      formData.append('token', authParams.token);
+      formData.append('expire', String(authParams.expire));
+      formData.append('signature', authParams.signature);
+      formData.append('publicKey', authParams.publicKey);
 
       const response = await fetch(IMAGEKIT_UPLOAD_ENDPOINT, {
         method: 'POST',
         body: formData,
-        headers: {
-          Authorization: authHeader,
-        },
       });
 
       if (!response.ok) {
@@ -124,23 +123,24 @@ export const imageKitService = {
         throw new Error(`ImageKit Upload Error: ${errorText}`);
       }
 
-      const result = await response.json();
-      return result;
+      return await response.json();
     }
 
-    // 3. React Native / Mobile Platform: Use URL-encoded body
-    // This completely bypasses React Native's FormDataPart native bug ("Unsupported FormDataPart implementation")
+    // React Native / Mobile URL-encoded body
     const formParams = new URLSearchParams();
     formParams.append('file', base64Payload);
     formParams.append('fileName', fileName);
     formParams.append('folder', folder);
     formParams.append('useUniqueFileName', 'true');
+    formParams.append('token', authParams.token);
+    formParams.append('expire', String(authParams.expire));
+    formParams.append('signature', authParams.signature);
+    formParams.append('publicKey', authParams.publicKey);
 
     const response = await fetch(IMAGEKIT_UPLOAD_ENDPOINT, {
       method: 'POST',
       body: formParams.toString(),
       headers: {
-        Authorization: authHeader,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
     });

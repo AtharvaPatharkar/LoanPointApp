@@ -1,16 +1,12 @@
-import { neon } from '@neondatabase/serverless';
+/**
+ * Deprecated: Direct database access from React Native mobile bundle has been decommissioned.
+ * All database operations are securely handled through the backend REST API.
+ */
 
-// Retrieve database URL from Expo environment or fallback to process.env
-const databaseUrl =
-  process.env.EXPO_PUBLIC_DATABASE_URL ||
-  process.env.DATABASE_URL ||
-  '';
+export const isDatabaseConfigured = false;
 
-export const isDatabaseConfigured = Boolean(databaseUrl);
-
-export const getDbClient = () => {
-  if (!databaseUrl) {
-    throw new Error('DATABASE_URL is not configured in environment variables');
-  }
-  return neon(databaseUrl, { disableWarningInBrowsers: true });
+export const getDbClient = (): never => {
+  throw new Error(
+    'Direct database connections from the mobile client are disabled for security. Use backend REST API.'
+  );
 };

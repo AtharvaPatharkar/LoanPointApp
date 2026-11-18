@@ -1,0 +1,24 @@
+{
+  "name": "loanpoint-backend",
+  "version": "1.0.0",
+  "description": "LoanPoint V3 Pure Node.js Backend with Neon Postgres and ImageKit",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "tsx watch src/server.ts",
+    "test": "node --test dist/**/*.test.js"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.2.1",
+    "imagekit": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

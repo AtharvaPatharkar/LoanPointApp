@@ -1,8 +1,7 @@
 import { LoanApplication, LoanCategory, LoanType } from '../types';
 import { LOAN_CATEGORIES, INITIAL_APPLICATIONS, COMPANY_INFO } from '../data/mockData';
 import { crmService } from './crmService';
-import { getDbClient, isDatabaseConfigured } from './neonDbService';
-import { dbSyncService } from './dbSyncService';
+import { apiRequest } from './apiClient';
 
 class LoanService {
   private applications: LoanApplication[] = [...INITIAL_APPLICATIONS];
@@ -24,10 +23,14 @@ class LoanService {
   }
 
   public async fetchApplicationsForMobile(mobile: string): Promise<LoanApplication[]> {
-    const dbApps = await dbSyncService.getApplicationsByMobile(mobile);
-    if (dbApps && dbApps.length > 0) {
-      this.applications = dbApps;
-      return dbApps;
+    try {
+      const res = await apiRequest('/loans/applications', { method: 'GET' });
+      if (res && res.applications && res.applications.length > 0) {
+        this.applications = res.applications;
+        return res.applications;
+      }
+    } catch (err: any) {
+      console.warn('Backend fetch applications error:', err.message);
     }
     return this.getApplications();
   }
@@ -54,6 +57,24 @@ class LoanService {
     const category = this.getCategoryById(params.loanType);
     const categoryTitle = category ? category.title : 'Loan';
 
+    try {
+      const res = await apiRequest('/loans/enquiry', {
+        method: 'POST',
+        body: {
+          ...params,
+          loanTypeName: categoryTitle,
+        },
+      });
+
+      if (res.application) {
+        this.applications.unshift(res.application);
+        await crmService.pushLoanEnquiry(res.application);
+        return res.application;
+      }
+    } catch (err: any) {
+      console.warn('Backend loan enquiry fallback to local:', err.message);
+    }
+
     const prefixMap: Record<LoanType, string> = {
       home: 'HL',
       car: 'CL',
@@ -72,7 +93,6 @@ class LoanService {
     const seq = String(Math.floor(10 + Math.random() * 900)).padStart(4, '0');
     const generatedId = `${prefix}-${yyyy}${mm}${dd}-${seq}`;
 
-    // Extract selected bank name from params or from purpose string if provided
     let detectedBank = params.bankName;
     if (!detectedBank && params.purpose) {
       const match = params.purpose.match(/Bank:\s*([^|]+)/i);
@@ -81,7 +101,6 @@ class LoanService {
       }
     }
     if (!detectedBank) {
-      // Default bank based on loan category
       const defaultBanks: Record<LoanType, string> = {
         home: 'HDFC Bank',
         personal: 'ICICI Bank',
@@ -121,48 +140,6 @@ class LoanService {
 
     this.applications.unshift(newApp);
     await crmService.pushLoanEnquiry(newApp);
-
-    // Sync any newly provided profile details from the loan application back to the users table
-    await dbSyncService.syncUserProfileFromApplication({
-      mobile: params.mobile,
-      applicantName: params.applicantName,
-      city: params.city,
-      employmentType: params.employmentType,
-      monthlyIncome: params.monthlyIncome,
-      panNumber: params.panNumber,
-      aadhaarNumber: params.aadhaarNumber,
-    });
-
-    if (isDatabaseConfigured) {
-      try {
-        const sql = getDbClient();
-        await sql.query(
-          `INSERT INTO loan_applications (id, applicant_name, mobile, loan_type, requested_amount, tenure_months, status, data)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-           ON CONFLICT (id) DO UPDATE SET
-             applicant_name = EXCLUDED.applicant_name,
-             mobile = EXCLUDED.mobile,
-             loan_type = EXCLUDED.loan_type,
-             requested_amount = EXCLUDED.requested_amount,
-             tenure_months = EXCLUDED.tenure_months,
-             status = EXCLUDED.status,
-             data = EXCLUDED.data;`,
-          [
-            newApp.id,
-            newApp.applicantName,
-            newApp.applicantMobile,
-            newApp.loanType,
-            newApp.requestedAmount,
-            newApp.tenureMonths,
-            newApp.status,
-            JSON.stringify(newApp),
-          ]
-        );
-      } catch (dbErr) {
-        console.warn('Neon Postgres save notice:', dbErr);
-      }
-    }
-
     return newApp;
   }
 
@@ -212,7 +189,6 @@ class LoanService {
     });
 
     if (index === -1) {
-      // If not yet in memory, create a stub that will be merged
       const stubApp: LoanApplication = {
         id: appId,
         loanType: 'personal',

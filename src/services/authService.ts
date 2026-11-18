@@ -4,7 +4,7 @@ import { validateMobileNumber, generateRandomCustomerCode, generateRandomCustome
 import { crmService } from './crmService';
 import { whatsAppService } from './whatsAppService';
 import { referralService } from './referralService';
-import { dbSyncService } from './dbSyncService';
+import { apiRequest, setAuthToken } from './apiClient';
 
 export interface AuthState {
   isAuthenticated: boolean;
@@ -50,7 +50,7 @@ class AuthService {
     const generatedCustCode = generateRandomCustomerCode();
     const generatedCustId = generateRandomCustomerId();
 
-    const newUser: UserProfile = {
+    let newUser: UserProfile = {
       ...INITIAL_USER,
       id: generatedCustId,
       name: params.name.trim(),
@@ -64,17 +64,30 @@ class AuthService {
       referredBy: refCode,
     };
 
+    try {
+      const res = await apiRequest('/auth/register', {
+        method: 'POST',
+        body: {
+          name: newUser.name,
+          mobile: cleanMobile,
+          email: newUser.email,
+          city: newUser.city,
+          employmentType: newUser.employmentType,
+          monthlyIncome: newUser.monthlyIncome,
+          referralCode: refCode,
+        },
+      });
+      if (res.user) {
+        newUser = res.user;
+      }
+    } catch (err: any) {
+      console.warn('Backend register call notice:', err.message);
+    }
+
     if (refCode) {
       referralService.registerNewReferral(newUser.name, refCode);
     }
 
-    // Persist registered user directly to Neon Postgres DB so subsequent logins retrieve all entered data
-    await dbSyncService.updateUserProfile({
-      ...newUser,
-      referralCode: generatedCustCode,
-    });
-
-    // Registration saves the customer record without auto-logging in
     this.state.isAuthenticated = false;
     this.state.user = null;
 
@@ -92,16 +105,27 @@ class AuthService {
     }
 
     const cleanMobile = mobile.replace(/\D/g, '').slice(-10);
-    // If admin number (9545555999), demo OTP is 9876, else 123456
-    const demoOtp = cleanMobile === '9545555999' ? '9876' : '123456';
-    const expiresAt = Date.now() + 120000;
+    let demoOtp = '123456';
 
+    try {
+      const res = await apiRequest('/auth/request-otp', {
+        method: 'POST',
+        body: { mobile: cleanMobile },
+      });
+      if (res.demoOtp) {
+        demoOtp = res.demoOtp;
+      }
+    } catch (err: any) {
+      console.warn('Backend OTP request notice:', err.message);
+      throw err;
+    }
+
+    const expiresAt = Date.now() + 120000;
     this.state.pendingMobile = cleanMobile;
     this.state.pendingOtpCode = demoOtp;
     this.state.pendingReferralCode = referralCode ? referralCode.trim().toUpperCase() : undefined;
     this.state.otpExpiresAt = expiresAt;
 
-    // Dispatch OTP via WhatsApp service
     await whatsAppService.sendOtpViaWhatsApp(cleanMobile, demoOtp);
 
     return {
@@ -112,75 +136,54 @@ class AuthService {
   }
 
   public async verifyOtp(code: string, referralCodeOverride?: string): Promise<{ success: boolean; isExistingUser: boolean; user: UserProfile }> {
-    await new Promise((r) => setTimeout(r, 400));
-
     const enteredCode = (code || '').trim();
-    const cleanMobile = (this.state.pendingMobile || '9545555999').replace(/\D/g, '').slice(-10);
-    const expectedOtp = cleanMobile === '9545555999' ? '9876' : '123456';
-
-    if (enteredCode !== expectedOtp && enteredCode !== this.state.pendingOtpCode) {
-      throw new Error(`Invalid WhatsApp OTP. Please enter code ${expectedOtp}`);
+    if (!enteredCode) {
+      throw new Error('Please enter the OTP code');
     }
 
-    // 1. ADMIN USER LOGIN (9545555999 + 9876)
-    if (cleanMobile === '9545555999') {
-      const adminUser: UserProfile = {
-        id: 'LP-ADMIN-001',
-        name: 'Arvind Patil (Admin)',
-        mobile: '9545555999',
-        email: 'arvind@loanpoint.in',
-        city: 'Nanded',
-        pincode: '431605',
-        employmentType: 'Business Owner',
-        monthlyIncome: 150000,
-        aadhaarLinked: true,
-        memberSince: 'January 2010',
-        referralCode: 'ADMIN5999',
-        role: 'admin',
-      };
-
-      this.state.isAuthenticated = true;
-      this.state.user = adminUser;
-      this.state.pendingMobile = undefined;
-      this.state.pendingOtpCode = undefined;
-
-      return {
-        success: true,
-        isExistingUser: true,
-        user: adminUser,
-      };
-    }
-
-    // 2. REGULAR USER LOGIN -> Check/Create in Neon Postgres Database
-    const { user: dbUser, isFirstTime } = await dbSyncService.getOrCreateUserByMobile(cleanMobile, 'Valued Customer');
-
+    const cleanMobile = (this.state.pendingMobile || '').replace(/\D/g, '').slice(-10);
     const refCode = referralCodeOverride?.trim().toUpperCase() || this.state.pendingReferralCode;
-    if (refCode) {
-      dbUser.referredBy = refCode;
-      referralService.registerNewReferral(dbUser.name, refCode);
+
+    // All authentication is verified by the backend API
+    const res = await apiRequest('/auth/verify-otp', {
+      method: 'POST',
+      body: {
+        mobile: cleanMobile,
+        otp: enteredCode,
+        referralCode: refCode,
+      },
+    });
+
+    if (res.token) {
+      setAuthToken(res.token);
     }
+
+    const verifiedUser: UserProfile = res.user;
 
     this.state.isAuthenticated = true;
-    this.state.user = dbUser;
+    this.state.user = verifiedUser;
     this.state.pendingMobile = undefined;
     this.state.pendingOtpCode = undefined;
     this.state.pendingReferralCode = undefined;
 
-    await crmService.syncCustomerLead(dbUser);
+    if (refCode) {
+      referralService.registerNewReferral(verifiedUser.name, refCode);
+    }
+    await crmService.syncCustomerLead(verifiedUser);
 
     return {
       success: true,
-      isExistingUser: !isFirstTime,
-      user: dbUser,
+      isExistingUser: !res.isNewUser,
+      user: verifiedUser,
     };
   }
 
   public loginDemoUser(): UserProfile {
     const defaultUser: UserProfile = {
-      id: `LP-CUST-${Math.floor(1000 + Math.random() * 9000)}`,
+      id: `LP-DEMO-${Math.floor(1000 + Math.random() * 9000)}`,
       name: 'Guest User',
-      mobile: '9545555999',
-      email: 'user@loanpoint.in',
+      mobile: '9876543210',
+      email: 'guest@loanpoint.in',
       city: 'Nanded',
       pincode: '431605',
       employmentType: 'Salaried',
@@ -190,7 +193,7 @@ class AuthService {
       aadhaarLinked: false,
       cibilEstimateScore: 0,
       memberSince: new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
-      referralCode: 'USER5999',
+      referralCode: 'DEMO5999',
       role: 'customer',
     };
     this.state = {
@@ -200,39 +203,37 @@ class AuthService {
     return defaultUser;
   }
 
-  public loginAdmin(pin: string): { success: boolean; user: UserProfile } {
-    // Admin Master Access PIN: "9545" or "9999" (derived from official Loan Point contact: 95455 55999)
-    if (pin === '9545' || pin === '9999' || pin === '1234' || pin === '123456') {
-      const adminUser: UserProfile = {
-        id: 'LP-ADMIN-001',
-        name: 'Arvind Patil (Branch Head / Admin)',
-        mobile: '9545555999',
-        email: 'admin@loanpoint.in',
-        city: 'Nanded',
-        pincode: '431605',
-        employmentType: 'Business Owner',
-        monthlyIncome: 150000,
-        aadhaarLinked: true,
-        memberSince: 'January 2010',
-        referralCode: 'ADMIN5999',
-        role: 'admin',
-      };
-
-      this.state = {
-        isAuthenticated: true,
-        user: adminUser,
-      };
-
-      return {
-        success: true,
-        user: adminUser,
-      };
-    } else {
-      throw new Error('Incorrect Admin PIN. Please check your credentials or enter 9545.');
+  /**
+   * Admin Login - Always verified by backend; never permits offline access
+   */
+  public async loginAdmin(pin: string): Promise<{ success: boolean; user: UserProfile }> {
+    if (!pin || !pin.trim()) {
+      throw new Error('Admin PIN is required');
     }
+
+    // Must authenticate exclusively through backend
+    const res = await apiRequest('/auth/admin-login', {
+      method: 'POST',
+      body: { pin: pin.trim() },
+    });
+
+    if (res.token) {
+      setAuthToken(res.token);
+    }
+
+    this.state = {
+      isAuthenticated: true,
+      user: res.user,
+    };
+
+    return {
+      success: true,
+      user: res.user,
+    };
   }
 
   public logout(): void {
+    setAuthToken(null);
     this.state = {
       isAuthenticated: false,
       user: null,
@@ -241,10 +242,22 @@ class AuthService {
 
   public updateProfile(updated: Partial<UserProfile>): UserProfile {
     if (!this.state.user) throw new Error('No user logged in');
-    this.state.user = { ...this.state.user, ...updated };
-    crmService.syncCustomerLead(this.state.user);
-    dbSyncService.updateUserProfile(this.state.user);
-    return this.state.user;
+    const updatedUser = { ...this.state.user, ...updated };
+    this.state.user = updatedUser;
+
+    apiRequest('/user/profile', {
+      method: 'PUT',
+      body: updatedUser,
+    }).then((res) => {
+      if (res && res.user) {
+        this.state.user = res.user;
+      }
+    }).catch((err) => {
+      console.warn('API updateProfile sync error:', err.message);
+    });
+
+    crmService.syncCustomerLead(updatedUser);
+    return updatedUser;
   }
 }
 

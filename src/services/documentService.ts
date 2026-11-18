@@ -43,7 +43,7 @@ class DocumentService {
     const keyPrefix = docKey || category.replace(/\s+/g, '_');
     const sanitizedFileName = `${keyPrefix}_${Date.now()}.${file.name.split('.').pop() || 'pdf'}`;
 
-    // 1. Upload to ImageKit CDN Storage if URI / Base64 is available
+    // 1. Upload to ImageKit CDN Storage securely using backend authentication
     if (file.uri) {
       try {
         if (onProgress) onProgress(50);
@@ -57,7 +57,6 @@ class DocumentService {
         }
       } catch (uploadErr) {
         console.warn('ImageKit upload fallback:', uploadErr);
-        // If ImageKit network fails, keep local URI as fallback
       }
     }
 
@@ -78,14 +77,13 @@ class DocumentService {
       mimeType: file.type,
     };
 
-    // Remove old version if docKey matches
     if (docKey) {
       this.documents = this.documents.filter((d) => d.docKey !== docKey);
     }
 
     this.documents.unshift(newDoc);
 
-    // 2. Persist to Neon Postgres DB with the ImageKit URL stored in users.documents
+    // 2. Persist to Neon Postgres DB via Backend API
     if (userMobile) {
       await dbSyncService.saveUserDocument(userMobile, newDoc);
     }
@@ -100,6 +98,14 @@ class DocumentService {
     if (userMobile) {
       await dbSyncService.deleteUserDocument(userMobile, id);
     }
+  }
+
+  public getDocumentCount(): number {
+    return this.documents.length;
+  }
+
+  public getDocumentByKey(docKey: string): DocumentItem | undefined {
+    return this.documents.find((d) => d.docKey === docKey);
   }
 }
 
