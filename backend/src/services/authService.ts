@@ -49,7 +49,7 @@ export class AuthService {
     return {
       success: true,
       message: `OTP sent successfully to +91 ${cleaned}`,
-      demoOtp, // Surfaced only during development
+      demoOtp,
     };
   }
 
@@ -136,7 +136,7 @@ export class AuthService {
     const newRefCode = generateCustomerCode();
     const inserted = (await sql`
       INSERT INTO users (full_name, mobile, email, referral_code, referred_by, is_kyc_completed)
-      VALUES ('Valued Customer', ${cleaned}, '', ${newRefCode}, ${referralCode || null}, FALSE)
+      VALUES ('Valued Customer', ${cleaned}, null, ${newRefCode}, ${referralCode || null}, FALSE)
       RETURNING id, full_name, mobile, email, referral_code, referred_by, created_at;
     `) as any[];
 
@@ -189,15 +189,19 @@ export class AuthService {
     `) as any[];
 
     const newRefCode = generateCustomerCode();
+    const cleanEmail = params.email?.trim() || null;
+    const cleanCity = params.city?.trim() || null;
+    const cleanEmp = params.employmentType || 'Salaried';
+    const cleanIncome = Number(params.monthlyIncome) || 0;
 
     if (existing && existing.length > 0) {
       await sql`
         UPDATE users
         SET full_name = ${params.name.trim()},
-            email = ${params.email?.trim() || null},
-            city = ${params.city?.trim() || null},
-            employment_type = ${params.employmentType || 'Salaried'},
-            monthly_income = ${params.monthlyIncome || 0},
+            email = ${cleanEmail},
+            city = ${cleanCity},
+            employment_type = ${cleanEmp},
+            monthly_income = ${cleanIncome},
             updated_at = NOW()
         WHERE mobile = ${cleaned};
       `;
@@ -207,10 +211,10 @@ export class AuthService {
         VALUES (
           ${params.name.trim()},
           ${cleaned},
-          ${params.email?.trim() || null},
-          ${params.city?.trim() || null},
-          ${params.employmentType || 'Salaried'},
-          ${params.monthlyIncome || 0},
+          ${cleanEmail},
+          ${cleanCity},
+          ${cleanEmp},
+          ${cleanIncome},
           ${newRefCode},
           ${params.referralCode ? params.referralCode.trim().toUpperCase() : null}
         );
@@ -253,7 +257,6 @@ export class AuthService {
 
     let isPinValid = false;
 
-    // Check with constant-time equality against configured PIN or hashed password
     if (config.adminPasswordHash) {
       const computedHash = crypto.createHash('sha256').update(pin).digest('hex');
       isPinValid = crypto.timingSafeEqual(Buffer.from(computedHash), Buffer.from(config.adminPasswordHash));

@@ -26,7 +26,7 @@ export class DbSyncService {
         id: fallbackCode,
         name: defaultName,
         mobile: cleanMobile,
-        email: `${cleanMobile}@loanpoint.in`,
+        email: '',
         city: '',
         pincode: '',
         employmentType: 'Salaried',

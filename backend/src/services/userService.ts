@@ -33,15 +33,15 @@ export class UserService {
 
     const lastFour = updates.aadhaarNumber ? updates.aadhaarNumber.replace(/\D/g, '').slice(-4) : (updates.aadhaar_last_four || null);
     const docsJson = updates.documents ? JSON.stringify(updates.documents) : null;
-    const isComplete = Boolean(updates.city && updates.panNumber && updates.monthlyIncome > 0);
+    const isComplete = Boolean(updates.city && updates.panNumber && (Number(updates.monthlyIncome) > 0));
 
     await sql`
       UPDATE users
-      SET full_name = CASE WHEN ${updates.name || ''} <> '' THEN ${updates.name} ELSE full_name END,
+      SET full_name = CASE WHEN ${updates.name || updates.fullName || ''} <> '' THEN ${updates.name || updates.fullName} ELSE full_name END,
           email = CASE WHEN ${updates.email || ''} <> '' THEN ${updates.email} ELSE email END,
           city = CASE WHEN ${updates.city || ''} <> '' THEN ${updates.city} ELSE city END,
           employment_type = CASE WHEN ${updates.employmentType || ''} <> '' THEN ${updates.employmentType} ELSE employment_type END,
-          monthly_income = CASE WHEN ${updates.monthlyIncome || 0} > 0 THEN ${updates.monthlyIncome} ELSE monthly_income END,
+          monthly_income = CASE WHEN ${updates.monthlyIncome !== undefined && updates.monthlyIncome !== null} THEN ${Number(updates.monthlyIncome) || 0} ELSE monthly_income END,
           pan_number = CASE WHEN ${updates.panNumber || ''} <> '' THEN ${updates.panNumber} ELSE pan_number END,
           aadhaar_last_four = CASE WHEN ${lastFour || ''} <> '' THEN ${lastFour} ELSE aadhaar_last_four END,
           documents = CASE WHEN ${docsJson || ''} <> '' THEN ${docsJson}::jsonb ELSE documents END,
