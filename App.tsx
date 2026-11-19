@@ -138,7 +138,7 @@ function MainApp() {
   const handleOpenWhatsApp = (customPhone?: string, customText?: string) => {
     const phone = customPhone ? customPhone.replace(/[^0-9]/g, '') : `91${COMPANY_INFO.contactPhoneRaw}`;
     const text = encodeURIComponent(
-      customText || `Hello Loan Point Nanded, I am inquiring about loans through your mobile app.`
+      customText || `Hello Loan Point, I am inquiring about loans through your mobile app.`
     );
     Linking.openURL(`whatsapp://send?phone=${phone}&text=${text}`).catch(() => {
       Linking.openURL(`https://api.whatsapp.com/send?phone=${phone}&text=${text}`);
@@ -308,7 +308,7 @@ function MainApp() {
             setIsAuthenticated(true);
           }}
         />
-      ) : user?.role === 'admin' && activeSubScreen === 'admin' ? (
+      ) : activeSubScreen === 'admin' ? (
         <AdminScreen
           currentUser={user}
           onLogout={handleLogout}
@@ -329,6 +329,9 @@ function MainApp() {
               onOpenNotifications={() => setIsNotificationOpen(true)}
               onOpenProfile={() => {
                 setActiveSubScreen('profile_settings');
+              }}
+              onOpenAdmin={() => {
+                setActiveSubScreen('admin');
               }}
               userName={user?.name && user.name !== 'Valued Customer' ? user.name : (user?.mobile ? `User ${user.mobile.slice(-4)}` : 'Customer')}
               userAvatar={user?.avatar}

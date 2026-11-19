@@ -113,7 +113,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
             : 'Verify WhatsApp OTP'}
         </Text>
         <Text style={styles.brandTagline}>
-          Fast, easy & transparent loans in Nanded & Marathwada
+          Fast, easy & transparent loans across India
         </Text>
       </View>
 

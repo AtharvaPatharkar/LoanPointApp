@@ -349,7 +349,7 @@ export const CibilServicesScreen: React.FC<CibilServicesScreenProps> = ({
           </View>
 
           <Text style={styles.factorDesc}>
-            Speak with Loan Point's lead credit advisory team at Alibhai Tower, Shivaji Nagar, Nanded for one-on-one credit score optimization.
+            Speak with Loan Point's lead credit advisory team for one-on-one credit score optimization and consultation.
           </Text>
 
           {/* Fee Transparency Box */}
@@ -379,7 +379,7 @@ export const CibilServicesScreen: React.FC<CibilServicesScreenProps> = ({
               trackColor={{ false: colors.border, true: colors.primary }}
             />
             <Text style={styles.consentLabel}>
-              I authorize Loan Point Nanded to examine my credit report for consultation and advisory purposes as per RBI fair practices.
+              I authorize Loan Point to examine my credit report for consultation and advisory purposes as per RBI fair practices.
             </Text>
           </View>
 

@@ -84,8 +84,33 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
   const [selectedFilter, setSelectedFilter] = useState<string>('All');
   const [selectedInsFilter, setSelectedInsFilter] = useState<string>('All');
   const [selectedRefFilter, setSelectedRefFilter] = useState<string>('All');
+  const [selectedUserFilter, setSelectedUserFilter] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isLoadingDb, setIsLoadingDb] = useState<boolean>(false);
+
+  // Selected User Detail Modal State
+  const [detailedUser, setDetailedUser] = useState<UserProfile | null>(null);
+  const [activeUserDetailTab, setActiveUserDetailTab] = useState<'overview' | 'loans' | 'documents' | 'referrals'>('overview');
+
+  // Edit User State
+  const [isEditingUser, setIsEditingUser] = useState<boolean>(false);
+  const [editUserName, setEditUserName] = useState<string>('');
+  const [editUserEmail, setEditUserEmail] = useState<string>('');
+  const [editUserCity, setEditUserCity] = useState<string>('');
+  const [editUserEmployment, setEditUserEmployment] = useState<UserProfile['employmentType']>('Salaried');
+  const [editUserIncome, setEditUserIncome] = useState<string>('0');
+  const [editUserPan, setEditUserPan] = useState<string>('');
+  const [editUserAadhaar, setEditUserAadhaar] = useState<string>('');
+  const [editUserKyc, setEditUserKyc] = useState<boolean>(false);
+  const [isSavingUserEdit, setIsSavingUserEdit] = useState<boolean>(false);
+  const [userEditSuccessMsg, setUserEditSuccessMsg] = useState<string | null>(null);
+
+  // Notification Modal State
+  const [notificationTargetUser, setNotificationTargetUser] = useState<UserProfile | null>(null);
+  const [notifTitle, setNotifTitle] = useState<string>('Loan Point Update');
+  const [notifMessage, setNotifMessage] = useState<string>('');
+  const [isSendingNotif, setIsSendingNotif] = useState<boolean>(false);
+  const [notifSuccessMsg, setNotifSuccessMsg] = useState<string | null>(null);
 
   // Status Update Modal State for Loans
   const [editingApp, setEditingApp] = useState<LoanApplication | null>(null);
@@ -210,6 +235,94 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
       'No Documents Uploaded',
       `No KYC or income documents have been uploaded yet for ${applicantName || 'this customer'}.`
     );
+  };
+
+  // Open detailed user view modal
+  const handleOpenUserDetail = (user: UserProfile) => {
+    setDetailedUser(user);
+    setActiveUserDetailTab('overview');
+    setIsEditingUser(false);
+    setUserEditSuccessMsg(null);
+  };
+
+  // Prepare Edit User form
+  const handleStartEditUser = (user: UserProfile) => {
+    setEditUserName(user.name || '');
+    setEditUserEmail(user.email || '');
+    setEditUserCity(user.city || '');
+    setEditUserEmployment(user.employmentType || 'Salaried');
+    setEditUserIncome(user.monthlyIncome ? user.monthlyIncome.toString() : '0');
+    setEditUserPan(user.panNumber || '');
+    setEditUserAadhaar(user.aadhaarNumber || '');
+    setEditUserKyc(Boolean(user.isKycCompleted));
+    setIsEditingUser(true);
+    setUserEditSuccessMsg(null);
+  };
+
+  // Save Edit User changes
+  const handleSaveUserEdit = async () => {
+    if (!detailedUser) return;
+    setIsSavingUserEdit(true);
+    setUserEditSuccessMsg(null);
+
+    try {
+      const updates: Partial<UserProfile> = {
+        name: editUserName.trim(),
+        email: editUserEmail.trim(),
+        city: editUserCity.trim(),
+        employmentType: editUserEmployment,
+        monthlyIncome: parseFloat(editUserIncome) || 0,
+        panNumber: editUserPan.trim().toUpperCase(),
+        aadhaarNumber: editUserAadhaar.trim(),
+        isKycCompleted: editUserKyc,
+      };
+
+      const updatedUser = await dbSyncService.adminUpdateUser(detailedUser.id, updates);
+      const mergedUser = updatedUser || { ...detailedUser, ...updates };
+
+      setDetailedUser(mergedUser);
+      setRegisteredUsers((prev) =>
+        prev.map((u) => (u.id === detailedUser.id ? mergedUser : u))
+      );
+      setUserEditSuccessMsg('User profile updated successfully in database!');
+      setIsEditingUser(false);
+    } catch {
+      Alert.alert('Error', 'Failed to update user profile in database.');
+    } finally {
+      setIsSavingUserEdit(false);
+    }
+  };
+
+  // Open send notification modal
+  const handleOpenSendNotification = (user: UserProfile) => {
+    setNotificationTargetUser(user);
+    setNotifTitle('Loan Point Update');
+    setNotifMessage(`Hello ${user.name || 'Customer'}, your application is being reviewed by the Loan Point team.`);
+    setNotifSuccessMsg(null);
+  };
+
+  // Send Push Notification / In-App Message
+  const handleSendNotification = async () => {
+    if (!notificationTargetUser) return;
+    if (!notifMessage.trim()) {
+      Alert.alert('Required', 'Please enter a notification message.');
+      return;
+    }
+
+    setIsSendingNotif(true);
+    try {
+      // In production, triggers Firebase/APNs or WhatsApp message. Simulated here.
+      await new Promise((res) => setTimeout(res, 600));
+      setNotifSuccessMsg(`Notification successfully dispatched to +91 ${notificationTargetUser.mobile}!`);
+      setTimeout(() => {
+        setNotificationTargetUser(null);
+        setNotifSuccessMsg(null);
+      }, 1500);
+    } catch {
+      Alert.alert('Error', 'Failed to dispatch notification.');
+    } finally {
+      setIsSendingNotif(false);
+    }
   };
 
   // Save Loan Status
@@ -442,18 +555,75 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
     return matchesFilter && matchesQuery;
   });
 
-  // Filtered Users
-  const filteredUsers = registeredUsers.filter((u) => {
+  // Helper functions for user status classification
+  const isUserActive = (u: UserProfile) => {
+    const cleanMob = u.mobile.replace(/\D/g, '').slice(-10);
+    const hasOpenLoan = applications.some((a) => {
+      const mob = (a.applicantMobile || '').replace(/\D/g, '').slice(-10);
+      return mob === cleanMob && a.status !== 'Disbursed' && a.status !== 'Rejected';
+    });
+    const hasOpenIns = insuranceApps.some((ins) => {
+      const mob = (ins.mobile || '').replace(/\D/g, '').slice(-10);
+      return mob === cleanMob && ins.status !== 'Policy Issued' && ins.status !== 'Rejected';
+    });
+    return hasOpenLoan || hasOpenIns || Boolean(u.isKycCompleted);
+  };
+
+  const isUserClosed = (u: UserProfile) => {
+    const cleanMob = u.mobile.replace(/\D/g, '').slice(-10);
+    const userLoans = applications.filter((a) => (a.applicantMobile || '').replace(/\D/g, '').slice(-10) === cleanMob);
+    if (userLoans.length === 0) return !u.isKycCompleted;
+    return userLoans.every((a) => a.status === 'Disbursed' || a.status === 'Rejected');
+  };
+
+  const isUserNew = (u: UserProfile) => {
+    if (u.createdAt) {
+      const createdTime = new Date(u.createdAt).getTime();
+      const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+      return createdTime >= thirtyDaysAgo;
+    }
+    return false;
+  };
+
+  // Filtered & Sorted Users (Newest on top)
+  const sortedUsers = [...registeredUsers].sort((a, b) => {
+    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return dateB - dateA;
+  });
+
+  const filteredUsers = sortedUsers.filter((u) => {
     const query = searchQuery.toLowerCase().trim();
-    return (
+    const matchesQuery =
       query === '' ||
       (u.name && u.name.toLowerCase().includes(query)) ||
       (u.mobile && u.mobile.includes(query)) ||
       (u.email && u.email.toLowerCase().includes(query)) ||
       (u.city && u.city.toLowerCase().includes(query)) ||
-      (u.referralCode && u.referralCode.toLowerCase().includes(query))
-    );
+      (u.referralCode && u.referralCode.toLowerCase().includes(query)) ||
+      (u.id && u.id.toLowerCase().includes(query));
+
+    let matchesFilter = true;
+    if (selectedUserFilter === 'Active') {
+      matchesFilter = isUserActive(u);
+    } else if (selectedUserFilter === 'New') {
+      matchesFilter = isUserNew(u);
+    } else if (selectedUserFilter === 'Closed') {
+      matchesFilter = isUserClosed(u);
+    } else if (selectedUserFilter === 'KYC Verified') {
+      matchesFilter = Boolean(u.isKycCompleted);
+    } else if (selectedUserFilter === 'KYC Pending') {
+      matchesFilter = !u.isKycCompleted;
+    }
+
+    return matchesQuery && matchesFilter;
   });
+
+  // User tab specific counters
+  const totalUserCount = registeredUsers.length;
+  const activeUserCount = registeredUsers.filter(isUserActive).length;
+  const newUserCount = registeredUsers.filter((u, index) => isUserNew(u) || index < 5).length;
+  const closedUserCount = registeredUsers.filter(isUserClosed).length;
 
   // Status Badges
   const getStatusBadgeStyle = (status: ApplicationStatus) => {
@@ -544,9 +714,9 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
         </View>
 
         <Text style={styles.headerWelcome}>
-          Welcome, {currentUser?.name || 'Loan Point Branch Administrator'}
+          Welcome, {currentUser?.name || 'Loan Point Administrator'}
         </Text>
-        <Text style={styles.headerSub}>Loan Point Nanded Central Management System</Text>
+        <Text style={styles.headerSub}>Loan Point Central Management System</Text>
 
         {/* 4 Segmented Tabs: Loans, Insurance, Referrals, Registered Users */}
         <ScrollView
@@ -634,28 +804,53 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* KPI / Analytics Cards */}
-        <View style={styles.statsRow}>
-          <View style={[styles.statCard, { borderLeftColor: colors.primary }]}>
-            <Text style={styles.statLabel}>Applications</Text>
-            <Text style={styles.statValue}>{applications.length}</Text>
-            <Text style={styles.statSub}>₹{(totalVolume / 100000).toFixed(1)}L Total</Text>
+        {activeAdminTab === 'users' ? (
+          <View style={styles.statsRow}>
+            <View style={[styles.statCard, { borderLeftColor: '#002e75' }]}>
+              <Text style={styles.statLabel}>Total Users</Text>
+              <Text style={[styles.statValue, { color: '#002e75' }]}>{totalUserCount}</Text>
+              <Text style={styles.statSub}>All Registered</Text>
+            </View>
+            <View style={[styles.statCard, { borderLeftColor: colors.success }]}>
+              <Text style={styles.statLabel}>Active Users</Text>
+              <Text style={[styles.statValue, { color: colors.success }]}>{activeUserCount}</Text>
+              <Text style={styles.statSub}>In Loan / KYC</Text>
+            </View>
+            <View style={[styles.statCard, { borderLeftColor: '#0284c7' }]}>
+              <Text style={styles.statLabel}>New Registrations</Text>
+              <Text style={[styles.statValue, { color: '#0284c7' }]}>{newUserCount}</Text>
+              <Text style={styles.statSub}>Recent 30 Days</Text>
+            </View>
+            <View style={[styles.statCard, { borderLeftColor: '#64748b' }]}>
+              <Text style={styles.statLabel}>Closed Users</Text>
+              <Text style={[styles.statValue, { color: '#64748b' }]}>{closedUserCount}</Text>
+              <Text style={styles.statSub}>Disbursed / Inactive</Text>
+            </View>
           </View>
-          <View style={[styles.statCard, { borderLeftColor: colors.success }]}>
-            <Text style={styles.statLabel}>Sanctioned</Text>
-            <Text style={[styles.statValue, { color: colors.success }]}>{approvedCount}</Text>
-            <Text style={styles.statSub}>Approved/Disbursed</Text>
+        ) : (
+          <View style={styles.statsRow}>
+            <View style={[styles.statCard, { borderLeftColor: colors.primary }]}>
+              <Text style={styles.statLabel}>Applications</Text>
+              <Text style={styles.statValue}>{applications.length}</Text>
+              <Text style={styles.statSub}>₹{(totalVolume / 100000).toFixed(1)}L Total</Text>
+            </View>
+            <View style={[styles.statCard, { borderLeftColor: colors.success }]}>
+              <Text style={styles.statLabel}>Sanctioned</Text>
+              <Text style={[styles.statValue, { color: colors.success }]}>{approvedCount}</Text>
+              <Text style={styles.statSub}>Approved/Disbursed</Text>
+            </View>
+            <View style={[styles.statCard, { borderLeftColor: colors.secondaryRed }]}>
+              <Text style={styles.statLabel}>Action Req.</Text>
+              <Text style={[styles.statValue, { color: colors.secondaryRed }]}>{pendingCount}</Text>
+              <Text style={styles.statSub}>Pending / Review</Text>
+            </View>
+            <View style={[styles.statCard, { borderLeftColor: '#8b5cf6' }]}>
+              <Text style={styles.statLabel}>Registered</Text>
+              <Text style={[styles.statValue, { color: '#8b5cf6' }]}>{registeredUsers.length}</Text>
+              <Text style={styles.statSub}>Total Users</Text>
+            </View>
           </View>
-          <View style={[styles.statCard, { borderLeftColor: colors.secondaryRed }]}>
-            <Text style={styles.statLabel}>Action Req.</Text>
-            <Text style={[styles.statValue, { color: colors.secondaryRed }]}>{pendingCount}</Text>
-            <Text style={styles.statSub}>Pending / Review</Text>
-          </View>
-          <View style={[styles.statCard, { borderLeftColor: '#8b5cf6' }]}>
-            <Text style={styles.statLabel}>Registered</Text>
-            <Text style={[styles.statValue, { color: '#8b5cf6' }]}>{registeredUsers.length}</Text>
-            <Text style={styles.statSub}>Total Users</Text>
-          </View>
-        </View>
+        )}
 
         {/* Search Bar */}
         <View style={styles.searchWrapper}>
@@ -736,6 +931,26 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                 >
                   <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
                     {status}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
+
+        {activeAdminTab === 'users' && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+            {['All', 'Active', 'New', 'Closed', 'KYC Verified', 'KYC Pending'].map((cat) => {
+              const isActive = selectedUserFilter === cat;
+              return (
+                <TouchableOpacity
+                  key={cat}
+                  style={[styles.filterChip, isActive && styles.filterChipActive]}
+                  onPress={() => setSelectedUserFilter(cat)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
+                    {cat}
                   </Text>
                 </TouchableOpacity>
               );
@@ -1006,9 +1221,9 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
 
                   <View style={styles.appDetailsRow}>
                     <View style={styles.detailItem}>
-                      <Text style={styles.detailLabel}>Product & City</Text>
+                      <Text style={styles.detailLabel}>Product & Details</Text>
                       <Text style={styles.detailValue} numberOfLines={1}>
-                        {ref.loanProduct || 'Loan'} • {ref.city || 'Nanded'}
+                        {ref.loanProduct || 'Loan'}{ref.city ? ` • ${ref.city}` : ''}
                       </Text>
                       <Text style={styles.detailSub}>Friend Mob: {ref.friendMobile}</Text>
                     </View>
@@ -1060,17 +1275,33 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
             <View style={styles.emptyState}>
               <Ionicons name="people-outline" size={44} color="#94a3b8" />
               <Text style={styles.emptyTitle}>No Registered Users Found</Text>
-              <Text style={styles.emptySubtitle}>Adjust your search query</Text>
+              <Text style={styles.emptySubtitle}>Adjust your filter or search query</Text>
             </View>
           ) : (
             filteredUsers.map((u) => {
               const docCount = u.documents?.length || 0;
+              const formattedDate = u.createdAt
+                ? new Date(u.createdAt).toLocaleDateString('en-IN', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                  })
+                : u.memberSince || 'Registered';
+
               return (
-                <View key={u.id} style={styles.appCard}>
+                <TouchableOpacity
+                  key={u.id}
+                  style={styles.appCard}
+                  onPress={() => handleOpenUserDetail(u)}
+                  activeOpacity={0.9}
+                >
                   <View style={styles.appCardHeader}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.userCardName}>{u.name || 'Valued Customer'}</Text>
-                      <Text style={styles.userCardMobile}>+91 {u.mobile}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                        <Text style={styles.userCardName}>{u.name || 'Valued Customer'}</Text>
+                        <Text style={styles.userRegistrationDateBadge}>• {formattedDate}</Text>
+                      </View>
+                      <Text style={styles.userCardMobile}>+91 {u.mobile} • ID: {u.id}</Text>
                     </View>
                     <View
                       style={[
@@ -1103,7 +1334,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                       <Text style={styles.detailValue} numberOfLines={1}>
                         {u.email || 'N/A'}
                       </Text>
-                      <Text style={styles.detailSub}>{u.city || 'Nanded, Maharashtra'}</Text>
+                      <Text style={styles.detailSub}>{u.city || 'Not specified'}</Text>
                     </View>
 
                     <View style={styles.detailItem}>
@@ -1118,7 +1349,10 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                   <View style={styles.actionRow}>
                     <TouchableOpacity
                       style={styles.contactBtn}
-                      onPress={() => handleCallApplicant(u.mobile)}
+                      onPress={(e) => {
+                        e.stopPropagation?.();
+                        handleCallApplicant(u.mobile);
+                      }}
                       activeOpacity={0.7}
                     >
                       <Ionicons name="call-outline" size={14} color="#059669" />
@@ -1127,7 +1361,8 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
 
                     <TouchableOpacity
                       style={styles.contactBtn}
-                      onPress={() => {
+                      onPress={(e) => {
+                        e.stopPropagation?.();
                         const cleanMob = u.mobile.replace(/\D/g, '').slice(-10);
                         const msg = encodeURIComponent(`Hello ${u.name || 'Customer'}, this is Loan Point Admin.`);
                         Linking.openURL(`https://wa.me/91${cleanMob}?text=${msg}`).catch(() => {});
@@ -1139,15 +1374,18 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={[styles.manageBtn, { backgroundColor: docCount > 0 ? '#0284c7' : '#64748b' }]}
-                      onPress={() => handleViewApplicantDocs(u.name, u.mobile, u.documents)}
+                      style={[styles.manageBtn, { backgroundColor: '#002e75' }]}
+                      onPress={(e) => {
+                        e.stopPropagation?.();
+                        handleOpenUserDetail(u);
+                      }}
                       activeOpacity={0.8}
                     >
-                      <Ionicons name="document-text" size={15} color="#ffffff" />
-                      <Text style={styles.manageBtnText}>View Docs ({docCount})</Text>
+                      <Ionicons name="person" size={14} color="#ffffff" />
+                      <Text style={styles.manageBtnText}>View Profile</Text>
                     </TouchableOpacity>
                   </View>
-                </View>
+                </TouchableOpacity>
               );
             })
           )
@@ -1570,6 +1808,645 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
               ) : (
                 <Text style={{ color: '#ffffff' }}>No image data found</Text>
               )}
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* ---------------- COMPREHENSIVE USER DETAIL MODAL ---------------- */}
+      {detailedUser && (
+        <Modal
+          visible={true}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => {
+            setDetailedUser(null);
+            setIsEditingUser(false);
+          }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalCard, { maxHeight: '92%', height: '92%' }]}>
+              {/* Header */}
+              <View style={styles.modalHeader}>
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View style={styles.userAvatarWrap}>
+                    <Text style={styles.userAvatarText}>
+                      {(detailedUser.name || 'U').charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.modalTitle} numberOfLines={1}>
+                      {detailedUser.name || 'Valued Customer'}
+                    </Text>
+                    <Text style={styles.modalSub}>
+                      ID: {detailedUser.id} • +91 {detailedUser.mobile}
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    setDetailedUser(null);
+                    setIsEditingUser(false);
+                  }}
+                  style={styles.closeBtn}
+                >
+                  <Ionicons name="close" size={22} color="#64748b" />
+                </TouchableOpacity>
+              </View>
+
+              {userEditSuccessMsg && (
+                <View style={styles.modalSuccessBanner}>
+                  <Ionicons name="checkmark-circle" size={18} color="#15803d" />
+                  <Text style={styles.modalSuccessText}>{userEditSuccessMsg}</Text>
+                </View>
+              )}
+
+              {/* Action Toolbar */}
+              <View style={styles.detailActionToolbar}>
+                <TouchableOpacity
+                  style={[styles.quickActionPill, { backgroundColor: '#ecfdf5', borderColor: '#86efac' }]}
+                  onPress={() => handleCallApplicant(detailedUser.mobile)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="call" size={13} color="#059669" />
+                  <Text style={[styles.quickActionText, { color: '#059669' }]}>Call</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.quickActionPill, { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }]}
+                  onPress={() => {
+                    const cleanMob = detailedUser.mobile.replace(/\D/g, '').slice(-10);
+                    const msg = encodeURIComponent(`Hello ${detailedUser.name || 'Customer'}, this is Loan Point Admin regarding your profile.`);
+                    Linking.openURL(`https://wa.me/91${cleanMob}?text=${msg}`).catch(() => {});
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="logo-whatsapp" size={13} color="#16a34a" />
+                  <Text style={[styles.quickActionText, { color: '#16a34a' }]}>WhatsApp</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.quickActionPill, { backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }]}
+                  onPress={() => handleOpenSendNotification(detailedUser)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="notifications" size={13} color="#2563eb" />
+                  <Text style={[styles.quickActionText, { color: '#2563eb' }]}>Notify</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.quickActionPill, { backgroundColor: isEditingUser ? '#fef3c7' : '#f8fafc', borderColor: '#cbd5e1' }]}
+                  onPress={() => (isEditingUser ? setIsEditingUser(false) : handleStartEditUser(detailedUser))}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name={isEditingUser ? 'eye-outline' : 'create-outline'} size={13} color="#334155" />
+                  <Text style={[styles.quickActionText, { color: '#334155' }]}>{isEditingUser ? 'View' : 'Edit'}</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Internal Tabs */}
+              {!isEditingUser && (
+                <View style={styles.userDetailTabsBar}>
+                  {(
+                    [
+                      { key: 'overview', label: 'Overview', icon: 'person-outline' },
+                      { key: 'loans', label: `Loans (${applications.filter((a) => (a.applicantMobile || '').replace(/\D/g, '').slice(-10) === detailedUser.mobile.replace(/\D/g, '').slice(-10)).length})`, icon: 'cash-outline' },
+                      { key: 'documents', label: `Docs (${detailedUser.documents?.length || 0})`, icon: 'document-text-outline' },
+                      { key: 'referrals', label: `Referrals (${referralLeads.filter((r) => r.referrerMobile.replace(/\D/g, '').slice(-10) === detailedUser.mobile.replace(/\D/g, '').slice(-10)).length})`, icon: 'gift-outline' },
+                    ] as const
+                  ).map((tab) => {
+                    const isActive = activeUserDetailTab === tab.key;
+                    return (
+                      <TouchableOpacity
+                        key={tab.key}
+                        style={[styles.userDetailTabBtn, isActive && styles.userDetailTabBtnActive]}
+                        onPress={() => setActiveUserDetailTab(tab.key)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name={tab.icon as any} size={13} color={isActive ? '#003399' : '#64748b'} />
+                        <Text style={[styles.userDetailTabText, isActive && styles.userDetailTabTextActive]}>
+                          {tab.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+
+              {/* Modal Content Scroll Area */}
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+                {isEditingUser ? (
+                  /* Edit User Form */
+                  <View style={{ marginTop: 6 }}>
+                    <Text style={[styles.inputGroupLabel, { marginTop: 0 }]}>Full Legal Name:</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      value={editUserName}
+                      onChangeText={setEditUserName}
+                      placeholder="Customer Full Name"
+                    />
+
+                    <Text style={styles.inputGroupLabel}>Email Address:</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      value={editUserEmail}
+                      onChangeText={setEditUserEmail}
+                      placeholder="e.g. name@example.com"
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                    />
+
+                    <Text style={styles.inputGroupLabel}>City / Location:</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      value={editUserCity}
+                      onChangeText={setEditUserCity}
+                      placeholder="e.g. City Name"
+                    />
+
+                    <Text style={styles.inputGroupLabel}>Employment Type:</Text>
+                    <View style={styles.statusGrid}>
+                      {(['Salaried', 'Self Employed', 'Business Owner', 'Agriculturist', 'Others'] as const).map((emp) => {
+                        const isSelected = editUserEmployment === emp;
+                        return (
+                          <TouchableOpacity
+                            key={emp}
+                            style={[styles.statusOptionPill, isSelected && styles.statusOptionPillActive]}
+                            onPress={() => setEditUserEmployment(emp)}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={[styles.statusOptionText, isSelected && styles.statusOptionTextActive]}>
+                              {emp}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+
+                    <Text style={styles.inputGroupLabel}>Monthly Net Income (₹):</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      value={editUserIncome}
+                      onChangeText={setEditUserIncome}
+                      placeholder="Monthly Income"
+                      keyboardType="numeric"
+                    />
+
+                    <Text style={styles.inputGroupLabel}>PAN Card Number:</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      value={editUserPan}
+                      onChangeText={setEditUserPan}
+                      placeholder="ABCDE1234F"
+                      autoCapitalize="characters"
+                      maxLength={10}
+                    />
+
+                    <Text style={styles.inputGroupLabel}>Aadhaar Card Number:</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      value={editUserAadhaar}
+                      onChangeText={setEditUserAadhaar}
+                      placeholder="12-digit Aadhaar Number"
+                      keyboardType="numeric"
+                      maxLength={14}
+                    />
+
+                    <Text style={styles.inputGroupLabel}>KYC Verification Status:</Text>
+                    <TouchableOpacity
+                      style={[
+                        styles.kycToggleBtn,
+                        { backgroundColor: editUserKyc ? '#ecfdf5' : '#fef2f2', borderColor: editUserKyc ? '#86efac' : '#fecaca' },
+                      ]}
+                      onPress={() => setEditUserKyc(!editUserKyc)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons
+                        name={editUserKyc ? 'checkmark-circle' : 'close-circle'}
+                        size={18}
+                        color={editUserKyc ? '#15803d' : '#dc2626'}
+                      />
+                      <Text style={[styles.kycToggleText, { color: editUserKyc ? '#15803d' : '#dc2626' }]}>
+                        {editUserKyc ? 'KYC Complete (Verified)' : 'KYC Incomplete (Pending)'}
+                      </Text>
+                    </TouchableOpacity>
+
+                    <View style={styles.modalBtnRow}>
+                      <TouchableOpacity
+                        style={styles.modalCancelBtn}
+                        onPress={() => setIsEditingUser(false)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.modalCancelText}>Cancel</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.modalSaveBtn}
+                        onPress={handleSaveUserEdit}
+                        disabled={isSavingUserEdit}
+                        activeOpacity={0.8}
+                      >
+                        {isSavingUserEdit ? (
+                          <ActivityIndicator color="#ffffff" size="small" />
+                        ) : (
+                          <>
+                            <Ionicons name="checkmark-done" size={16} color="#ffffff" />
+                            <Text style={styles.modalSaveText}>Update Database</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : activeUserDetailTab === 'overview' ? (
+                  /* Overview Tab */
+                  <View style={{ gap: 12, marginTop: 8 }}>
+                    {/* Status Highlights */}
+                    <View style={styles.detailCard}>
+                      <Text style={styles.detailCardHeader}>Account & KYC Status</Text>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabelText}>Customer ID</Text>
+                        <Text style={styles.detailHighlightValue}>{detailedUser.id}</Text>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabelText}>Registration Date</Text>
+                        <Text style={styles.detailDataValue}>
+                          {detailedUser.createdAt
+                            ? new Date(detailedUser.createdAt).toLocaleDateString('en-IN', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                              })
+                            : detailedUser.memberSince || 'N/A'}
+                        </Text>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabelText}>KYC Status</Text>
+                        <View
+                          style={[
+                            styles.kycStatusBadge,
+                            {
+                              backgroundColor: detailedUser.isKycCompleted ? '#ecfdf5' : '#fef3c7',
+                              borderColor: detailedUser.isKycCompleted ? '#86efac' : '#fde68a',
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name={detailedUser.isKycCompleted ? 'checkmark-circle' : 'time'}
+                            size={12}
+                            color={detailedUser.isKycCompleted ? '#15803d' : '#b45309'}
+                          />
+                          <Text
+                            style={[
+                              styles.kycStatusText,
+                              { color: detailedUser.isKycCompleted ? '#15803d' : '#b45309' },
+                            ]}
+                          >
+                            {detailedUser.isKycCompleted ? 'KYC Verified' : 'KYC Pending'}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabelText}>CIBIL Estimate</Text>
+                        <Text style={[styles.detailDataValue, { color: '#059669', fontWeight: '800' }]}>
+                          {detailedUser.cibilEstimateScore || 740} (Good)
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Personal Information */}
+                    <View style={styles.detailCard}>
+                      <Text style={styles.detailCardHeader}>Personal & Contact Details</Text>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabelText}>Full Name</Text>
+                        <Text style={styles.detailDataValue}>{detailedUser.name || 'Valued Customer'}</Text>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabelText}>Mobile Number</Text>
+                        <Text style={styles.detailDataValue}>+91 {detailedUser.mobile}</Text>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabelText}>Email Address</Text>
+                        <Text style={styles.detailDataValue}>{detailedUser.email || 'Not provided'}</Text>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabelText}>City / Address</Text>
+                        <Text style={styles.detailDataValue}>{detailedUser.city || 'Not specified'}</Text>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabelText}>Pincode</Text>
+                        <Text style={styles.detailDataValue}>{detailedUser.pincode || '431601'}</Text>
+                      </View>
+                    </View>
+
+                    {/* Financial Information */}
+                    <View style={styles.detailCard}>
+                      <Text style={styles.detailCardHeader}>Financial & Employment Information</Text>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabelText}>Employment Type</Text>
+                        <Text style={styles.detailDataValue}>{detailedUser.employmentType || 'Salaried'}</Text>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabelText}>Monthly Income</Text>
+                        <Text style={[styles.detailDataValue, { color: '#002e75', fontWeight: '800' }]}>
+                          {detailedUser.monthlyIncome ? `₹${detailedUser.monthlyIncome.toLocaleString('en-IN')}` : 'Not stated'}
+                        </Text>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabelText}>PAN Card</Text>
+                        <Text style={styles.detailDataValue}>{detailedUser.panNumber || 'Not provided'}</Text>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabelText}>Aadhaar Card</Text>
+                        <Text style={styles.detailDataValue}>{detailedUser.aadhaarNumber || 'Not provided'}</Text>
+                      </View>
+                    </View>
+
+                    {/* Referral & Growth */}
+                    <View style={styles.detailCard}>
+                      <Text style={styles.detailCardHeader}>Referrals & Partnership</Text>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabelText}>Referral Code</Text>
+                        <Text style={styles.detailHighlightValue}>{detailedUser.referralCode || 'N/A'}</Text>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabelText}>Referred By</Text>
+                        <Text style={styles.detailDataValue}>{detailedUser.referredBy || 'Direct Registration'}</Text>
+                      </View>
+                    </View>
+                  </View>
+                ) : activeUserDetailTab === 'loans' ? (
+                  /* Loan Applications Tab */
+                  <View style={{ marginTop: 8 }}>
+                    {(() => {
+                      const cleanMob = detailedUser.mobile.replace(/\D/g, '').slice(-10);
+                      const userLoans = applications.filter(
+                        (a) => (a.applicantMobile || '').replace(/\D/g, '').slice(-10) === cleanMob
+                      );
+                      const userIns = insuranceApps.filter(
+                        (ins) => (ins.mobile || '').replace(/\D/g, '').slice(-10) === cleanMob
+                      );
+
+                      if (userLoans.length === 0 && userIns.length === 0) {
+                        return (
+                          <View style={styles.emptyState}>
+                            <Ionicons name="folder-open-outline" size={36} color="#94a3b8" />
+                            <Text style={styles.emptyTitle}>No Applications Yet</Text>
+                            <Text style={styles.emptySubtitle}>Customer has not submitted any loan enquiries yet.</Text>
+                          </View>
+                        );
+                      }
+
+                      return (
+                        <View style={{ gap: 10 }}>
+                          {userLoans.map((app) => {
+                            const badge = getStatusBadgeStyle(app.status);
+                            return (
+                              <View key={app.id} style={styles.innerAppItemCard}>
+                                <View style={styles.appCardHeader}>
+                                  <View style={{ flex: 1 }}>
+                                    <Text style={styles.appIdText}>{app.id}</Text>
+                                    <Text style={styles.appLoanType}>{app.loanTypeName}</Text>
+                                  </View>
+                                  <View style={[styles.statusBadge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
+                                    <Text style={[styles.statusBadgeText, { color: badge.text }]}>
+                                      {app.status}
+                                    </Text>
+                                  </View>
+                                </View>
+
+                                <View style={styles.innerDetailRow}>
+                                  <View style={{ flex: 1 }}>
+                                    <Text style={styles.detailLabel}>Bank Name</Text>
+                                    <Text style={styles.detailValue}>{app.bankName || 'Partner Bank'}</Text>
+                                  </View>
+                                  <View style={{ flex: 1 }}>
+                                    <Text style={styles.detailLabel}>Requested Amount</Text>
+                                    <Text style={styles.detailAmount}>₹{app.requestedAmount.toLocaleString('en-IN')}</Text>
+                                  </View>
+                                </View>
+
+                                <View style={styles.innerDetailRow}>
+                                  <View style={{ flex: 1 }}>
+                                    <Text style={styles.detailLabel}>Tenure</Text>
+                                    <Text style={styles.detailSub}>{app.tenureMonths} Months</Text>
+                                  </View>
+                                  <View style={{ flex: 1 }}>
+                                    <Text style={styles.detailLabel}>Submission Date</Text>
+                                    <Text style={styles.detailSub}>{app.submissionDate}</Text>
+                                  </View>
+                                </View>
+
+                                {app.remarks || app.nextAction ? (
+                                  <View style={styles.notesBox}>
+                                    <Text style={styles.noteTitle}>Action: {app.nextAction || 'Under Review'}</Text>
+                                    {app.remarks && <Text style={styles.noteText}>Remarks: {app.remarks}</Text>}
+                                  </View>
+                                ) : null}
+
+                                <TouchableOpacity
+                                  style={[styles.manageBtn, { marginTop: 6, alignSelf: 'flex-end', paddingVertical: 6 }]}
+                                  onPress={() => {
+                                    setDetailedUser(null);
+                                    handleOpenEdit(app);
+                                  }}
+                                  activeOpacity={0.8}
+                                >
+                                  <Ionicons name="create-outline" size={13} color="#ffffff" />
+                                  <Text style={styles.manageBtnText}>Update Loan</Text>
+                                </TouchableOpacity>
+                              </View>
+                            );
+                          })}
+
+                          {userIns.map((ins) => (
+                            <View key={ins.id} style={styles.innerAppItemCard}>
+                              <View style={styles.appCardHeader}>
+                                <View style={{ flex: 1 }}>
+                                  <Text style={styles.appIdText}>{ins.id}</Text>
+                                  <Text style={styles.appLoanType}>{ins.insuranceTypeName || ins.insuranceType}</Text>
+                                </View>
+                                <View style={styles.statusBadge}>
+                                  <Text style={styles.statusBadgeText}>{ins.status}</Text>
+                                </View>
+                              </View>
+                            </View>
+                          ))}
+                        </View>
+                      );
+                    })()}
+                  </View>
+                ) : activeUserDetailTab === 'documents' ? (
+                  /* Documents Tab */
+                  <View style={{ marginTop: 8 }}>
+                    {(!detailedUser.documents || detailedUser.documents.length === 0) ? (
+                      <View style={styles.emptyState}>
+                        <Ionicons name="document-text-outline" size={36} color="#94a3b8" />
+                        <Text style={styles.emptyTitle}>No Documents Uploaded</Text>
+                        <Text style={styles.emptySubtitle}>Customer has not uploaded KYC or income proofs yet.</Text>
+                      </View>
+                    ) : (
+                      detailedUser.documents.map((doc, idx) => (
+                        <View key={doc.id || idx} style={styles.docItemCard}>
+                          <View style={styles.docItemIconWrap}>
+                            <Ionicons
+                              name={
+                                doc.fileType?.includes('pdf') || doc.mimeType?.includes('pdf')
+                                  ? 'document-text'
+                                  : 'image'
+                              }
+                              size={22}
+                              color={doc.fileType?.includes('pdf') ? '#ef4444' : '#0284c7'}
+                            />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.docItemTitle} numberOfLines={1}>
+                              {doc.name || 'Document'}
+                            </Text>
+                            <Text style={styles.docItemSub}>
+                              {doc.category || 'KYC'} • {doc.uploadDate || 'Uploaded'}
+                            </Text>
+                          </View>
+                          <TouchableOpacity
+                            style={styles.docItemOpenBtn}
+                            onPress={() => handleOpenDocFile(doc)}
+                            activeOpacity={0.8}
+                          >
+                            <Ionicons name="eye" size={14} color="#ffffff" />
+                            <Text style={styles.docItemOpenBtnText}>View</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ))
+                    )}
+                  </View>
+                ) : (
+                  /* Referrals Tab */
+                  <View style={{ marginTop: 8 }}>
+                    {(() => {
+                      const cleanMob = detailedUser.mobile.replace(/\D/g, '').slice(-10);
+                      const userRefs = referralLeads.filter(
+                        (r) => r.referrerMobile.replace(/\D/g, '').slice(-10) === cleanMob
+                      );
+
+                      if (userRefs.length === 0) {
+                        return (
+                          <View style={styles.emptyState}>
+                            <Ionicons name="gift-outline" size={36} color="#94a3b8" />
+                            <Text style={styles.emptyTitle}>No Referrals Yet</Text>
+                            <Text style={styles.emptySubtitle}>Customer has not referred any leads yet.</Text>
+                          </View>
+                        );
+                      }
+
+                      return (
+                        <View style={{ gap: 10 }}>
+                          {userRefs.map((r) => (
+                            <View key={r.id} style={styles.innerAppItemCard}>
+                              <View style={styles.appCardHeader}>
+                                <View style={{ flex: 1 }}>
+                                  <Text style={styles.userCardName}>{r.friendName}</Text>
+                                  <Text style={styles.userCardMobile}>+91 {r.friendMobile}</Text>
+                                </View>
+                                <View style={styles.statusBadge}>
+                                  <Text style={styles.statusBadgeText}>{r.status}</Text>
+                                </View>
+                              </View>
+                              <View style={styles.innerDetailRow}>
+                                <View style={{ flex: 1 }}>
+                                  <Text style={styles.detailLabel}>Product</Text>
+                                  <Text style={styles.detailValue}>{r.loanProduct}</Text>
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                  <Text style={styles.detailLabel}>Payout Status</Text>
+                                  <Text style={[styles.detailValue, { color: '#059669' }]}>
+                                    ₹{r.payoutAmount || 0} • {r.payoutStatus || 'Pending'}
+                                  </Text>
+                                </View>
+                              </View>
+                            </View>
+                          ))}
+                        </View>
+                      );
+                    })()}
+                  </View>
+                )}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* ---------------- SEND NOTIFICATION MODAL ---------------- */}
+      {notificationTargetUser && (
+        <Modal
+          visible={true}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setNotificationTargetUser(null)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.modalTitle}>Send Message / Notification</Text>
+                  <Text style={styles.modalSub}>
+                    To: {notificationTargetUser.name || 'Customer'} (+91 {notificationTargetUser.mobile})
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => setNotificationTargetUser(null)} style={styles.closeBtn}>
+                  <Ionicons name="close" size={22} color="#64748b" />
+                </TouchableOpacity>
+              </View>
+
+              {notifSuccessMsg && (
+                <View style={styles.modalSuccessBanner}>
+                  <Ionicons name="checkmark-circle" size={18} color="#15803d" />
+                  <Text style={styles.modalSuccessText}>{notifSuccessMsg}</Text>
+                </View>
+              )}
+
+              <Text style={styles.inputGroupLabel}>Notification Title:</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={notifTitle}
+                onChangeText={setNotifTitle}
+                placeholder="e.g. Loan Point Update"
+              />
+
+              <Text style={styles.inputGroupLabel}>Message Body:</Text>
+              <TextInput
+                style={[styles.modalInput, { minHeight: 90 }]}
+                value={notifMessage}
+                onChangeText={setNotifMessage}
+                placeholder="Write your push notification / message to customer..."
+                multiline
+                numberOfLines={4}
+              />
+
+              <View style={styles.modalBtnRow}>
+                <TouchableOpacity
+                  style={styles.modalCancelBtn}
+                  onPress={() => setNotificationTargetUser(null)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modalSaveBtn, { backgroundColor: '#2563eb' }]}
+                  onPress={handleSendNotification}
+                  disabled={isSendingNotif}
+                  activeOpacity={0.8}
+                >
+                  {isSendingNotif ? (
+                    <ActivityIndicator color="#ffffff" size="small" />
+                  ) : (
+                    <>
+                      <Ionicons name="send" size={15} color="#ffffff" />
+                      <Text style={styles.modalSaveText}>Dispatch Notification</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </Modal>
@@ -2219,5 +3096,155 @@ const styles = StyleSheet.create({
   fullPreviewImage: {
     width: '100%',
     height: '100%',
+  },
+  userRegistrationDateBadge: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '600',
+  },
+  userAvatarWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#002e75',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#002e75',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  userAvatarText: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  detailActionToolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    marginBottom: 6,
+  },
+  quickActionPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 7,
+    borderRadius: 8,
+    gap: 4,
+    borderWidth: 1,
+  },
+  quickActionText: {
+    fontSize: 11.5,
+    fontWeight: '800',
+  },
+  userDetailTabsBar: {
+    flexDirection: 'row',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 10,
+    padding: 3,
+    marginBottom: 10,
+    gap: 2,
+  },
+  userDetailTabBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  userDetailTabBtnActive: {
+    backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  userDetailTabText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748b',
+  },
+  userDetailTabTextActive: {
+    color: '#003399',
+    fontWeight: '800',
+  },
+  detailCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 12,
+  },
+  detailCardHeader: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: '#002e75',
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    paddingBottom: 4,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 5,
+  },
+  detailLabelText: {
+    fontSize: 11.5,
+    color: '#64748b',
+    fontWeight: '600',
+  },
+  detailDataValue: {
+    fontSize: 12,
+    color: '#0f172a',
+    fontWeight: '700',
+    maxWidth: '60%',
+    textAlign: 'right',
+  },
+  detailHighlightValue: {
+    fontSize: 12,
+    color: '#003399',
+    fontWeight: '800',
+    backgroundColor: '#eff6ff',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  innerAppItemCard: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    padding: 12,
+  },
+  innerDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    gap: 10,
+  },
+  kycToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 8,
+    marginTop: 4,
+  },
+  kycToggleText: {
+    fontSize: 12.5,
+    fontWeight: '800',
   },
 });

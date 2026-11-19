@@ -343,9 +343,9 @@ export const AgricultureLoanApplyScreen: React.FC<AgricultureLoanApplyScreenProp
   ];
 
   const agriBanks = [
-    'State Bank of India (Agri Branch, Nanded)',
+    'State Bank of India (Agri Branch)',
     'Bank of Maharashtra (Agri Finance)',
-    'Nanded District Central Co-op Bank (NDCC)',
+    'District Central Co-op Bank (DCCB)',
     'Central Bank of India',
     'Punjab National Bank',
     'Canara Bank',
@@ -767,7 +767,7 @@ export const AgricultureLoanApplyScreen: React.FC<AgricultureLoanApplyScreenProp
                 </View>
                 <TextInput
                   style={styles.textInput}
-                  placeholder="e.g. Village Taroda, Taluka Nanded"
+                  placeholder="e.g. Village, Taluka / Block"
                   placeholderTextColor="#94a3b8"
                   value={talukaVillage}
                   onChangeText={setTalukaVillage}
@@ -1581,7 +1581,7 @@ export const AgricultureLoanApplyScreen: React.FC<AgricultureLoanApplyScreenProp
                 <View style={styles.whatsNextTextWrap}>
                   <Text style={styles.whatsNextTitle}>What's Next?</Text>
                   <Text style={styles.whatsNextDesc}>
-                    Our agricultural loan coordinator in Nanded will verify your 7/12 extract and prepare the bank scale of finance application.
+                    Our agricultural loan coordinator will verify your 7/12 extract and prepare the bank scale of finance application.
                   </Text>
                 </View>
               </View>

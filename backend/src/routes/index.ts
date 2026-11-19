@@ -122,6 +122,7 @@ export function buildAppRouter(): Router {
 
   // Admin Operations (Admin auth required)
   router.register('GET', '/api/v1/admin/users', userController.handleGetAllUsers, { admin: true });
+  router.register('PUT', '/api/v1/admin/users/:id', userController.handleAdminUpdateUser, { admin: true });
   router.register('GET', '/api/v1/admin/loans', loanController.handleGetAllApplications, { admin: true });
   router.register('PUT', '/api/v1/admin/loans/:id/status', loanController.handleUpdateApplicationStatus, { admin: true });
   router.register('GET', '/api/v1/admin/insurance', businessController.handleGetAllInsurance, { admin: true });

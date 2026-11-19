@@ -23,7 +23,7 @@ interface GoogleCitySearchInputProps {
 export const GoogleCitySearchInput: React.FC<GoogleCitySearchInputProps> = ({
   value,
   onSelectCity,
-  placeholder = 'Type city name (e.g. Nanded)',
+  placeholder = 'Type city name...',
   label,
   required = false,
 }) => {

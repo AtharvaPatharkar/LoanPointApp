@@ -418,7 +418,7 @@ export const LoanApplicationScreen: React.FC<LoanApplicationScreenProps> = ({
         tenureMonths: totalTenureMonths,
         monthlyIncome: monthlyIncome || user?.monthlyIncome || 50000,
         employmentType: employmentType || user?.employmentType || 'Salaried',
-        city: (city || user?.city || 'Nanded').trim(),
+        city: (city || user?.city || '').trim(),
         panNumber: (panNumber || user?.panNumber || '').trim().toUpperCase() || undefined,
         aadhaarNumber: (aadhaarNumber || user?.aadhaarNumber || '').replace(/\D/g, '') || undefined,
         purpose: loanPurpose.trim() || `Online application for ${selectedCat.title}`,
@@ -882,7 +882,7 @@ export const LoanApplicationScreen: React.FC<LoanApplicationScreenProps> = ({
                 <Text style={styles.readOnlyLabel}>City / Location</Text>
               </View>
               <View style={styles.readOnlyRight}>
-                <Text style={styles.readOnlyValue}>{city || user?.city || 'Nanded'}</Text>
+                <Text style={styles.readOnlyValue}>{city || user?.city || 'Not specified'}</Text>
               </View>
             </View>
 

@@ -84,7 +84,7 @@ export async function handleCreateReferral(req: AuthenticatedRequest, res: Serve
       friendName,
       friendMobile,
       loanProduct,
-      city: city || 'Maharashtra',
+      city: city || '',
       loanAmount: Number(loanAmount || 0),
     });
     return sendSuccess(res, { referral: lead }, 'Referral lead submitted successfully', 201);

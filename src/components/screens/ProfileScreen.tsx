@@ -629,7 +629,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.menuRow, { borderBottomWidth: 0 }]}
+            style={styles.menuRow}
             onPress={() => onNavigate('rate_us')}
             activeOpacity={0.7}
           >
@@ -641,6 +641,26 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </View>
             <Animated.View style={{ transform: [{ translateX: chevronSlideAnim }] }}>
               <Ionicons name="chevron-forward" size={16} color="#9333ea" />
+            </Animated.View>
+          </TouchableOpacity>
+
+          {/* Admin Console Entry */}
+          <TouchableOpacity
+            style={[styles.menuRow, { borderBottomWidth: 0, backgroundColor: '#f0fdf4' }]}
+            onPress={() => onNavigate('admin')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.menuLeft}>
+              <View style={[styles.menuIconWrap, { backgroundColor: '#002e75' }]}>
+                <Ionicons name="shield-checkmark" size={17} color="#ffffff" />
+              </View>
+              <View>
+                <Text style={[styles.menuLabel, { color: '#002e75', fontWeight: '800' }]}>Admin Console Portal</Text>
+                <Text style={{ fontSize: 10.5, color: '#059669', fontWeight: '600' }}>Manage Users, Loans, Docs & Referrals</Text>
+              </View>
+            </View>
+            <Animated.View style={{ transform: [{ translateX: chevronSlideAnim }] }}>
+              <Ionicons name="chevron-forward" size={16} color="#002e75" />
             </Animated.View>
           </TouchableOpacity>
         </View>
@@ -864,7 +884,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     <View style={{ flex: 1 }}>
                       <Text style={styles.stepInfoCalloutTitle}>Your Location & Contact</Text>
                       <Text style={styles.stepInfoCalloutSub}>
-                        Banks use your residential location to match branch lending criteria in Nanded & Maharashtra.
+                        Banks use your residential location to match branch lending criteria across your region.
                       </Text>
                     </View>
                   </View>
@@ -980,7 +1000,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                           setEditCity(text);
                           setIsCitySelected(false);
                         }}
-                        placeholder="e.g. Nanded, Mumbai, Pune"
+                        placeholder="e.g. Enter your city"
                         placeholderTextColor="#94a3b8"
                       />
                       {editCity.length > 0 && (

@@ -41,6 +41,23 @@ export async function handleGetAllUsers(req: AuthenticatedRequest, res: ServerRe
   }
 }
 
+export async function handleAdminUpdateUser(req: AuthenticatedRequest, res: ServerResponse) {
+  const userId = req.params?.id;
+  if (!userId) {
+    return sendError(res, 400, 'User ID parameter is required');
+  }
+
+  try {
+    const user = await userService.adminUpdateUser(userId, req.parsedBody || {});
+    if (!user) {
+      return sendError(res, 404, 'User not found');
+    }
+    return sendSuccess(res, { user }, 'User profile updated successfully by admin');
+  } catch (err: any) {
+    return sendError(res, 500, err.message || 'Failed to update user profile');
+  }
+}
+
 export async function handleSaveDocument(req: AuthenticatedRequest, res: ServerResponse) {
   if (!req.user) {
     return sendError(res, 401, 'Unauthorized');

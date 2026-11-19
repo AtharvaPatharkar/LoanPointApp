@@ -99,6 +99,8 @@ export interface UserProfile {
   avatar?: string;
   isKycCompleted?: boolean;
   documents?: DocumentItem[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface DocumentItem {

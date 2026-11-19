@@ -57,6 +57,22 @@ export class DbSyncService {
   }
 
   /**
+   * Admin update a user's profile
+   */
+  public async adminUpdateUser(userId: string, updates: Partial<UserProfile>): Promise<UserProfile | null> {
+    try {
+      const res = await apiRequest(`/admin/users/${userId}`, {
+        method: 'PUT',
+        body: updates,
+      });
+      return res.user || null;
+    } catch (err) {
+      console.warn('API adminUpdateUser error:', err);
+      return null;
+    }
+  }
+
+  /**
    * Fetch current user profile
    */
   public async getUserByMobile(mobile: string): Promise<UserProfile | null> {

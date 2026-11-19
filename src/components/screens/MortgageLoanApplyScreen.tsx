@@ -765,7 +765,7 @@ export const MortgageLoanApplyScreen: React.FC<MortgageLoanApplyScreenProps> = (
                 </View>
                 <TextInput
                   style={styles.textInput}
-                  placeholder="e.g. Plot No. 12, Shivaji Nagar, Nanded"
+                  placeholder="e.g. Plot No., Sector / Area"
                   placeholderTextColor="#94a3b8"
                   value={propertyLocation}
                   onChangeText={setPropertyLocation}

@@ -81,7 +81,7 @@ export class AuthService {
         mobile: cleaned,
         email: 'admin@loanpoint.in',
         role: 'admin',
-        city: 'Nanded',
+        city: '',
       };
       const token = signJwt({
         userId: adminUser.id,
@@ -275,7 +275,7 @@ export class AuthService {
         mobile: config.adminMobile,
         email: 'admin@loanpoint.in',
         role: 'admin',
-        city: 'Nanded',
+        city: '',
       };
       const token = signJwt({
         userId: adminUser.id,

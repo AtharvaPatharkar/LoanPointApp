@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -68,7 +68,7 @@ export const RateUsScreen: React.FC = () => {
 
         <Text style={styles.reviewHeroTitle}>Review Loan Point on Google</Text>
         <Text style={styles.reviewHeroDesc}>
-          Your review helps borrowers across Nanded find transparent and ethical loan consultancy. It takes less than 1 minute!
+          Your review helps borrowers find transparent and ethical loan consultancy. It takes less than 1 minute!
         </Text>
 
         <TouchableOpacity

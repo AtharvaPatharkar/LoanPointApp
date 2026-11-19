@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -47,7 +47,7 @@ export const SupportScreen: React.FC<SupportScreenProps> = ({ user }) => {
   };
 
   const handleWhatsApp = () => {
-    const text = encodeURIComponent('Hello Loan Point Nanded, I need assistance regarding customer services.');
+    const text = encodeURIComponent('Hello Loan Point, I need assistance regarding customer services.');
     Linking.openURL(`whatsapp://send?phone=91${COMPANY_INFO.contactPhoneRaw}&text=${text}`).catch(() => {
       Linking.openURL(`https://api.whatsapp.com/send?phone=91${COMPANY_INFO.contactPhoneRaw}&text=${text}`);
     });
@@ -119,7 +119,7 @@ export const SupportScreen: React.FC<SupportScreenProps> = ({ user }) => {
         </View>
         <Text style={styles.screenHeading}>Customer Support</Text>
         <Text style={styles.screenSub}>
-          Connect with Loan Point Nanded office or register a service request
+          Connect with Loan Point support desk or register a service request
         </Text>
       </View>
 

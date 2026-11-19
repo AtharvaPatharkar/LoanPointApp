@@ -890,7 +890,7 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
                     <View style={styles.inputBox}>
                       <TextInput
                         style={styles.textInput}
-                        placeholder="e.g. Nanded"
+                        placeholder="e.g. City Name"
                         placeholderTextColor="#94a3b8"
                         value={propertyLocation}
                         onChangeText={setPropertyLocation}

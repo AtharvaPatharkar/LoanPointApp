@@ -86,7 +86,7 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
     fullName: 'Rahul Deshmukh',
     mobileNumber: '+91 9545555999',
     loanType: 'Home Loan',
-    city: 'Nanded',
+    city: '',
     submittedOn: '12 Nov 2026, 09:41 AM',
     status: 'Referral Submitted',
     estimatedCommission: 'Up to 1.5% on Disbursal',
@@ -1389,7 +1389,7 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
               <Ionicons name="location-outline" size={18} color="#64748b" style={styles.fieldIcon} />
               <TextInput
                 style={styles.textInput}
-                placeholder="e.g. Nanded, Pune, Mumbai"
+                placeholder="e.g. City Name"
                 placeholderTextColor="#94a3b8"
                 value={friendCity}
                 onChangeText={setFriendCity}

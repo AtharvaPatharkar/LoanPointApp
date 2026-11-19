@@ -11,6 +11,7 @@ interface TopBarProps {
   onOpenNotifications?: () => void;
   onOpenSupport?: () => void;
   onOpenProfile?: () => void;
+  onOpenAdmin?: () => void;
   userName?: string;
   userAvatar?: string;
   isHomeScreen?: boolean;
@@ -24,6 +25,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onOpenNotifications,
   onOpenSupport,
   onOpenProfile,
+  onOpenAdmin,
   userName = 'Rahul',
   userAvatar,
   isHomeScreen = true,
@@ -116,7 +118,11 @@ export const TopBar: React.FC<TopBarProps> = ({
             <Ionicons name="arrow-back" size={22} color={colors.text} />
           </TouchableOpacity>
         ) : (
-          <View style={styles.brandRow}>
+          <TouchableOpacity
+            style={styles.brandRow}
+            onPress={onOpenAdmin}
+            activeOpacity={0.8}
+          >
             <Image
               source={require('../../../assets/logo/loan-point-logo.png')}
               style={styles.oldLogoImage}
@@ -126,7 +132,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               <Text style={styles.brandTitle}>LOAN POINT</Text>
               <Text style={styles.brandSubtitle}>Your Loan, Our Support</Text>
             </View>
-          </View>
+          </TouchableOpacity>
         )}
 
         {showBack && (

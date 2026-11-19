@@ -64,7 +64,7 @@ export const AllReviewsScreen: React.FC<AllReviewsScreenProps> = ({ onBack }) =>
               <Ionicons name="checkmark-circle" size={14} color="#38bdf8" />
               <Text style={styles.verifiedText}>Google Verified Business</Text>
             </View>
-            <Text style={styles.businessTitle}>{data.name} (Nanded)</Text>
+            <Text style={styles.businessTitle}>{data.name}</Text>
             <Text style={styles.businessSubtitle}>Customer Ratings & Verified Testimonials</Text>
           </View>
         </View>
@@ -97,7 +97,7 @@ export const AllReviewsScreen: React.FC<AllReviewsScreenProps> = ({ onBack }) =>
             </View>
             <View style={styles.metricRow}>
               <Ionicons name="thumbs-up" size={15} color="#fbbf24" />
-              <Text style={styles.metricText}>Top Rated in Nanded</Text>
+              <Text style={styles.metricText}>Top Rated Service</Text>
             </View>
           </View>
         </View>
