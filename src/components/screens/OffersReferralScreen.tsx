@@ -917,7 +917,7 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
             {/* Left Professional Avatar with Thumbs Up */}
             <View style={styles.successAvatarWrap}>
               <Image
-                source={require('../../../assets/logo/customer-sagar.png')}
+                source={require('../../../assets/logo/arvind_patil.png')}
                 style={styles.successCustomerAvatarImage}
                 resizeMode="cover"
               />

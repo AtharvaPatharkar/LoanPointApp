@@ -1562,7 +1562,7 @@ export const MudraLoanApplyScreen: React.FC<MudraLoanApplyScreenProps> = ({
               <View style={styles.rmCard}>
                 <View style={styles.rmAvatarFrame}>
                   <Image
-                    source={require('../../../assets/logo/customer-sagar.png')}
+                    source={require('../../../assets/logo/arvind_patil.png')}
                     style={styles.rmImage}
                     resizeMode="cover"
                   />
