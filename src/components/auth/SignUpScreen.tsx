@@ -113,8 +113,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
     setIsLoading(true);
 
     try {
-      // Verify OTP and complete user registration in records
-      await authService.verifyOtp(otpCode, referralCode);
+      // 1. First register user into the database
       const reg = await authService.registerUser({
         name: fullName.trim(),
         mobile: mobileNumber.replace(/\D/g, '').slice(-10),
@@ -123,6 +122,9 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
         monthlyIncome: incomeValidation.value || 0,
         referralCode: referralCode.trim() || undefined,
       });
+
+      // 2. Then verify OTP now that user record is created
+      await authService.verifyOtp(otpCode, referralCode);
 
       // Show immediate celebration / successful registration card
       setRegistrationSuccessUser(reg.user);
