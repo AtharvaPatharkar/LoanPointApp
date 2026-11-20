@@ -31,7 +31,7 @@ export function authenticate(req: AuthenticatedRequest, res: ServerResponse): bo
   }
 
   const token = authHeader.slice(7).trim();
-  const payload = verifyJwt(token);
+  const payload = verifyJwt(token, 'access');
 
   if (!payload) {
     sendError(res, 401, 'Invalid or expired authentication token');

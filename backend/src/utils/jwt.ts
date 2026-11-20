@@ -5,6 +5,7 @@ export interface TokenPayload {
   userId: string;
   mobile: string;
   role: 'customer' | 'admin';
+  tokenType?: 'access' | 'refresh';
   exp: number; // unix timestamp in seconds
 }
 
@@ -24,10 +25,24 @@ function base64UrlDecode(str: string): string {
   return Buffer.from(base64, 'base64').toString('utf-8');
 }
 
-export function signJwt(payload: Omit<TokenPayload, 'exp'>, expiresInSeconds: number = 7 * 24 * 3600): string {
+/**
+ * Hash refresh tokens with SHA-256 before storing in database
+ */
+export function hashToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+/**
+ * Sign standard JWT (defaults to 120 minutes / 2 hours in development and testing mode)
+ */
+export function signJwt(
+  payload: Omit<TokenPayload, 'exp'>,
+  expiresInSeconds: number = config.env === 'production' ? 15 * 60 : 120 * 60 // 120 minutes for dev/testing, 15 minutes for production
+): string {
   const header = { alg: 'HS256', typ: 'JWT' };
   const fullPayload: TokenPayload = {
     ...payload,
+    tokenType: payload.tokenType || 'access',
     exp: Math.floor(Date.now() / 1000) + expiresInSeconds,
   };
 
@@ -46,7 +61,23 @@ export function signJwt(payload: Omit<TokenPayload, 'exp'>, expiresInSeconds: nu
   return `${dataToSign}.${signature}`;
 }
 
-export function verifyJwt(token: string): TokenPayload | null {
+/**
+ * Sign Refresh Token (7 days validity)
+ */
+export function signRefreshToken(
+  payload: Omit<TokenPayload, 'exp' | 'tokenType'>,
+  expiresInSeconds: number = 7 * 24 * 3600
+): string {
+  return signJwt(
+    {
+      ...payload,
+      tokenType: 'refresh',
+    },
+    expiresInSeconds
+  );
+}
+
+export function verifyJwt(token: string, expectedType: 'access' | 'refresh' = 'access'): TokenPayload | null {
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
@@ -72,6 +103,11 @@ export function verifyJwt(token: string): TokenPayload | null {
 
     if (payload.exp && payload.exp < now) {
       return null; // Expired
+    }
+
+    // If tokenType was specified, verify it matches
+    if (payload.tokenType && payload.tokenType !== expectedType) {
+      return null;
     }
 
     return payload;

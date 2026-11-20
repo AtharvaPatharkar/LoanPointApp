@@ -96,6 +96,8 @@ export function buildAppRouter(): Router {
   router.register('POST', '/api/v1/auth/verify-otp', authController.handleVerifyOtp);
   router.register('POST', '/api/v1/auth/register', authController.handleRegister);
   router.register('POST', '/api/v1/auth/admin-login', authController.handleAdminLogin);
+  router.register('POST', '/api/v1/auth/refresh', authController.handleRefreshToken);
+  router.register('POST', '/api/v1/auth/logout', authController.handleLogout);
 
   // User Profile Routes (Authenticated)
   router.register('GET', '/api/v1/user/profile', userController.handleGetProfile, { auth: true });

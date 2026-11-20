@@ -42,6 +42,8 @@ export interface Config {
   adminPin: string;
   adminPasswordHash: string;
   otpMode: 'development' | 'production';
+  upstashRedisRestUrl?: string;
+  upstashRedisRestToken?: string;
 }
 
 export function getConfig(): Config {
@@ -59,6 +61,8 @@ export function getConfig(): Config {
     adminPin: process.env.ADMIN_PIN || '',
     adminPasswordHash: process.env.ADMIN_PASSWORD_HASH || '',
     otpMode: (process.env.OTP_MODE || 'development') as 'development' | 'production',
+    upstashRedisRestUrl: process.env.UPSTASH_REDIS_REST_URL,
+    upstashRedisRestToken: process.env.UPSTASH_REDIS_REST_TOKEN,
   };
 }
 

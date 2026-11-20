@@ -23,6 +23,7 @@ import { DocumentItem, UserProfile } from '../../types';
 import { documentService } from '../../services/documentService';
 import { authService } from '../../services/authService';
 import { dbSyncService } from '../../services/dbSyncService';
+import { clientSecurityService } from '../../services/clientSecurityService';
 import { COMPANY_INFO, LOAN_CATEGORIES } from '../../data/mockData';
 import { colors } from '../../theme/colors';
 
@@ -120,6 +121,14 @@ export const DocumentsScreen: React.FC<DocumentsScreenProps> = ({ user: propUser
       whatsappPulseAnim.setValue(1);
     }
   }, [viewingReceiptDoc]);
+
+  // Enable Screen Privacy Protection while viewing/uploading confidential KYC documents
+  useEffect(() => {
+    clientSecurityService.enableScreenProtection('Documents and KYC Vault Screen');
+    return () => {
+      clientSecurityService.disableScreenProtection();
+    };
+  }, []);
 
   // Fetch freshest documents directly from user record in Neon database on screen mount
   useEffect(() => {

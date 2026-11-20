@@ -4,7 +4,7 @@ import { validateMobileNumber, generateRandomCustomerCode, generateRandomCustome
 import { crmService } from './crmService';
 import { whatsAppService } from './whatsAppService';
 import { referralService } from './referralService';
-import { apiRequest, setAuthToken } from './apiClient';
+import { apiRequest, setAuthToken, setRefreshToken, getRefreshToken } from './apiClient';
 
 export interface AuthState {
   isAuthenticated: boolean;
@@ -161,6 +161,9 @@ class AuthService {
     if (res.token) {
       setAuthToken(res.token);
     }
+    if (res.refreshToken) {
+      setRefreshToken(res.refreshToken);
+    }
 
     const verifiedUser: UserProfile = res.user;
 
@@ -224,6 +227,9 @@ class AuthService {
     if (res.token) {
       setAuthToken(res.token);
     }
+    if (res.refreshToken) {
+      setRefreshToken(res.refreshToken);
+    }
 
     this.state = {
       isAuthenticated: true,
@@ -237,7 +243,17 @@ class AuthService {
   }
 
   public logout(): void {
+    const curRefreshToken = getRefreshToken();
+    if (curRefreshToken) {
+      // Fire-and-forget server revocation
+      apiRequest('/auth/logout', {
+        method: 'POST',
+        body: { refreshToken: curRefreshToken },
+      }).catch((err) => console.warn('Logout revocation warning:', err.message));
+    }
+
     setAuthToken(null);
+    setRefreshToken(null);
     this.state = {
       isAuthenticated: false,
       user: null,

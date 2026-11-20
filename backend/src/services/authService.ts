@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { getDb } from '../database/index.js';
-import { signJwt } from '../utils/jwt.js';
+import { signJwt, signRefreshToken, verifyJwt, hashToken } from '../utils/jwt.js';
 import { cleanMobile } from '../validators/index.js';
 import { config } from '../config/index.js';
 
@@ -79,7 +79,7 @@ export class AuthService {
     mobile: string,
     otp: string,
     referralCode?: string
-  ): Promise<{ token: string; user: any; isNewUser: boolean }> {
+  ): Promise<{ token: string; refreshToken?: string; user: any; isNewUser: boolean }> {
     const cleaned = cleanMobile(mobile);
     const stored = otpStore.get(cleaned);
 
@@ -110,7 +110,13 @@ export class AuthService {
         mobile: adminUser.mobile,
         role: 'admin',
       });
-      return { token, user: adminUser, isNewUser: false };
+      const refreshToken = signRefreshToken({
+        userId: adminUser.id,
+        mobile: adminUser.mobile,
+        role: 'admin',
+      });
+      await this.saveSession(adminUser.id, refreshToken, 'admin');
+      return { token, refreshToken, user: adminUser, isNewUser: false } as any;
     }
 
     // Customer Login -> Fetch from Neon Postgres
@@ -129,8 +135,15 @@ export class AuthService {
         mobile: row.mobile,
         role: 'customer',
       });
+      const refreshToken = signRefreshToken({
+        userId: row.id,
+        mobile: row.mobile,
+        role: 'customer',
+      });
+      await this.saveSession(row.id, refreshToken, 'customer');
       return {
         token,
+        refreshToken,
         user: {
           id: row.id,
           name: row.full_name,
@@ -298,7 +311,7 @@ export class AuthService {
   /**
    * Admin Login with cryptographic timing-safe check
    */
-  public async adminLogin(pin: string): Promise<{ token: string; user: any }> {
+  public async adminLogin(pin: string): Promise<{ token: string; refreshToken?: string; user: any }> {
     if (!pin) {
       throw new Error('Admin PIN is required');
     }
@@ -330,10 +343,181 @@ export class AuthService {
         mobile: adminUser.mobile,
         role: 'admin',
       });
-      return { token, user: adminUser };
+      const refreshToken = signRefreshToken({
+        userId: adminUser.id,
+        mobile: adminUser.mobile,
+        role: 'admin',
+      });
+      await this.saveSession(adminUser.id, refreshToken, 'admin');
+      return { token, refreshToken, user: adminUser };
     }
 
     throw new Error('Invalid Admin PIN or credentials');
+  }
+
+  /**
+   * Session Management: Store active session with hashed refresh token
+   */
+  public async saveSession(
+    userId: string,
+    refreshToken: string,
+    role: 'customer' | 'admin',
+    ip?: string,
+    userAgent?: string
+  ): Promise<void> {
+    const tokenHash = hashToken(refreshToken);
+    const sql = getDb();
+    const expiresAt = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
+
+    try {
+      await sql`
+        INSERT INTO user_sessions (user_id, refresh_token_hash, role, ip_address, user_agent, is_revoked, expires_at)
+        VALUES (${userId}, ${tokenHash}, ${role}, ${ip || null}, ${userAgent || null}, false, ${expiresAt})
+        ON CONFLICT (refresh_token_hash) DO NOTHING;
+      `;
+    } catch (err: any) {
+      console.warn('[Session Save Warning]:', err.message);
+    }
+  }
+
+  /**
+   * Refresh Token: Verify, rotate, and generate a fresh Access Token & Refresh Token
+   */
+  public async refreshSession(
+    oldRefreshToken: string,
+    ip?: string,
+    userAgent?: string
+  ): Promise<{ token: string; refreshToken: string; user: any }> {
+    const payload = verifyJwt(oldRefreshToken, 'refresh');
+    if (!payload) {
+      throw new Error('Invalid or expired refresh token');
+    }
+
+    const tokenHash = hashToken(oldRefreshToken);
+    const sql = getDb();
+
+    // Check if session exists in DB and is active
+    const rows = (await sql`
+      SELECT id, user_id, role, is_revoked, expires_at
+      FROM user_sessions
+      WHERE refresh_token_hash = ${tokenHash}
+      LIMIT 1;
+    `) as any[];
+
+    if (!rows || rows.length === 0) {
+      throw new Error('Session not found. Please log in again.');
+    }
+
+    const session = rows[0];
+    if (session.is_revoked) {
+      // Security: Token reuse detected! Revoke all sessions for this user to protect account
+      await sql`
+        UPDATE user_sessions
+        SET is_revoked = true, updated_at = NOW()
+        WHERE user_id = ${session.user_id};
+      `;
+      throw new Error('Compromised session detected. All sessions revoked for security. Please log in again.');
+    }
+
+    if (new Date(session.expires_at).getTime() < Date.now()) {
+      throw new Error('Refresh token has expired. Please log in again.');
+    }
+
+    // Revoke old refresh token (Token Rotation pattern)
+    await sql`
+      UPDATE user_sessions
+      SET is_revoked = true, updated_at = NOW()
+      WHERE id = ${session.id};
+    `;
+
+    // Fetch user details
+    let userProfile: any = null;
+    if (payload.role === 'admin') {
+      userProfile = {
+        id: 'LP-ADMIN-001',
+        name: 'Arvind Patil (Branch Head / Admin)',
+        mobile: config.adminMobile,
+        email: 'admin@loanpoint.in',
+        role: 'admin',
+        city: '',
+      };
+    } else {
+      const userRows = (await sql`
+        SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, aadhaar_number, company_name, work_experience, salary_bank, company_type, has_credit_card, cibil_score_range, dob, is_kyc_completed, created_at
+        FROM users
+        WHERE id = ${session.user_id}
+        LIMIT 1;
+      `) as any[];
+
+      if (!userRows || userRows.length === 0) {
+        throw new Error('User not found');
+      }
+
+      const u = userRows[0];
+      userProfile = {
+        id: u.id,
+        name: u.full_name,
+        mobile: u.mobile,
+        email: u.email || '',
+        city: u.city || '',
+        employmentType: u.employment_type || 'Salaried',
+        monthlyIncome: Number(u.monthly_income) || 0,
+        panNumber: u.pan_number || '',
+        aadhaarNumber: u.aadhaar_number || u.aadhaar_last_four || '',
+        aadhaarLinked: Boolean(u.aadhaar_number || u.aadhaar_last_four),
+        role: 'customer',
+        referralCode: u.referral_code,
+        isKycCompleted: Boolean(u.is_kyc_completed),
+      };
+    }
+
+    // Generate new Access Token (15 mins) and new Refresh Token (7 days)
+    const newAccessToken = signJwt({
+      userId: userProfile.id,
+      mobile: userProfile.mobile,
+      role: userProfile.role,
+    });
+    const newRefreshToken = signRefreshToken({
+      userId: userProfile.id,
+      mobile: userProfile.mobile,
+      role: userProfile.role,
+    });
+
+    // Save new session
+    await this.saveSession(userProfile.id, newRefreshToken, userProfile.role, ip, userAgent);
+
+    return {
+      token: newAccessToken,
+      refreshToken: newRefreshToken,
+      user: userProfile,
+    };
+  }
+
+  /**
+   * Instant Revocation / Logout: Revoke session in database
+   */
+  public async revokeSession(refreshToken?: string, userId?: string): Promise<boolean> {
+    const sql = getDb();
+    try {
+      if (refreshToken) {
+        const tokenHash = hashToken(refreshToken);
+        await sql`
+          UPDATE user_sessions
+          SET is_revoked = true, updated_at = NOW()
+          WHERE refresh_token_hash = ${tokenHash};
+        `;
+      } else if (userId) {
+        await sql`
+          UPDATE user_sessions
+          SET is_revoked = true, updated_at = NOW()
+          WHERE user_id = ${userId};
+        `;
+      }
+      return true;
+    } catch (err: any) {
+      console.warn('[Revoke Session Error]:', err.message);
+      return false;
+    }
   }
 }
 

@@ -86,6 +86,21 @@ export async function testDbConnection(): Promise<boolean> {
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS existing_emi VARCHAR(50);`;
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS loan_purpose VARCHAR(150);`;
     await sql`ALTER TABLE loan_applications ADD COLUMN IF NOT EXISTS aadhaar_number VARCHAR(12);`;
+    // Sessions table for hardened JWT session management
+    await sql`CREATE TABLE IF NOT EXISTS user_sessions (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id VARCHAR(100) NOT NULL,
+      refresh_token_hash VARCHAR(128) NOT NULL UNIQUE,
+      role VARCHAR(20) NOT NULL DEFAULT 'customer',
+      ip_address VARCHAR(50),
+      user_agent TEXT,
+      is_revoked BOOLEAN DEFAULT false,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    );`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_user_sessions_hash ON user_sessions(refresh_token_hash);`;
     
     return Boolean(result && result.length > 0);
   } catch (error) {
