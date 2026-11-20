@@ -78,7 +78,19 @@ export class DbSyncService {
   public async getUserByMobile(mobile: string): Promise<UserProfile | null> {
     try {
       const res = await apiRequest(`/user/profile`, { method: 'GET' });
-      return res.user || null;
+      if (res && res.user) {
+        const u = res.user;
+        if (!u.avatar && Array.isArray(u.documents)) {
+          const passportDoc = u.documents.find(
+            (d: any) => d.docKey === 'passport_photo' || d.name?.toLowerCase().includes('passport')
+          );
+          if (passportDoc && passportDoc.fileUri) {
+            u.avatar = passportDoc.fileUri;
+          }
+        }
+        return u;
+      }
+      return null;
     } catch (err) {
       console.warn('API getUserByMobile error:', err);
       return null;

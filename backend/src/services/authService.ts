@@ -141,6 +141,12 @@ export class AuthService {
         role: 'customer',
       });
       await this.saveSession(row.id, refreshToken, 'customer');
+
+      const docs = typeof row.documents === 'string' ? JSON.parse(row.documents) : row.documents || [];
+      const passportDoc = Array.isArray(docs)
+        ? docs.find((d: any) => d.docKey === 'passport_photo' || d.name?.toLowerCase().includes('passport'))
+        : undefined;
+
       return {
         token,
         refreshToken,
@@ -225,8 +231,9 @@ export class AuthService {
           referralCode: row.referral_code,
           referredBy: row.referred_by || undefined,
           role: 'customer',
+          avatar: passportDoc?.fileUri || undefined,
           isKycCompleted: Boolean(row.is_kyc_completed),
-          documents: row.documents || [],
+          documents: Array.isArray(docs) ? docs : [],
         },
         isNewUser: false,
       };
@@ -284,6 +291,11 @@ export class AuthService {
     `) as any[];
 
     const row = updated[0];
+    const docs = typeof row.documents === 'string' ? JSON.parse(row.documents) : row.documents || [];
+    const passportDoc = Array.isArray(docs)
+      ? docs.find((d: any) => d.docKey === 'passport_photo' || d.name?.toLowerCase().includes('passport'))
+      : undefined;
+
     return {
       user: {
         id: row.id,
@@ -302,8 +314,9 @@ export class AuthService {
         referralCode: row.referral_code,
         referredBy: row.referred_by || undefined,
         role: 'customer',
+        avatar: passportDoc?.fileUri || undefined,
         memberSince: new Date(row.created_at).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
-        documents: row.documents || [],
+        documents: Array.isArray(docs) ? docs : [],
       },
     };
   }

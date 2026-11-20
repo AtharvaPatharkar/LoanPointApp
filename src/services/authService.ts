@@ -167,6 +167,16 @@ class AuthService {
 
     const verifiedUser: UserProfile = res.user;
 
+    // Ensure avatar is populated if a passport photo document exists in the user's document list
+    if (!verifiedUser.avatar && Array.isArray(verifiedUser.documents)) {
+      const passportDoc = verifiedUser.documents.find(
+        (d: any) => d.docKey === 'passport_photo' || d.name?.toLowerCase().includes('passport')
+      );
+      if (passportDoc && passportDoc.fileUri) {
+        verifiedUser.avatar = passportDoc.fileUri;
+      }
+    }
+
     this.state.isAuthenticated = true;
     this.state.user = verifiedUser;
     this.state.pendingMobile = undefined;
