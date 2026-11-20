@@ -52,7 +52,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
 
     setIsLoading(true);
     try {
-      await authService.requestOtp(cleanMobile);
+      await authService.requestOtp(cleanMobile, undefined, 'login');
       setOtpCode('');
       setAuthMode('otp');
     } catch (err: unknown) {

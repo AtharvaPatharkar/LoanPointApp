@@ -26,16 +26,38 @@ export class AuthService {
    * Request OTP
    * In development mode: returns demo OTPs (123456 for customers, 9876 for admin).
    * In production mode: refuses demo OTP and requires real SMS gateway integration.
+   * mode: 'login' | 'signup'
    */
-  public async requestOtp(mobile: string): Promise<{ success: boolean; message: string; demoOtp?: string }> {
+  public async requestOtp(
+    mobile: string,
+    mode: 'login' | 'signup' = 'login'
+  ): Promise<{ success: boolean; message: string; demoOtp?: string }> {
     const cleaned = cleanMobile(mobile);
+    const sql = getDb();
+
+    const isOwnerAdmin = cleaned === cleanMobile(config.adminMobile);
+
+    // 1. Check if user already exists in Neon DB
+    const existing = (await sql`
+      SELECT id, full_name FROM users WHERE mobile = ${cleaned} LIMIT 1;
+    `) as any[];
+    const userExists = Boolean(existing && existing.length > 0);
+
+    // Rule 1: Registration check - If user is registering (signup) and number is already registered, reject!
+    if (mode === 'signup' && userExists) {
+      throw new Error('This mobile number is already registered. Please go to Login.');
+    }
+
+    // Rule 2: Login check - If user is logging in, mobile MUST be registered in database (unless owner admin)
+    if (mode === 'login' && !userExists && !isOwnerAdmin) {
+      throw new Error('Mobile number not registered. Please create / register a new account first.');
+    }
 
     if (config.otpMode === 'production' || config.env === 'production') {
       throw new Error('Production SMS Provider not configured. Contact server administrator.');
     }
 
     // Development / internal APK testing phase
-    const isOwnerAdmin = cleaned === cleanMobile(config.adminMobile);
     const demoOtp = isOwnerAdmin ? '9876' : '123456';
     const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes expiration
 
@@ -44,7 +66,7 @@ export class AuthService {
       expiresAt,
     });
 
-    console.log(`[DEV OTP ADAPTER] Dispatched OTP ${demoOtp} to +91 ${cleaned} (Expires in 5 mins)`);
+    console.log(`[DEV OTP ADAPTER] Dispatched OTP ${demoOtp} to +91 ${cleaned} (Expires in 5 mins) [Mode: ${mode}]`);
 
     return {
       success: true,
@@ -132,44 +154,8 @@ export class AuthService {
       };
     }
 
-    // First time customer -> Insert into DB
-    const newRefCode = generateCustomerCode();
-    const inserted = (await sql`
-      INSERT INTO users (full_name, mobile, email, referral_code, referred_by, is_kyc_completed)
-      VALUES ('Valued Customer', ${cleaned}, null, ${newRefCode}, ${referralCode || null}, FALSE)
-      RETURNING id, full_name, mobile, email, referral_code, referred_by, created_at;
-    `) as any[];
-
-    const row = inserted[0];
-    const token = signJwt({
-      userId: row.id,
-      mobile: row.mobile,
-      role: 'customer',
-    });
-
-    return {
-      token,
-      user: {
-        id: row.id,
-        name: row.full_name,
-        mobile: row.mobile,
-        email: row.email || '',
-        city: '',
-        employmentType: 'Salaried',
-        monthlyIncome: 0,
-        panNumber: '',
-        aadhaarNumber: '',
-        aadhaarLinked: false,
-        cibilEstimateScore: 720,
-        memberSince: new Date(row.created_at).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
-        referralCode: row.referral_code,
-        referredBy: row.referred_by || undefined,
-        role: 'customer',
-        isKycCompleted: false,
-        documents: [],
-      },
-      isNewUser: true,
-    };
+    // Unregistered user attempting to login without registration
+    throw new Error('Mobile number not found in database. Please register for an account first.');
   }
 
   public async register(params: {
@@ -188,38 +174,29 @@ export class AuthService {
       SELECT id FROM users WHERE mobile = ${cleaned} LIMIT 1;
     `) as any[];
 
+    if (existing && existing.length > 0) {
+      throw new Error('This mobile number is already registered. Please go to Login.');
+    }
+
     const newRefCode = generateCustomerCode();
     const cleanEmail = params.email?.trim() || null;
     const cleanCity = params.city?.trim() || null;
     const cleanEmp = params.employmentType || 'Salaried';
     const cleanIncome = Number(params.monthlyIncome) || 0;
 
-    if (existing && existing.length > 0) {
-      await sql`
-        UPDATE users
-        SET full_name = ${params.name.trim()},
-            email = ${cleanEmail},
-            city = ${cleanCity},
-            employment_type = ${cleanEmp},
-            monthly_income = ${cleanIncome},
-            updated_at = NOW()
-        WHERE mobile = ${cleaned};
-      `;
-    } else {
-      await sql`
-        INSERT INTO users (full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by)
-        VALUES (
-          ${params.name.trim()},
-          ${cleaned},
-          ${cleanEmail},
-          ${cleanCity},
-          ${cleanEmp},
-          ${cleanIncome},
-          ${newRefCode},
-          ${params.referralCode ? params.referralCode.trim().toUpperCase() : null}
-        );
-      `;
-    }
+    await sql`
+      INSERT INTO users (full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by)
+      VALUES (
+        ${params.name.trim()},
+        ${cleaned},
+        ${cleanEmail},
+        ${cleanCity},
+        ${cleanEmp},
+        ${cleanIncome},
+        ${newRefCode},
+        ${params.referralCode ? params.referralCode.trim().toUpperCase() : null}
+      );
+    `;
 
     const updated = (await sql`
       SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, aadhaar_number, is_kyc_completed, documents, created_at

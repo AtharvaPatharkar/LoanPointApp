@@ -98,8 +98,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
 
     setIsLoading(true);
     try {
-      // Send verification OTP
-      await authService.requestOtp(mobileNumber, referralCode);
+      // Send verification OTP with mode="signup" to ensure number is not already registered
+      await authService.requestOtp(mobileNumber, referralCode, 'signup');
       setIsOtpStep(true);
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : 'Failed to send OTP');

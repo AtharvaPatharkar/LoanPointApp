@@ -99,7 +99,11 @@ class AuthService {
     };
   }
 
-  public async requestOtp(mobile: string, referralCode?: string): Promise<{ success: boolean; message: string; demoOtp: string }> {
+  public async requestOtp(
+    mobile: string,
+    referralCode?: string,
+    mode: 'login' | 'signup' = 'login'
+  ): Promise<{ success: boolean; message: string; demoOtp: string }> {
     if (!validateMobileNumber(mobile)) {
       throw new Error('Please enter a valid 10-digit Indian mobile number');
     }
@@ -110,7 +114,7 @@ class AuthService {
     try {
       const res = await apiRequest('/auth/request-otp', {
         method: 'POST',
-        body: { mobile: cleanMobile },
+        body: { mobile: cleanMobile, mode },
       });
       if (res.demoOtp) {
         demoOtp = res.demoOtp;

@@ -6,7 +6,7 @@ import { validateIndianMobile, cleanMobile } from '../validators/index.js';
 import { rateLimiter, getClientIp } from '../middleware/rateLimiter.js';
 
 export async function handleRequestOtp(req: AuthenticatedRequest, res: ServerResponse) {
-  const { mobile } = req.parsedBody || {};
+  const { mobile, mode } = req.parsedBody || {};
   if (!mobile || !validateIndianMobile(mobile)) {
     return sendError(res, 400, 'Please provide a valid 10-digit Indian mobile number');
   }
@@ -22,10 +22,10 @@ export async function handleRequestOtp(req: AuthenticatedRequest, res: ServerRes
   }
 
   try {
-    const result = await authService.requestOtp(mobile);
+    const result = await authService.requestOtp(mobile, mode === 'signup' ? 'signup' : 'login');
     return sendSuccess(res, result, 'OTP dispatched successfully');
   } catch (err: any) {
-    return sendError(res, 500, err.message || 'Failed to dispatch OTP');
+    return sendError(res, 400, err.message || 'Failed to dispatch OTP');
   }
 }
 
