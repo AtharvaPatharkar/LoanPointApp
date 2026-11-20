@@ -73,6 +73,9 @@ export class LoanService {
       detectedBank = defaultBanks[params.loanType] || 'State Bank of India';
     }
 
+    const cleanAadhaar = params.aadhaarNumber ? String(params.aadhaarNumber).replace(/\D/g, '') : '';
+    const fullAadhaar = cleanAadhaar.length === 12 ? cleanAadhaar : (params.aadhaar_number || null);
+
     const newApp = {
       id: generatedId,
       loanType: params.loanType,
@@ -95,11 +98,12 @@ export class LoanService {
       remarks: `Online portal enquiry. Stated monthly income: ₹${Number(params.monthlyIncome || 0).toLocaleString('en-IN')}.`,
       applicantName: params.applicantName,
       applicantMobile: cleaned,
+      aadhaarNumber: fullAadhaar || undefined,
       documents: params.documents || [],
     };
 
     await sql`
-      INSERT INTO loan_applications (id, applicant_name, mobile, loan_type, requested_amount, tenure_months, status, data)
+      INSERT INTO loan_applications (id, applicant_name, mobile, loan_type, requested_amount, tenure_months, status, aadhaar_number, data)
       VALUES (
         ${newApp.id},
         ${newApp.applicantName},
@@ -108,6 +112,7 @@ export class LoanService {
         ${newApp.requestedAmount},
         ${newApp.tenureMonths},
         ${newApp.status},
+        ${fullAadhaar},
         ${JSON.stringify(newApp)}::jsonb
       )
       ON CONFLICT (id) DO UPDATE SET
@@ -117,8 +122,20 @@ export class LoanService {
         requested_amount = EXCLUDED.requested_amount,
         tenure_months = EXCLUDED.tenure_months,
         status = EXCLUDED.status,
+        aadhaar_number = EXCLUDED.aadhaar_number,
         data = EXCLUDED.data;
     `;
+
+    // Also update users table if full 12-digit Aadhaar was submitted
+    if (fullAadhaar && fullAadhaar.length === 12) {
+      await sql`
+        UPDATE users
+        SET aadhaar_number = ${fullAadhaar},
+            aadhaar_last_four = ${fullAadhaar.slice(-4)},
+            updated_at = NOW()
+        WHERE mobile = ${cleaned};
+      `;
+    }
 
     return newApp;
   }

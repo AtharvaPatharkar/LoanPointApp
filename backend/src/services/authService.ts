@@ -94,7 +94,7 @@ export class AuthService {
     // Customer Login -> Fetch from Neon Postgres
     const sql = getDb();
     const existing = (await sql`
-      SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, is_kyc_completed, documents, created_at
+      SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, aadhaar_number, is_kyc_completed, documents, created_at
       FROM users
       WHERE mobile = ${cleaned}
       LIMIT 1;
@@ -118,8 +118,8 @@ export class AuthService {
           employmentType: row.employment_type || 'Salaried',
           monthlyIncome: Number(row.monthly_income) || 0,
           panNumber: row.pan_number || '',
-          aadhaarNumber: row.aadhaar_last_four ? `XXXX-XXXX-${row.aadhaar_last_four}` : '',
-          aadhaarLinked: Boolean(row.aadhaar_last_four),
+          aadhaarNumber: row.aadhaar_number || row.aadhaar_last_four || '',
+          aadhaarLinked: Boolean(row.aadhaar_number || row.aadhaar_last_four),
           cibilEstimateScore: 740,
           memberSince: new Date(row.created_at).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
           referralCode: row.referral_code,
@@ -222,7 +222,7 @@ export class AuthService {
     }
 
     const updated = (await sql`
-      SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, is_kyc_completed, documents, created_at
+      SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, aadhaar_number, is_kyc_completed, documents, created_at
       FROM users
       WHERE mobile = ${cleaned}
       LIMIT 1;

@@ -8,18 +8,23 @@ import {
   Switch,
   Alert,
   Linking,
+  Image,
 } from 'react-native';
 import { Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import { UserProfile } from '../../types';
-import { colors } from '../../theme/colors';
 
 interface CibilServicesScreenProps {
   user: UserProfile | null;
   onRequestConsultation?: () => void;
+  onOpenCall?: (phone?: string) => void;
+  onOpenWhatsApp?: (phone?: string, text?: string) => void;
 }
 
 export const CibilServicesScreen: React.FC<CibilServicesScreenProps> = ({
   user,
+  onRequestConsultation,
+  onOpenCall,
+  onOpenWhatsApp,
 }) => {
   const [activeTab, setActiveTab] = useState<'education' | 'errors' | 'pan_aadhaar' | 'consult'>('education');
   const [consentAccepted, setConsentAccepted] = useState<boolean>(false);
@@ -42,31 +47,21 @@ export const CibilServicesScreen: React.FC<CibilServicesScreenProps> = ({
   };
 
   const subTabs = [
-    { id: 'education', label: 'Score Education', icon: 'school', iconType: 'ion', activeColor: '#008ecc', lightColor: '#e0f2fe' },
-    { id: 'errors', label: 'Report Errors', icon: 'shield-alert', iconType: 'mci', activeColor: '#ee1c25', lightColor: '#fee2e2' },
+    { id: 'education', label: 'Score Education', icon: 'school', iconType: 'ion', activeColor: '#004aad', lightColor: '#eff6ff' },
+    { id: 'errors', label: 'Report Errors', icon: 'shield-alert', iconType: 'mci', activeColor: '#dc2626', lightColor: '#fee2e2' },
     { id: 'pan_aadhaar', label: 'PAN–Aadhaar Link', icon: 'id-card', iconType: 'fa5', activeColor: '#16a34a', lightColor: '#dcfce7' },
-    { id: 'consult', label: 'Book Advisory', icon: 'calendar-check', iconType: 'mci', activeColor: '#2d3091', lightColor: '#e0e7ff' },
+    { id: 'consult', label: 'Book Advisory', icon: 'calendar-check', iconType: 'mci', activeColor: '#7c3aed', lightColor: '#f3e8ff' },
   ];
 
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-      {/* 1. Header Card */}
-      <View style={styles.headerCard}>
-        <View style={styles.headerTopRow}>
-          <View style={styles.headerIconBadge}>
-            <MaterialCommunityIcons name="finance" size={24} color="#ffffff" />
-          </View>
-          <View style={styles.headerTitleWrap}>
-            <View style={styles.tagBadge}>
-              <View style={styles.tagDot} />
-              <Text style={styles.tagText}>OFFICIAL CREDIT ADVISORY</Text>
-            </View>
-            <Text style={styles.screenHeading}>CIBIL & Credit Services</Text>
-          </View>
-        </View>
-        <Text style={styles.screenSub}>
-          Understand your CIBIL health score, correct credit bureau report errors, and unlock pre-approved bank loans.
-        </Text>
+      {/* 1. Top Hero Banner using cibil-inner.png */}
+      <View style={styles.heroBannerImageContainer}>
+        <Image
+          source={require('../../../assets/inner-banner/cibil-inner.png')}
+          style={styles.heroBannerImage}
+          resizeMode="contain"
+        />
       </View>
 
       {/* 2. Credit Meter Hero Card */}
@@ -110,14 +105,14 @@ export const CibilServicesScreen: React.FC<CibilServicesScreenProps> = ({
 
         {/* CIBIL Insights Quick Pill */}
         <View style={styles.cibilInsightBox}>
-          <Ionicons name="shield-checkmark" size={14} color="#86efac" />
+          <Ionicons name="shield-checkmark" size={16} color="#86efac" />
           <Text style={styles.cibilInsightText}>
             Your score qualifies for lower interest rates and fast-track loan sanctions!
           </Text>
         </View>
       </View>
 
-      {/* 3. Sub Tabs Row (Distinct Colorful Category Chips) */}
+      {/* 3. Sub Tabs Row */}
       <View style={styles.filterSection}>
         <ScrollView
           horizontal
@@ -138,7 +133,7 @@ export const CibilServicesScreen: React.FC<CibilServicesScreenProps> = ({
                   },
                 ]}
                 onPress={() => setActiveTab(tab.id as typeof activeTab)}
-                activeOpacity={0.7}
+                activeOpacity={0.75}
               >
                 <View
                   style={[
@@ -186,8 +181,8 @@ export const CibilServicesScreen: React.FC<CibilServicesScreenProps> = ({
       {activeTab === 'education' && (
         <View style={styles.card}>
           <View style={styles.sectionHeadingRow}>
-            <View style={[styles.sectionIconBox, { backgroundColor: colors.primaryLight }]}>
-              <Ionicons name="school" size={16} color={colors.primary} />
+            <View style={[styles.sectionIconBox, { backgroundColor: '#eff6ff' }]}>
+              <Ionicons name="school" size={16} color="#004aad" />
             </View>
             <Text style={styles.sectionHeading}>What Influences Your CIBIL Score?</Text>
           </View>
@@ -236,10 +231,10 @@ export const CibilServicesScreen: React.FC<CibilServicesScreenProps> = ({
       {activeTab === 'errors' && (
         <View style={styles.card}>
           <View style={styles.sectionHeadingRow}>
-            <View style={[styles.sectionIconBox, { backgroundColor: colors.secondaryRedLight }]}>
-              <MaterialCommunityIcons name="alert-octagon" size={16} color={colors.secondaryRed} />
+            <View style={[styles.sectionIconBox, { backgroundColor: '#fee2e2' }]}>
+              <MaterialCommunityIcons name="alert-octagon" size={16} color="#dc2626" />
             </View>
-            <Text style={[styles.sectionHeading, { color: colors.secondaryRedDark }]}>
+            <Text style={[styles.sectionHeading, { color: '#dc2626' }]}>
               Common Credit Bureau Report Errors
             </Text>
           </View>
@@ -331,7 +326,7 @@ export const CibilServicesScreen: React.FC<CibilServicesScreenProps> = ({
               <FontAwesome5 name="globe" size={13} color="#ffffff" />
             </View>
             <Text style={styles.govLinkText}>Open Income Tax Portal</Text>
-            <Ionicons name="open-outline" size={15} color={colors.white} />
+            <Ionicons name="open-outline" size={15} color="#ffffff" />
           </TouchableOpacity>
         </View>
       )}
@@ -340,10 +335,10 @@ export const CibilServicesScreen: React.FC<CibilServicesScreenProps> = ({
       {activeTab === 'consult' && (
         <View style={styles.card}>
           <View style={styles.sectionHeadingRow}>
-            <View style={[styles.sectionIconBox, { backgroundColor: '#e0e7ff' }]}>
-              <MaterialCommunityIcons name="handshake" size={17} color="#2d3091" />
+            <View style={[styles.sectionIconBox, { backgroundColor: '#f3e8ff' }]}>
+              <MaterialCommunityIcons name="handshake" size={17} color="#7c3aed" />
             </View>
-            <Text style={[styles.sectionHeading, { color: '#2d3091' }]}>
+            <Text style={[styles.sectionHeading, { color: '#7c3aed' }]}>
               Schedule CIBIL Advisory Session
             </Text>
           </View>
@@ -364,7 +359,7 @@ export const CibilServicesScreen: React.FC<CibilServicesScreenProps> = ({
 
             <View style={[styles.feeRow, { borderBottomWidth: 0 }]}>
               <View style={styles.feeLabelRow}>
-                <Ionicons name="document-text" size={14} color={colors.primary} />
+                <Ionicons name="document-text" size={14} color="#004aad" />
                 <Text style={styles.feeLabel}>Bureau Dispute & Legal Rectification</Text>
               </View>
               <Text style={styles.feeValue}>₹499 (Disclosed before payment)</Text>
@@ -376,7 +371,7 @@ export const CibilServicesScreen: React.FC<CibilServicesScreenProps> = ({
             <Switch
               value={consentAccepted}
               onValueChange={setConsentAccepted}
-              trackColor={{ false: colors.border, true: colors.primary }}
+              trackColor={{ false: '#e2e8f0', true: '#004aad' }}
             />
             <Text style={styles.consentLabel}>
               I authorize Loan Point to examine my credit report for consultation and advisory purposes as per RBI fair practices.
@@ -387,13 +382,13 @@ export const CibilServicesScreen: React.FC<CibilServicesScreenProps> = ({
             <TouchableOpacity
               style={styles.bookBtn}
               onPress={handleBookConsultation}
-              activeOpacity={0.8}
+              activeOpacity={0.88}
             >
               <View style={styles.bookIconWrap}>
-                <Ionicons name="calendar" size={15} color="#ffffff" />
+                <Ionicons name="calendar" size={15} color="#000000" />
               </View>
               <Text style={styles.bookBtnText}>Book Credit Consultation</Text>
-              <Ionicons name="arrow-forward" size={16} color={colors.white} />
+              <Ionicons name="arrow-forward" size={16} color="#000000" />
             </TouchableOpacity>
           ) : (
             <View style={styles.bookedSuccess}>
@@ -405,98 +400,72 @@ export const CibilServicesScreen: React.FC<CibilServicesScreenProps> = ({
           )}
         </View>
       )}
+
+      {/* 4. Relationship Manager Contact Bar */}
+      <View style={styles.rmBarContainer}>
+        <Image
+          source={require('../../../assets/logo/arvind_patil.png')}
+          style={styles.rmAvatar}
+          resizeMode="cover"
+        />
+        <View style={styles.rmInfoWrap}>
+          <Text style={styles.rmRoleLabel}>Lead Credit & CIBIL Advisor</Text>
+          <Text style={styles.rmName}>Arvind Patil</Text>
+          <Text style={styles.rmContact}>+91 98200 12345 · Available</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.rmCallBtn}
+          onPress={() => (onOpenCall ? onOpenCall('+91 98200 12345') : Linking.openURL('tel:9820012345'))}
+        >
+          <Ionicons name="call" size={16} color="#ffffff" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.rmWaBtn}
+          onPress={() => (onOpenWhatsApp ? onOpenWhatsApp('+919820012345', 'Hi Arvind, I need advice on my CIBIL score & credit report.') : null)}
+        >
+          <FontAwesome5 name="whatsapp" size={16} color="#ffffff" />
+        </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
+    paddingHorizontal: 14,
+    paddingTop: 8,
     paddingBottom: 36,
-    gap: 16,
+    gap: 14,
   },
-
-  /* 1. Header Card */
-  headerCard: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
+  heroBannerImageContainer: {
+    width: '100%',
+    aspectRatio: 2.36,
+    borderRadius: 18,
+    overflow: 'hidden',
+    backgroundColor: '#0a3875',
+    shadowColor: '#0a3875',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.16,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  headerTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  headerIconBadge: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    backgroundColor: '#16a34a',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#16a34a',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  headerTitleWrap: {
-    flex: 1,
-  },
-  tagBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#dcfce7',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-    marginBottom: 4,
-  },
-  tagDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: '#16a34a',
-  },
-  tagText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#166534',
-    letterSpacing: 0.5,
-  },
-  screenHeading: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: colors.text,
-  },
-  screenSub: {
-    fontSize: 12,
-    color: colors.textMuted,
-    marginTop: 8,
-    lineHeight: 17,
+  heroBannerImage: {
+    width: '100%',
+    height: '100%',
   },
 
   /* 2. Credit Meter Hero Card */
   meterCard: {
     position: 'relative',
     overflow: 'hidden',
-    backgroundColor: colors.cardNavyFrom,
-    borderRadius: 18,
-    padding: 20,
-    shadowColor: colors.cardNavyFrom,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 6,
+    backgroundColor: '#0a3875',
+    borderRadius: 20,
+    padding: 18,
+    shadowColor: '#0a3875',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    elevation: 5,
   },
   heroGlowCircle: {
     position: 'absolute',
@@ -511,7 +480,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 14,
+    marginBottom: 12,
   },
   meterBadgeRow: {
     flexDirection: 'row',
@@ -519,8 +488,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   meterSub: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 10.5,
+    fontWeight: '800',
     color: '#93c5fd',
     letterSpacing: 0.6,
   },
@@ -533,7 +502,7 @@ const styles = StyleSheet.create({
   scoreVal: {
     fontSize: 34,
     fontWeight: '900',
-    color: colors.white,
+    color: '#ffffff',
     letterSpacing: -0.5,
   },
   primePill: {
@@ -570,7 +539,7 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     overflow: 'hidden',
-    marginTop: 10,
+    marginTop: 8,
     marginBottom: 6,
     gap: 2,
   },
@@ -592,72 +561,64 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 10,
+    borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    marginTop: 14,
+    marginTop: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: 'rgba(255, 255, 255, 0.14)',
   },
   cibilInsightText: {
-    fontSize: 11.5,
-    color: '#e0f2fe',
-    fontWeight: '600',
     flex: 1,
+    fontSize: 11,
+    color: '#ffffff',
+    fontWeight: '600',
+    lineHeight: 15,
   },
 
-  /* 3. Sub Tabs Row */
+  /* 3. Filter Section */
   filterSection: {
-    marginVertical: -2,
+    marginTop: 2,
   },
   filterScroll: {
-    flexDirection: 'row',
     gap: 8,
-    paddingVertical: 2,
-    paddingRight: 10,
   },
   filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderWidth: 1.5,
-    borderColor: colors.border,
     gap: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 2,
-    elevation: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   filterChipIconWrap: {
     width: 22,
     height: 22,
-    borderRadius: 6,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
   },
   filterChipText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
-    color: colors.text,
+    color: '#475569',
   },
   filterChipTextActive: {
-    color: colors.white,
-    fontWeight: '800',
+    color: '#ffffff',
   },
 
-  /* Content Cards */
+  /* Card block */
   card: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    borderWidth: 1,
+    borderColor: '#e8eff7',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 2,
@@ -666,75 +627,70 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 14,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.surfaceSubtle,
+    marginBottom: 12,
   },
   sectionIconBox: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sectionHeading: {
-    fontSize: 13,
+    fontSize: 14.5,
     fontWeight: '800',
-    color: colors.primaryDeep,
-    letterSpacing: 0.5,
+    color: '#0f172a',
   },
   factorsList: {
-    gap: 12,
+    gap: 10,
   },
   factorItem: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    backgroundColor: colors.surfaceSubtle,
+    gap: 10,
+    backgroundColor: '#f8fafc',
+    padding: 10,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.border,
-    padding: 12,
-    borderRadius: 12,
+    borderColor: '#e2e8f0',
   },
   factorIconBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 1,
   },
   factorContent: {
     flex: 1,
   },
   factorTitle: {
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: '800',
-    color: colors.text,
+    color: '#0f172a',
   },
   factorDesc: {
-    fontSize: 11.5,
-    color: colors.textMuted,
-    lineHeight: 16.5,
-    marginTop: 3,
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
+    lineHeight: 15,
   },
 
-  /* PAN-Aadhaar View */
+  /* PAN status */
   panStatusBox: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: '#ecfdf5',
-    borderWidth: 1.5,
-    borderColor: '#a7f3d0',
-    padding: 14,
+    backgroundColor: '#f0fdf4',
+    padding: 12,
     borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+    marginBottom: 12,
   },
   panStatusIconWrap: {
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: 20,
     backgroundColor: '#dcfce7',
     alignItems: 'center',
     justifyContent: 'center',
@@ -742,94 +698,77 @@ const styles = StyleSheet.create({
   panStatusTitle: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#065f46',
+    color: '#166534',
   },
   panStatusSub: {
-    fontSize: 11.5,
-    color: '#047857',
+    fontSize: 11,
+    color: '#475569',
     marginTop: 2,
-    lineHeight: 16,
+    lineHeight: 15,
   },
   divider: {
     height: 1,
-    backgroundColor: colors.border,
-    marginVertical: 14,
+    backgroundColor: '#e2e8f0',
+    marginVertical: 12,
   },
   stepTitle: {
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: '800',
-    color: colors.text,
+    color: '#0f172a',
     marginBottom: 8,
   },
   stepsGuidanceBlock: {
-    gap: 8,
+    gap: 6,
+    marginBottom: 14,
   },
   guideStepRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    backgroundColor: colors.surfaceSubtle,
-    padding: 10,
-    borderRadius: 10,
+    gap: 8,
   },
   stepNumberBadge: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#16a34a',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#e2e8f0',
     alignItems: 'center',
     justifyContent: 'center',
   },
   stepNumberText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
-    color: colors.white,
+    color: '#0f172a',
   },
   stepText: {
     fontSize: 11.5,
-    color: colors.text,
-    fontWeight: '500',
-    flex: 1,
+    color: '#475569',
   },
   govLinkBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#16a34a',
-    borderRadius: 14,
-    paddingVertical: 13,
-    gap: 8,
-    marginTop: 14,
-    shadowColor: '#16a34a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.28,
-    shadowRadius: 8,
-    elevation: 4,
+    gap: 6,
+    backgroundColor: '#004aad',
+    paddingVertical: 11,
+    borderRadius: 20,
   },
   govIconWrap: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    marginRight: 2,
   },
   govLinkText: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '800',
-    color: colors.white,
-    letterSpacing: 0.2,
+    color: '#ffffff',
   },
 
-  /* Fee Box */
+  /* Fee box */
   feeBox: {
-    backgroundColor: colors.surfaceSubtle,
-    borderRadius: 12,
+    backgroundColor: '#f8fafc',
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.border,
-    padding: 12,
-    marginVertical: 14,
-    gap: 8,
+    borderColor: '#e2e8f0',
+    marginVertical: 12,
+    padding: 10,
   },
   feeRow: {
     flexDirection: 'row',
@@ -837,7 +776,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 6,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: '#f1f5f9',
   },
   feeLabelRow: {
     flexDirection: 'row',
@@ -845,81 +784,127 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   feeLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.text,
+    fontSize: 11.5,
+    color: '#334155',
+    fontWeight: '600',
   },
   feeValueFree: {
-    fontSize: 12,
-    fontWeight: '900',
+    fontSize: 11.5,
+    fontWeight: '800',
     color: '#16a34a',
   },
   feeValue: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
-    color: colors.primary,
+    color: '#004aad',
   },
   consentBox: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: '#f8fafc',
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 12,
-    borderRadius: 12,
+    alignItems: 'flex-start',
+    gap: 10,
     marginBottom: 14,
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   consentLabel: {
     flex: 1,
     fontSize: 11,
-    color: colors.textMuted,
-    lineHeight: 16,
-    fontWeight: '500',
+    color: '#475569',
+    lineHeight: 15,
   },
   bookBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.indigoNavy,
-    borderRadius: 14,
-    paddingVertical: 14,
-    gap: 8,
-    shadowColor: colors.indigoNavy,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.28,
-    shadowRadius: 8,
-    elevation: 4,
+    gap: 6,
+    backgroundColor: '#fbbf24',
+    paddingVertical: 12,
+    borderRadius: 22,
+    shadowColor: '#d97706',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
+    elevation: 3,
   },
   bookIconWrap: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    marginRight: 2,
   },
   bookBtnText: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '800',
-    color: colors.white,
-    letterSpacing: 0.2,
+    color: '#000000',
   },
   bookedSuccess: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#ecfdf5',
-    borderWidth: 1,
-    borderColor: '#a7f3d0',
-    padding: 14,
+    backgroundColor: '#f0fdf4',
     borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
   },
   bookedText: {
     flex: 1,
     fontSize: 12,
     fontWeight: '700',
-    color: '#065f46',
-    lineHeight: 17,
+    color: '#166534',
+    lineHeight: 16,
+  },
+
+  /* RM Bar */
+  rmBarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f9ff',
+    borderRadius: 18,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#bae6fd',
+    marginTop: 4,
+  },
+  rmAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    marginRight: 10,
+  },
+  rmInfoWrap: {
+    flex: 1,
+  },
+  rmRoleLabel: {
+    fontSize: 9.5,
+    color: '#0284c7',
+    fontWeight: '700',
+  },
+  rmName: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  rmContact: {
+    fontSize: 10.5,
+    color: '#475569',
+    marginTop: 1,
+  },
+  rmCallBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#0284c7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 6,
+  },
+  rmWaBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#16a34a',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

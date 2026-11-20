@@ -75,7 +75,7 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
   const disbursedList = applications.filter((app) => !app.isTopUp && app.status === 'Disbursed');
   const rejectedList = applications.filter((app) => app.status === 'Rejected');
   const topUpList = applications.filter((app) => app.isTopUp);
-  const topUpCount = topUpList.length > 0 ? topUpList.length : 1;
+  const topUpCount = topUpList.length;
 
   const currentList =
     activeTab === 'all'
@@ -316,29 +316,34 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
 
         {/* ---------------- ACTIVE TAB CONTENT ---------------- */}
         {activeTab === 'rejected' ? (
-          /* REJECTED TAB SPECIFIC VIEW (MATCHING USER REFERENCE IMAGE) */
+          /* REJECTED TAB SPECIFIC VIEW */
           <View>
-            {rejectedList.map((app) => {
-              const isHome = app.loanType === 'home';
-              const bankName = app.bankName || (isHome ? 'ICICI Bank' : 'HDFC Bank');
-              const appliedOn = app.submissionDate || (isHome ? '05 Oct 2026' : '28 Sep 2026');
-              const rejectedOn = app.rejectedOn || (isHome ? '10 Oct 2026' : '02 Oct 2026');
-              const reapplyDate = app.reapplyDate || (isHome ? '10 Jan 2027' : '02 Nov 2026');
-              const isEligibleToReapply = checkIsReapplyEligible(reapplyDate);
-              const loanAmount = formatAmountINR(app.requestedAmount || (isHome ? 8000000 : 5000000));
-              const rejectionReason =
-                app.rejectionReason ||
-                (isHome
-                  ? "CIBIL Score is below lender's required criteria."
-                  : 'Insufficient business income documentation.');
-              const nextStep =
-                app.nextStepText ||
-                (isHome
-                  ? 'Improve your CIBIL score and reapply.'
-                  : 'Upload updated income & business documents and reapply.');
+            {rejectedList.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="checkmark-done-circle-outline" size={44} color="#16a34a" />
+                <Text style={styles.emptyTitle}>No Rejected Loans</Text>
+                <Text style={styles.emptySubtitle}>
+                  You do not have any rejected loan applications. All your applications are processed smoothly!
+                </Text>
+              </View>
+            ) : (
+              rejectedList.map((app) => {
+                const bankName = app.bankName || 'Partner Bank';
+                const appliedOn = app.submissionDate || 'Recently';
+                const rejectedOn = app.rejectedOn || app.statusUpdatedDate || 'Recently';
+                const reapplyDate = app.reapplyDate || '30 days after rejection';
+                const isEligibleToReapply = checkIsReapplyEligible(reapplyDate);
+                const loanAmount = formatAmountINR(app.requestedAmount || 0);
+                const rejectionReason =
+                  app.rejectionReason ||
+                  app.remarks ||
+                  'Application did not meet current lender eligibility guidelines.';
+                const nextStep =
+                  app.nextStepText ||
+                  'Consult your Relationship Manager or reapply with updated documents.';
 
-              return (
-                <View key={app.id} style={styles.rejectedCardWrapper}>
+                return (
+                  <View key={app.id} style={styles.rejectedCardWrapper}>
                   {/* Row 1: Header (Attractive 3D Colourful Loan Image Logo + Title/ID + Bank Name on right) */}
                   <View style={styles.rejectedCardHeaderRow}>
                     <LoanIcon
@@ -479,7 +484,7 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
                   </View>
                 </View>
               );
-            })}
+            }))}
 
             {/* Need Help Getting Approved? Banner Card */}
             <View style={styles.needHelpBannerCard}>
@@ -505,19 +510,28 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
         ) : activeTab === 'top_up' ? (
           /* Top Up Tab Specific View */
           <View>
-            {topUpList.map((app) => {
-              const bankName = app.bankName || 'HDFC Bank';
-              const rmName = app.assignedManager?.name || 'Arvind Patil';
-              const rmPhone = app.assignedManager?.phone || '+91 9545555999';
-              const tenureTotal = app.tenureYears || '20 Years';
-              const existingLoan = formatAmountINR(app.existingLoanAmount || 5000000);
-              const topUpRequested = formatAmountINR(app.topUpRequestedAmount || 1500000);
-              const currentEmi = app.currentEmi || '₹43,476';
-              const afterTopUpEmi = app.afterTopUpEmi || '₹56,200 (Est.)';
-              const stageIdx = app.topUpStageIndex !== undefined ? app.topUpStageIndex : 1;
+            {topUpList.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <MaterialCommunityIcons name="cash-plus" size={44} color="#d97706" />
+                <Text style={styles.emptyTitle}>No Top Up Requests Yet</Text>
+                <Text style={styles.emptySubtitle}>
+                  You haven't requested any top up on your existing loans yet. Tap "Request Loan Top Up" below to get started.
+                </Text>
+              </View>
+            ) : (
+              topUpList.map((app) => {
+                const bankName = app.bankName || 'Partner Bank';
+                const rmName = app.assignedManager?.name || 'Arvind Patil';
+                const rmPhone = app.assignedManager?.phone || '+91 9545555999';
+                const tenureTotal = app.tenureYears || (app.tenureMonths ? `${Math.round(app.tenureMonths / 12)} Years` : '20 Years');
+                const existingLoan = formatAmountINR(app.existingLoanAmount || app.requestedAmount || 0);
+                const topUpRequested = formatAmountINR(app.topUpRequestedAmount || 0);
+                const currentEmi = app.currentEmi || '—';
+                const afterTopUpEmi = app.afterTopUpEmi || (app.emiAmount ? `${app.emiAmount} (Est.)` : '—');
+                const stageIdx = app.topUpStageIndex !== undefined ? app.topUpStageIndex : 1;
 
-              return (
-                <View key={app.id} style={styles.topUpCard}>
+                return (
+                  <View key={app.id} style={styles.topUpCard}>
                   {/* Row 1: Header (Attractive 3D Colourful Loan Image Logo, Title + App ID, Golden Pill Button + Arrow) */}
                   <View style={styles.topUpHeaderRow}>
                     <LoanIcon
@@ -530,9 +544,9 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
                     />
 
                     <View style={styles.topUpTitleCol}>
-                      <Text style={styles.topUpTitleText}>{app.loanTypeName || 'Home Loan'}</Text>
+                      <Text style={styles.topUpTitleText}>{app.loanTypeName || 'Loan'}</Text>
                       <View style={styles.topUpAppIdPill}>
-                        <Text style={styles.topUpAppIdText}>Application ID: {app.id}</Text>
+                        <Text style={styles.topUpAppIdText}>Request ID: {app.id}</Text>
                       </View>
                     </View>
 
@@ -690,7 +704,8 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
                   </View>
                 </View>
               );
-            })}
+            })
+            )}
 
             {/* Need More Funds Banner Card */}
             <TouchableOpacity

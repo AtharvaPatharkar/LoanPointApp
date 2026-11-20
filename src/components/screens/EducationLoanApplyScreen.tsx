@@ -89,11 +89,11 @@ export const EducationLoanApplyScreen: React.FC<EducationLoanApplyScreenProps> =
   const [panNumber, setPanNumber] = useState<string>(user?.panNumber || '');
   const [aadhaarNumber, setAadhaarNumber] = useState<string>(user?.aadhaarNumber || '');
   const [uploadedDocs, setUploadedDocs] = useState<UploadedDocState>({
-    studentPanAadhaar: isUserDocUploaded(user, 'pan_card', ['pan']) || isUserDocUploaded(user, 'aadhaar_card', ['aadhaar']),
-    coApplicantKyc: false,
-    admissionLetter: isUserDocUploaded(user, 'admission_letter', ['admission', 'offer', 'bonafide']),
-    academicRecords: isUserDocUploaded(user, 'academic_marksheets', ['mark', 'academic', 'degree', 'ssc', 'hsc']),
-    coApplicantIncome: isUserDocUploaded(user, 'salary_slips', ['salary', 'itr']),
+    studentPanAadhaar: isUserDocUploaded(user, 'student_pan_aadhaar', ['student', 'pan', 'aadhaar', 'kyc']),
+    coApplicantKyc: isUserDocUploaded(user, 'co_applicant_kyc', ['co-applicant', 'parent', 'guardian', 'aadhaar']),
+    admissionLetter: isUserDocUploaded(user, 'admission_letter', ['admission', 'offer', 'bonafide', 'college']),
+    academicRecords: isUserDocUploaded(user, 'academic_records', ['mark', 'academic', 'degree', 'ssc', 'hsc', '10th', '12th']),
+    coApplicantIncome: isUserDocUploaded(user, 'salary_slips', ['salary', 'itr', 'payslip', 'income']),
     bankStatements: isUserDocUploaded(user, 'bank_statement', ['statement', 'passbook']),
     photograph: isUserDocUploaded(user, 'passport_photo', ['photo', 'passport']),
   });
@@ -113,6 +113,20 @@ export const EducationLoanApplyScreen: React.FC<EducationLoanApplyScreenProps> =
   const handleViewDocument = (doc: DocumentItem) => {
     setPreviewDoc(doc);
     setShowPreviewModal(true);
+  };
+
+  const syncDocKeyToState = (docKey: string) => {
+    setUploadedDocs((prev) => {
+      const next = { ...prev };
+      if (docKey === 'student_pan_aadhaar' || docKey === 'pan_card' || docKey === 'aadhaar_card') next.studentPanAadhaar = true;
+      else if (docKey === 'co_applicant_kyc') next.coApplicantKyc = true;
+      else if (docKey === 'admission_letter') next.admissionLetter = true;
+      else if (docKey === 'academic_records') next.academicRecords = true;
+      else if (docKey === 'salary_slips') next.coApplicantIncome = true;
+      else if (docKey === 'bank_statement') next.bankStatements = true;
+      else if (docKey === 'passport_photo') next.photograph = true;
+      return next;
+    });
   };
 
   const handleUploadOrReuploadDoc = (docKey: string, defaultTitle: string, category: DocumentItem['category']) => {
@@ -160,6 +174,7 @@ export const EducationLoanApplyScreen: React.FC<EducationLoanApplyScreenProps> =
                 user.documents.push(newDoc);
               }
             }
+            syncDocKeyToState(docKey);
             Alert.alert('Success', `"${defaultTitle}" uploaded successfully!`);
           } catch {
             Alert.alert('Error', 'Document upload failed. Please try again.');
@@ -209,6 +224,7 @@ export const EducationLoanApplyScreen: React.FC<EducationLoanApplyScreenProps> =
                   user.documents.push(newDoc);
                 }
               }
+              syncDocKeyToState(docKey);
               Alert.alert('Success', `"${defaultTitle}" uploaded successfully!`);
             } catch (err) {
               Alert.alert('Error', 'Unable to pick or upload document.');
@@ -249,6 +265,7 @@ export const EducationLoanApplyScreen: React.FC<EducationLoanApplyScreenProps> =
                   user.documents.push(newDoc);
                 }
               }
+              syncDocKeyToState(docKey);
               Alert.alert('Success', `"${defaultTitle}" photo uploaded successfully!`);
             } catch (err) {
               Alert.alert('Error', 'Unable to choose photo.');
@@ -410,10 +427,21 @@ export const EducationLoanApplyScreen: React.FC<EducationLoanApplyScreenProps> =
       return;
     }
     const cleanAadhaar = aadhaarNumber.replace(/\D/g, '');
-    if (cleanAadhaar && cleanAadhaar.length !== 12) {
+    const isMaskedValid = (cleanAadhaar.length === 4 && (aadhaarNumber.includes('XXXX') || aadhaarNumber.includes('xxxx')));
+    if (cleanAadhaar && cleanAadhaar.length !== 12 && !isMaskedValid) {
       setFormError('Aadhaar Number must be 12 digits');
       return;
     }
+    // Re-sync uploadedDocs state from user.documents
+    setUploadedDocs({
+      studentPanAadhaar: isUserDocUploaded(user, 'student_pan_aadhaar', ['student', 'pan', 'aadhaar', 'kyc']),
+      coApplicantKyc: isUserDocUploaded(user, 'co_applicant_kyc', ['co-applicant', 'parent', 'guardian', 'aadhaar']),
+      admissionLetter: isUserDocUploaded(user, 'admission_letter', ['admission', 'offer', 'bonafide', 'college']),
+      academicRecords: isUserDocUploaded(user, 'academic_records', ['mark', 'academic', 'degree', 'ssc', 'hsc', '10th', '12th']),
+      coApplicantIncome: isUserDocUploaded(user, 'salary_slips', ['salary', 'itr', 'payslip', 'income']),
+      bankStatements: isUserDocUploaded(user, 'bank_statement', ['statement', 'passbook']),
+      photograph: isUserDocUploaded(user, 'passport_photo', ['photo', 'passport']),
+    });
     setCurrentStep(5);
   };
 
@@ -1495,9 +1523,11 @@ export const EducationLoanApplyScreen: React.FC<EducationLoanApplyScreenProps> =
                   <View style={styles.appIdIconWrap}>
                     <MaterialCommunityIcons name="file-document-outline" size={20} color="#004aad" />
                   </View>
-                  <View>
+                  <View style={styles.appIdTextWrap}>
                     <Text style={styles.appIdLabel}>Application ID</Text>
-                    <Text style={styles.appIdValue}>{submittedApp.id}</Text>
+                    <Text style={styles.appIdValue} numberOfLines={1} ellipsizeMode="tail">
+                      {submittedApp.id}
+                    </Text>
                   </View>
                 </View>
 
@@ -1505,9 +1535,11 @@ export const EducationLoanApplyScreen: React.FC<EducationLoanApplyScreenProps> =
                   <View style={styles.appIdIconWrap}>
                     <Ionicons name="calendar-outline" size={20} color="#004aad" />
                   </View>
-                  <View>
+                  <View style={styles.appIdTextWrap}>
                     <Text style={styles.appIdLabel}>Submitted On</Text>
-                    <Text style={styles.appIdDateValue}>{submittedDateString || 'Today'}</Text>
+                    <Text style={styles.appIdDateValue} numberOfLines={1} ellipsizeMode="tail">
+                      {submittedDateString || 'Today'}
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -2493,7 +2525,9 @@ const styles = StyleSheet.create({
 
   continueButton: {
     marginHorizontal: 16,
-    height: 52,
+    minHeight: 52,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     backgroundColor: '#ffd700',
     borderRadius: 26,
     flexDirection: 'row',
@@ -2508,8 +2542,10 @@ const styles = StyleSheet.create({
   continueButtonText: {
     color: '#002e75',
     fontWeight: '800',
-    fontSize: 15,
+    fontSize: 16,
     marginRight: 6,
+    flexShrink: 1,
+    textAlign: 'center',
   },
   dualButtonRow: {
     flexDirection: 'row',
@@ -2540,15 +2576,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 13,
+    minHeight: 48,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     borderRadius: 12,
     elevation: 2,
   },
   primaryActionButtonText: {
     color: '#002e75',
     fontWeight: '800',
-    fontSize: 14,
+    fontSize: 13.5,
     marginRight: 6,
+    flexShrink: 1,
+    textAlign: 'center',
   },
   subSectionTitle: {
     fontSize: 13,
@@ -2798,7 +2838,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    minHeight: 48,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     borderRadius: 12,
     elevation: 3,
   },
@@ -2808,8 +2850,10 @@ const styles = StyleSheet.create({
   submitBigButtonText: {
     color: '#002e75',
     fontWeight: '800',
-    fontSize: 15,
+    fontSize: 14,
     marginRight: 6,
+    flexShrink: 1,
+    textAlign: 'center',
   },
   successScreenWrapper: {
     marginHorizontal: 14,
@@ -2859,9 +2903,11 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 14,
     marginBottom: 14,
+    overflow: 'hidden',
   },
   appIdBox: {
     flex: 1,
+    flexShrink: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#eff6ff',
@@ -2869,6 +2915,7 @@ const styles = StyleSheet.create({
     borderColor: '#bfdbfe',
     borderRadius: 12,
     padding: 10,
+    overflow: 'hidden',
   },
   appIdIconWrap: {
     width: 32,
@@ -2878,6 +2925,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 8,
+    flexShrink: 0,
+  },
+  appIdTextWrap: {
+    flex: 1,
+    flexShrink: 1,
   },
   appIdLabel: {
     fontSize: 10,
@@ -2888,11 +2940,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     color: '#002e75',
+    flexShrink: 1,
   },
   appIdDateValue: {
     fontSize: 11,
     fontWeight: '700',
     color: '#0f172a',
+    flexShrink: 1,
   },
   lifecycleTrackerRow: {
     flexDirection: 'row',

@@ -19,69 +19,14 @@ export interface WalletTransaction {
   type: 'credit' | 'debit';
 }
 
-const INITIAL_REFERRALS: ReferralItem[] = [
-  {
-    id: 'REF-101',
-    name: 'Amit Patil',
-    loanType: 'Personal Loan',
-    appliedAmount: 500000,
-    reward: 1000,
-    status: 'Disbursed',
-    date: '02 Oct 2026',
-    referredByCode: 'RAHUL123',
-  },
-  {
-    id: 'REF-102',
-    name: 'Sneha Deshmukh',
-    loanType: 'Home Loan',
-    appliedAmount: 2500000,
-    reward: 2000,
-    status: 'Approved',
-    date: '28 Sep 2026',
-    referredByCode: 'RAHUL123',
-  },
-  {
-    id: 'REF-103',
-    name: 'Prakash More',
-    loanType: 'Business Loan',
-    appliedAmount: 1000000,
-    reward: 1500,
-    status: 'In Process',
-    date: '15 Sep 2026',
-    referredByCode: 'RAHUL123',
-  },
-  {
-    id: 'REF-104',
-    name: 'Ravi Jadhav',
-    loanType: 'Personal Loan',
-    appliedAmount: 300000,
-    reward: 1000,
-    status: 'Disbursed',
-    date: '05 Sep 2026',
-    referredByCode: 'RAHUL123',
-  },
-  {
-    id: 'REF-105',
-    name: 'Neha Kulkarni',
-    loanType: 'Car Loan',
-    appliedAmount: 800000,
-    reward: 1000,
-    status: 'Rejected',
-    date: '20 Aug 2026',
-    referredByCode: 'RAHUL123',
-  },
-];
+const INITIAL_REFERRALS: ReferralItem[] = [];
 
-const INITIAL_TRANSACTIONS: WalletTransaction[] = [
-  { id: 'TX-1', title: 'Amit Patil Referral', amount: '+₹1,000', date: '02 Oct 2026', type: 'credit' },
-  { id: 'TX-2', title: 'Ravi Jadhav Referral', amount: '+₹1,000', date: '05 Sep 2026', type: 'credit' },
-  { id: 'TX-3', title: 'Bank Withdrawal (HDFC)', amount: '-₹3,000', date: '15 Aug 2026', type: 'debit' },
-];
+const INITIAL_TRANSACTIONS: WalletTransaction[] = [];
 
 class ReferralService {
-  private referrals: ReferralItem[] = [...INITIAL_REFERRALS];
-  private walletBalance: number = 6000;
-  private transactions: WalletTransaction[] = [...INITIAL_TRANSACTIONS];
+  private referrals: ReferralItem[] = [];
+  private walletBalance: number = 0;
+  private transactions: WalletTransaction[] = [];
 
   public getReferrals(): ReferralItem[] {
     return [...this.referrals];
@@ -155,6 +100,12 @@ class ReferralService {
       type: 'debit',
     });
     return { success: true, refId };
+  }
+
+  public clearUserData(): void {
+    this.referrals = [];
+    this.walletBalance = 0;
+    this.transactions = [];
   }
 }
 

@@ -5,7 +5,7 @@ export class UserService {
   public async getProfileByUserId(userId: string): Promise<any | null> {
     const sql = getDb();
     const rows = (await sql`
-      SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, is_kyc_completed, documents, created_at, updated_at
+      SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, aadhaar_number, is_kyc_completed, documents, created_at, updated_at
       FROM users
       WHERE id = ${userId}
       LIMIT 1;
@@ -18,7 +18,7 @@ export class UserService {
     const cleaned = cleanMobile(mobile);
     const sql = getDb();
     const rows = (await sql`
-      SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, is_kyc_completed, documents, created_at, updated_at
+      SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, aadhaar_number, is_kyc_completed, documents, created_at, updated_at
       FROM users
       WHERE mobile = ${cleaned}
       LIMIT 1;
@@ -31,8 +31,12 @@ export class UserService {
     const cleaned = cleanMobile(mobile);
     const sql = getDb();
 
-    const lastFour = updates.aadhaarNumber ? updates.aadhaarNumber.replace(/\D/g, '').slice(-4) : (updates.aadhaar_last_four || null);
-    const docsJson = updates.documents ? JSON.stringify(updates.documents) : null;
+    const cleanAadhaar = updates.aadhaarNumber ? updates.aadhaarNumber.replace(/\D/g, '') : '';
+    const fullAadhaar = cleanAadhaar.length === 12 ? cleanAadhaar : (updates.aadhaar_number || null);
+    const lastFour = cleanAadhaar.length >= 4 ? cleanAadhaar.slice(-4) : (updates.aadhaar_last_four || null);
+    const docsJson = (Array.isArray(updates.documents) && updates.documents.length > 0)
+      ? JSON.stringify(updates.documents)
+      : null;
     const isComplete = Boolean(updates.city && updates.panNumber && (Number(updates.monthlyIncome) > 0));
 
     await sql`
@@ -43,6 +47,7 @@ export class UserService {
           employment_type = CASE WHEN ${updates.employmentType || ''} <> '' THEN ${updates.employmentType} ELSE employment_type END,
           monthly_income = CASE WHEN ${updates.monthlyIncome !== undefined && updates.monthlyIncome !== null} THEN ${Number(updates.monthlyIncome) || 0} ELSE monthly_income END,
           pan_number = CASE WHEN ${updates.panNumber || ''} <> '' THEN ${updates.panNumber} ELSE pan_number END,
+          aadhaar_number = CASE WHEN ${fullAadhaar || ''} <> '' THEN ${fullAadhaar} ELSE aadhaar_number END,
           aadhaar_last_four = CASE WHEN ${lastFour || ''} <> '' THEN ${lastFour} ELSE aadhaar_last_four END,
           documents = CASE WHEN ${docsJson || ''} <> '' THEN ${docsJson}::jsonb ELSE documents END,
           is_kyc_completed = CASE WHEN ${isComplete} THEN TRUE ELSE is_kyc_completed END,
@@ -56,7 +61,7 @@ export class UserService {
   public async getAllUsers(): Promise<any[]> {
     const sql = getDb();
     const rows = (await sql`
-      SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, is_kyc_completed, documents, created_at, updated_at
+      SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, aadhaar_number, is_kyc_completed, documents, created_at, updated_at
       FROM users
       ORDER BY created_at DESC;
     `) as any[];
@@ -65,8 +70,12 @@ export class UserService {
 
   public async adminUpdateUser(userId: string, updates: any): Promise<any | null> {
     const sql = getDb();
-    const lastFour = updates.aadhaarNumber ? updates.aadhaarNumber.replace(/\D/g, '').slice(-4) : (updates.aadhaar_last_four || null);
-    const docsJson = updates.documents ? JSON.stringify(updates.documents) : null;
+    const cleanAadhaar = updates.aadhaarNumber ? updates.aadhaarNumber.replace(/\D/g, '') : '';
+    const fullAadhaar = cleanAadhaar.length === 12 ? cleanAadhaar : (updates.aadhaar_number || null);
+    const lastFour = cleanAadhaar.length >= 4 ? cleanAadhaar.slice(-4) : (updates.aadhaar_last_four || null);
+    const docsJson = (Array.isArray(updates.documents) && updates.documents.length > 0)
+      ? JSON.stringify(updates.documents)
+      : null;
     const isKyc = updates.isKycCompleted !== undefined ? Boolean(updates.isKycCompleted) : null;
 
     await sql`
@@ -77,6 +86,7 @@ export class UserService {
           employment_type = CASE WHEN ${updates.employmentType || ''} <> '' THEN ${updates.employmentType} ELSE employment_type END,
           monthly_income = CASE WHEN ${updates.monthlyIncome !== undefined && updates.monthlyIncome !== null} THEN ${Number(updates.monthlyIncome) || 0} ELSE monthly_income END,
           pan_number = CASE WHEN ${updates.panNumber || ''} <> '' THEN ${updates.panNumber} ELSE pan_number END,
+          aadhaar_number = CASE WHEN ${fullAadhaar || ''} <> '' THEN ${fullAadhaar} ELSE aadhaar_number END,
           aadhaar_last_four = CASE WHEN ${lastFour || ''} <> '' THEN ${lastFour} ELSE aadhaar_last_four END,
           documents = CASE WHEN ${docsJson || ''} <> '' THEN ${docsJson}::jsonb ELSE documents END,
           is_kyc_completed = CASE WHEN ${isKyc !== null} THEN ${isKyc} ELSE is_kyc_completed END,
@@ -143,8 +153,8 @@ export class UserService {
       employmentType: row.employment_type || 'Salaried',
       monthlyIncome: Number(row.monthly_income) || 0,
       panNumber: row.pan_number || '',
-      aadhaarNumber: row.aadhaar_last_four ? `XXXX-XXXX-${row.aadhaar_last_four}` : '',
-      aadhaarLinked: Boolean(row.aadhaar_last_four),
+      aadhaarNumber: row.aadhaar_number || row.aadhaar_last_four || '',
+      aadhaarLinked: Boolean(row.aadhaar_number || row.aadhaar_last_four),
       cibilEstimateScore: 740,
       memberSince: new Date(row.created_at).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
       referralCode: row.referral_code,

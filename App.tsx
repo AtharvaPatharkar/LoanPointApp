@@ -28,6 +28,8 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
 }
 import { authService } from './src/services/authService';
 import { loanService } from './src/services/loanService';
+import { documentService } from './src/services/documentService';
+import { referralService } from './src/services/referralService';
 import { notificationService } from './src/services/notificationService';
 import { COMPANY_INFO } from './src/data/mockData';
 import { colors } from './src/theme/colors';
@@ -56,6 +58,7 @@ import { EligibilityScreen } from './src/components/screens/EligibilityScreen';
 import { BalanceTransferScreen } from './src/components/screens/BalanceTransferScreen';
 import { RateComparisonScreen } from './src/components/screens/RateComparisonScreen';
 import { CibilServicesScreen } from './src/components/screens/CibilServicesScreen';
+import { CreditCardScreen } from './src/components/screens/CreditCardScreen';
 import { DocumentsScreen } from './src/components/screens/DocumentsScreen';
 import { SupportScreen } from './src/components/screens/SupportScreen';
 import { OffersReferralScreen } from './src/components/screens/OffersReferralScreen';
@@ -122,9 +125,7 @@ function MainApp() {
   useEffect(() => {
     if (user?.mobile && user.role !== 'admin') {
       loanService.fetchApplicationsForMobile(user.mobile).then((apps) => {
-        if (apps && apps.length > 0) {
-          setApplications(apps);
-        }
+        setApplications(apps || []);
       });
     }
   }, [user?.mobile, currentTab, activeSubScreen]);
@@ -247,6 +248,8 @@ function MainApp() {
         return 'Rate Comparison';
       case 'cibil_services':
         return 'CIBIL & Credit Advisory';
+      case 'credit_card':
+        return 'Apply Credit Card';
       case 'services':
         return 'Services & Financial Tools';
       case 'all_reviews':
@@ -277,10 +280,20 @@ function MainApp() {
   );
 
   const handleLogout = () => {
+    // 1. Wipe all user state & tokens
     authService.logout();
+    loanService.clearUserData();
+    documentService.clearUserData();
+    referralService.clearUserData();
+
+    // 2. Clear all React Component level state
     setIsAuthenticated(false);
     setUser(null);
+    setApplications([]);
+    setSelectedApplication(null);
+    setSelectedCategory(null);
     setActiveSubScreen(null);
+    setSubScreenHistory([]);
     setCurrentTab('home');
   };
 
@@ -291,6 +304,16 @@ function MainApp() {
         <AuthScreens
           initialReferralCode={incomingReferralCode}
           onAuthSuccess={(authedUser) => {
+            // Fresh state initialization for newly logged in user
+            loanService.clearUserData();
+            documentService.clearUserData();
+            referralService.clearUserData();
+            setApplications([]);
+
+            if (authedUser.documents && authedUser.documents.length > 0) {
+              documentService.setDocuments(authedUser.documents);
+            }
+
             setUser(authedUser);
             setIsAuthenticated(true);
             // If logged in as admin, navigate directly to admin view
@@ -331,7 +354,9 @@ function MainApp() {
                 setActiveSubScreen('profile_settings');
               }}
               onOpenAdmin={() => {
-                setActiveSubScreen('admin');
+                if (user?.role === 'admin') {
+                  setActiveSubScreen('admin');
+                }
               }}
               userName={user?.name && user.name !== 'Valued Customer' ? user.name : (user?.mobile ? `User ${user.mobile.slice(-4)}` : 'Customer')}
               userAvatar={user?.avatar}
@@ -354,6 +379,7 @@ function MainApp() {
                 }}
                 onOpenWhatsApp={(phone, text) => handleOpenWhatsApp(phone, text)}
                 onBack={handleBack}
+                onNavigate={handleNavigate}
               />
             )}
 
@@ -515,6 +541,22 @@ function MainApp() {
                 onRequestConsultation={() => {
                   setActiveSubScreen('support');
                 }}
+                onOpenCall={handleOpenCall}
+                onOpenWhatsApp={handleOpenWhatsApp}
+              />
+            )}
+
+            {activeSubScreen === 'credit_card' && (
+              <CreditCardScreen
+                user={user}
+                onSuccess={(newApp) => {
+                  setApplications(loanService.getApplications());
+                  setSelectedApplication(newApp);
+                  setActiveSubScreen('application_detail');
+                }}
+                onCancel={handleBack}
+                onOpenCall={handleOpenCall}
+                onOpenWhatsApp={handleOpenWhatsApp}
               />
             )}
 
@@ -535,11 +577,14 @@ function MainApp() {
                 user={user}
                 application={
                   selectedApplication ||
-                  applications.find((a) => a.id === 'HL-20260915-0087') ||
-                  applications[0]
+                  applications.find((a) => a.status === 'Disbursed') ||
+                  (applications.length > 0 ? applications[0] : null)
                 }
+                applications={applications}
+                onSelectApplication={(app) => setSelectedApplication(app)}
                 onBack={handleBack}
                 onApplySuccess={() => {
+                  setApplications(loanService.getApplications());
                   setActiveSubScreen(null);
                   setCurrentTab('applications');
                 }}
@@ -578,12 +623,7 @@ function MainApp() {
                 onUpdateUser={(updatedUser) => setUser(updatedUser)}
                 currentLanguage={currentLanguage}
                 onLanguageChange={(l) => setCurrentLanguage(l)}
-                onLogout={() => {
-                  authService.logout();
-                  setIsAuthenticated(false);
-                  setUser(null);
-                  setActiveSubScreen(null);
-                }}
+                onLogout={handleLogout}
                 onNavigate={handleNavigate}
                 onResetDemoData={handleResetDemo}
               />
@@ -662,9 +702,9 @@ function MainApp() {
           </View>
 
           {/* Fixed Bottom Tab Navigation */}
-          {!activeSubScreen && (
+          {(!activeSubScreen || activeSubScreen === 'services') && (
             <BottomNav
-              currentTab={currentTab}
+              currentTab={activeSubScreen === 'services' ? 'apply' : currentTab}
               onSelectTab={(tab) => {
                 if (tab === 'apply') {
                   setActiveSubScreen('services');

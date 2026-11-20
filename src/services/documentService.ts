@@ -13,6 +13,10 @@ class DocumentService {
     this.documents = Array.isArray(docs) ? [...docs] : [];
   }
 
+  public clearUserData(): void {
+    this.documents = [];
+  }
+
   public validateFile(file: { name: string; size: number; type: string }): { valid: boolean; error?: string } {
     const maxBytes = 5 * 1024 * 1024; // 5MB
     if (file.size > maxBytes) {

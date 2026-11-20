@@ -67,7 +67,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     user?.monthlyIncome && user.monthlyIncome > 0 ? user.monthlyIncome.toString() : ''
   );
   const [editPanNumber, setEditPanNumber] = useState<string>(user?.panNumber || '');
-  const [editAadhaarNumber, setEditAadhaarNumber] = useState<string>(user?.aadhaarNumber || '');
+  const [editAadhaarNumber, setEditAadhaarNumber] = useState<string>(
+    user?.aadhaarNumber && user.aadhaarNumber.length === 12 ? user.aadhaarNumber : ''
+  );
 
   // Keep local fields in sync with user prop updates
   useEffect(() => {
@@ -76,7 +78,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     setEditEmploymentType(user?.employmentType || 'Salaried');
     setEditMonthlyIncome(user?.monthlyIncome && user.monthlyIncome > 0 ? user.monthlyIncome.toString() : '');
     setEditPanNumber(user?.panNumber || '');
-    setEditAadhaarNumber(user?.aadhaarNumber || '');
+    // If user's stored aadhaar was masked or only 4 digits, do not put masked text in the input
+    if (user?.aadhaarNumber && user.aadhaarNumber.length === 12 && /^\d{12}$/.test(user.aadhaarNumber)) {
+      setEditAadhaarNumber(user.aadhaarNumber);
+    } else {
+      setEditAadhaarNumber('');
+    }
   }, [user]);
 
   // Fetch freshest user data from Neon DB when Profile screen loads
@@ -123,7 +130,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     setEditEmploymentType(user?.employmentType || 'Salaried');
     setEditMonthlyIncome(user?.monthlyIncome && user.monthlyIncome > 0 ? user.monthlyIncome.toString() : '');
     setEditPanNumber(user?.panNumber || '');
-    setEditAadhaarNumber(user?.aadhaarNumber || '');
+    if (user?.aadhaarNumber && user.aadhaarNumber.length === 12 && /^\d{12}$/.test(user.aadhaarNumber)) {
+      setEditAadhaarNumber(user.aadhaarNumber);
+    } else {
+      setEditAadhaarNumber('');
+    }
     setEditSuccessMessage(null);
     setEditErrorMessage(null);
     setShowEmploymentDropdown(false);
@@ -191,13 +202,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
     setIsSaving(true);
     try {
-      const updatedUser = authService.updateProfile({
+      const cleanAadhaar = editAadhaarNumber.replace(/\D/g, '');
+      const updatedUser = await authService.updateProfile({
         email: editEmail.trim() || undefined,
         city: editCity.trim(),
         employmentType: editEmploymentType,
         monthlyIncome: incomeValidation.value || (user?.monthlyIncome || 0),
         panNumber: editPanNumber.trim().toUpperCase() || undefined,
-        aadhaarNumber: editAadhaarNumber.replace(/\D/g, '') || undefined,
+        aadhaarNumber: cleanAadhaar || undefined,
+        documents: (user?.documents && user.documents.length > 0) ? user.documents : undefined,
       });
 
       if (onUpdateUser) {
@@ -542,7 +555,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </View>
             <View style={styles.regInfoRight}>
               <Text style={[styles.regInfoValue, { fontWeight: '700', color: '#0f172a' }]}>
-                {user?.aadhaarNumber ? `XXXX-XXXX-${user.aadhaarNumber.slice(-4)}` : 'Not provided'}
+                {user?.aadhaarNumber
+                  ? (user.aadhaarNumber.length === 12
+                      ? `${user.aadhaarNumber.slice(0, 4)} ${user.aadhaarNumber.slice(4, 8)} ${user.aadhaarNumber.slice(8, 12)}`
+                      : user.aadhaarNumber)
+                  : 'Not provided'}
               </Text>
               <Ionicons name="pencil" size={12} color="#94a3b8" />
             </View>
@@ -644,25 +661,27 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </Animated.View>
           </TouchableOpacity>
 
-          {/* Admin Console Entry */}
-          <TouchableOpacity
-            style={[styles.menuRow, { borderBottomWidth: 0, backgroundColor: '#f0fdf4' }]}
-            onPress={() => onNavigate('admin')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.menuLeft}>
-              <View style={[styles.menuIconWrap, { backgroundColor: '#002e75' }]}>
-                <Ionicons name="shield-checkmark" size={17} color="#ffffff" />
+          {/* Admin Console Entry (Only visible to verified Administrators) */}
+          {user?.role === 'admin' && (
+            <TouchableOpacity
+              style={[styles.menuRow, { borderBottomWidth: 0, backgroundColor: '#f0fdf4' }]}
+              onPress={() => onNavigate('admin')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.menuLeft}>
+                <View style={[styles.menuIconWrap, { backgroundColor: '#002e75' }]}>
+                  <Ionicons name="shield-checkmark" size={17} color="#ffffff" />
+                </View>
+                <View>
+                  <Text style={[styles.menuLabel, { color: '#002e75', fontWeight: '800' }]}>Admin Console Portal</Text>
+                  <Text style={{ fontSize: 10.5, color: '#059669', fontWeight: '600' }}>Manage Users, Loans, Docs & Referrals</Text>
+                </View>
               </View>
-              <View>
-                <Text style={[styles.menuLabel, { color: '#002e75', fontWeight: '800' }]}>Admin Console Portal</Text>
-                <Text style={{ fontSize: 10.5, color: '#059669', fontWeight: '600' }}>Manage Users, Loans, Docs & Referrals</Text>
-              </View>
-            </View>
-            <Animated.View style={{ transform: [{ translateX: chevronSlideAnim }] }}>
-              <Ionicons name="chevron-forward" size={16} color="#002e75" />
-            </Animated.View>
-          </TouchableOpacity>
+              <Animated.View style={{ transform: [{ translateX: chevronSlideAnim }] }}>
+                <Ionicons name="chevron-forward" size={16} color="#002e75" />
+              </Animated.View>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 

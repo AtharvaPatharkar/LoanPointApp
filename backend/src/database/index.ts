@@ -17,6 +17,11 @@ export async function testDbConnection(): Promise<boolean> {
   try {
     const sql = getDb();
     const result = (await sql`SELECT 1 as connected;`) as any[];
+    
+    // Automatically ensure aadhaar_number column exists in Neon DB for users & loan_applications
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS aadhaar_number VARCHAR(12);`;
+    await sql`ALTER TABLE loan_applications ADD COLUMN IF NOT EXISTS aadhaar_number VARCHAR(12);`;
+    
     return Boolean(result && result.length > 0);
   } catch (error) {
     console.error('[Database Connection Error]:', error);

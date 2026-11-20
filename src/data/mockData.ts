@@ -318,26 +318,7 @@ export const INITIAL_COMPLAINTS: ComplaintTicket[] = [
   },
 ];
 
-export const INITIAL_REFERRALS: ReferralRecord[] = [
-  {
-    id: 'REF-801',
-    refereeName: 'Sanjay Deshmukh',
-    refereeMobileMasked: '+91 98230 •••••',
-    loanType: 'Business Loan',
-    status: 'Loan Disbursed',
-    date: '05 Sep 2026',
-    rewardPoints: 1500,
-  },
-  {
-    id: 'REF-802',
-    refereeName: 'Kishore Kadam',
-    refereeMobileMasked: '+91 94221 •••••',
-    loanType: 'Home Loan',
-    status: 'In Progress',
-    date: '18 Oct 2026',
-    rewardPoints: 0,
-  },
-];
+export const INITIAL_REFERRALS: ReferralRecord[] = [];
 
 export const BANK_RATE_COMPARISONS: BankRateComparison[] = [
   {

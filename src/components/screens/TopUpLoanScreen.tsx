@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -16,10 +16,14 @@ import * as Linking from 'expo-linking';
 import { UserProfile, LoanApplication } from '../../types';
 import { BankLogo } from '../common/BankLogo';
 import { LoanIcon } from '../common/LoanIcon';
+import { calculateEMI, formatINR } from '../../utils/calculator';
+import { loanService } from '../../services/loanService';
 
 interface TopUpLoanScreenProps {
   user?: UserProfile | null;
   application?: LoanApplication | null;
+  applications?: LoanApplication[];
+  onSelectApplication?: (app: LoanApplication) => void;
   onBack: () => void;
   onApplySuccess?: () => void;
   onTrackRequest?: (reqId: string) => void;
@@ -40,35 +44,70 @@ const PURPOSE_OPTIONS = [
 export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
   user,
   application,
+  applications = [],
+  onSelectApplication,
   onBack,
   onApplySuccess,
   onTrackRequest,
   onOpenCall,
   onOpenWhatsApp,
 }) => {
-  // Existing Loan details from reference image
-  const existingAppId = application?.id || 'HL-20260915-0087';
-  const loanTypeName = application?.loanTypeName || 'Home Loan';
-  const bankName = application?.bankName || 'HDFC Bank';
-  const currentLoanAmount = '₹50,00,000';
-  const balanceTenure = '18 Years';
-  const currentEmi = '₹43,476';
+  // Available eligible applications (non-topup active loans)
+  const availableLoans = useMemo(() => {
+    const list = applications.filter(a => !a.isTopUp);
+    if (list.length > 0) return list;
+    if (applications.length > 0) return applications;
+    return application ? [application] : [];
+  }, [applications, application]);
 
-  const rmName = application?.assignedManager?.name || 'Arvind Patil';
-  const rmPhone = application?.assignedManager?.phone || '+91 9545555999';
+  // Current selected active loan
+  const [selectedApp, setSelectedApp] = useState<LoanApplication | null>(() => {
+    return application || (availableLoans.length > 0 ? availableLoans[0] : null);
+  });
+
+  const [showLoanPickerModal, setShowLoanPickerModal] = useState<boolean>(false);
+
+  // Active loan details
+  const activeApp = selectedApp || application || (availableLoans.length > 0 ? availableLoans[0] : null);
+  const existingAppId = activeApp?.id || '';
+  const loanTypeName = activeApp?.loanTypeName || (activeApp?.loanType ? `${activeApp.loanType.charAt(0).toUpperCase() + activeApp.loanType.slice(1)} Loan` : 'Active Loan');
+  const bankName = activeApp?.bankName || 'Partner Bank';
+  const existingLoanAmountVal = activeApp?.requestedAmount || 0;
+  const currentLoanAmount = existingLoanAmountVal > 0 ? formatINR(existingLoanAmountVal) : '₹0';
+  const tenureMonths = activeApp?.tenureMonths || 240;
+  const balanceTenure = tenureMonths >= 12 
+    ? `${Math.round(tenureMonths / 12)} Years` 
+    : `${tenureMonths} Months`;
+  const existingEmiVal = calculateEMI(existingLoanAmountVal, 9.5, tenureMonths);
+  const currentEmi = existingLoanAmountVal > 0 ? formatINR(existingEmiVal) : '₹0';
+
+  const rmName = activeApp?.assignedManager?.name || 'Loan Point Support';
+  const rmPhone = activeApp?.assignedManager?.phone || '+91 9545555999';
 
   // Screen View: 'form' | 'submitted' | 'track_status'
   const [screenView, setScreenView] = useState<'form' | 'submitted' | 'track_status'>('form');
 
   // Top Up Form State
-  const [topUpAmount, setTopUpAmount] = useState<string>('15,00,000');
+  const defaultTopUpAmount = existingLoanAmountVal > 0 ? Math.min(Math.round(existingLoanAmountVal * 0.3), 1500000) : 500000;
+  const [topUpAmount, setTopUpAmount] = useState<string>(defaultTopUpAmount.toLocaleString('en-IN'));
   const [selectedPurpose, setSelectedPurpose] = useState<string>('Home Renovation');
   const [showPurposeModal, setShowPurposeModal] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [copiedNotification, setCopiedNotification] = useState<boolean>(false);
 
-  const topUpRequestId = 'TU-20261112-0045';
-  const submissionTimestamp = '12 Nov 2026, 09:41 AM';
+  // Dynamic submitted request tracking details
+  const [topUpRequestId, setTopUpRequestId] = useState<string>('');
+  const [submissionTimestamp, setSubmissionTimestamp] = useState<string>('');
+
+  // Calculations for revised loan & EMI
+  const parsedTopUpAmount = useMemo(() => {
+    return parseInt(topUpAmount.replace(/[^0-9]/g, ''), 10) || 0;
+  }, [topUpAmount]);
+
+  const revisedLoanAmountVal = existingLoanAmountVal + parsedTopUpAmount;
+  const revisedLoanAmount = formatINR(revisedLoanAmountVal);
+  const revisedEmiVal = calculateEMI(revisedLoanAmountVal, 9.5, tenureMonths);
+  const revisedEmi = formatINR(revisedEmiVal);
 
   // Formatting amount
   const handleAmountChange = (text: string) => {
@@ -106,13 +145,45 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
     }, 2000);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (!activeApp) {
+      Alert.alert('No Loan Selected', 'Please select an active loan to request top up funds.');
+      return;
+    }
+    if (parsedTopUpAmount < 10000) {
+      Alert.alert('Invalid Amount', 'Please enter a top up amount of at least ₹10,000.');
+      return;
+    }
+
     setIsSubmitting(true);
-    setTimeout(() => {
+    try {
+      const now = new Date();
+      const timeStr = now.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      }) + ', ' + now.toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      });
+
+      const newTopUp = await loanService.submitTopUpRequest({
+        parentApplicationId: activeApp.id,
+        topUpAmount: parsedTopUpAmount,
+        purpose: selectedPurpose,
+        applicantName: user?.name || activeApp.applicantName,
+        applicantMobile: user?.mobile || activeApp.applicantMobile,
+      });
+
+      setTopUpRequestId(newTopUp.id);
+      setSubmissionTimestamp(timeStr);
       setIsSubmitting(false);
-      // Transition directly to "Top Up Request Submitted" screen
       setScreenView('submitted');
-    }, 500);
+    } catch (err: any) {
+      setIsSubmitting(false);
+      Alert.alert('Submission Error', err.message || 'Unable to submit top up request at this time.');
+    }
   };
 
   const handleTrack = () => {
@@ -156,17 +227,17 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
             {/* Header: Attractive Colourful Loan Logo + Home Loan - Top Up / Request ID + In Process Pill */}
             <View style={styles.trackCardHeaderRow}>
               <LoanIcon
-                type={application?.loanType || 'home'}
-                name="Home Loan"
+                type={activeApp?.loanType || 'home'}
+                name={loanTypeName}
                 size={24}
                 containerSize={48}
                 borderRadius={12}
               />
 
               <View style={styles.trackTitleCol}>
-                <Text style={styles.trackMainTitleText}>Home Loan – Top Up</Text>
+                <Text style={styles.trackMainTitleText}>{loanTypeName} – Top Up</Text>
                 <View style={styles.trackRequestIdPill}>
-                  <Text style={styles.trackRequestIdPillText}>Request ID: {topUpRequestId}</Text>
+                  <Text style={styles.trackRequestIdPillText}>Request ID: {topUpRequestId || 'TU-REQ-INPROCESS'}</Text>
                 </View>
               </View>
 
@@ -195,7 +266,7 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
                   </View>
                   <Text style={styles.trackMetricLabel}>Top Up Amount</Text>
                 </View>
-                <Text style={styles.trackMetricBoldValue}>₹{topUpAmount || '15,00,000'}</Text>
+                <Text style={styles.trackMetricBoldValue}>₹{topUpAmount || '0'}</Text>
               </View>
 
               {/* Col 3: Requested On */}
@@ -204,7 +275,9 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
                   <Ionicons name="calendar-outline" size={16} color="#d97706" />
                   <Text style={styles.trackMetricLabel}>Requested On</Text>
                 </View>
-                <Text style={styles.trackMetricBoldValue}>12 Nov 2026</Text>
+                <Text style={styles.trackMetricBoldValue}>
+                  {submissionTimestamp ? submissionTimestamp.split(',')[0] : 'Today'}
+                </Text>
               </View>
             </View>
 
@@ -217,7 +290,7 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
                 </View>
                 <View>
                   <Text style={styles.comparisonLabel}>Current Loan</Text>
-                  <Text style={styles.comparisonAmountBold}>₹50,00,000</Text>
+                  <Text style={styles.comparisonAmountBold}>{currentLoanAmount}</Text>
                 </View>
               </View>
 
@@ -231,7 +304,7 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
                 </View>
                 <View>
                   <Text style={styles.comparisonLabel}>Revised Loan (Est.)</Text>
-                  <Text style={styles.comparisonAmountBold}>₹65,00,000</Text>
+                  <Text style={styles.comparisonAmountBold}>{revisedLoanAmount}</Text>
                 </View>
               </View>
             </View>
@@ -252,7 +325,7 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
                   <Ionicons name="checkmark" size={13} color="#ffffff" />
                 </View>
                 <Text style={styles.trackNodeLabelBold}>Request{'\n'}Submitted</Text>
-                <Text style={styles.trackNodeTimestamp}>12 Nov, 09:41 AM</Text>
+                <Text style={styles.trackNodeTimestamp}>{submissionTimestamp || 'Just now'}</Text>
               </View>
 
               {/* Green Connector 1 */}
@@ -264,7 +337,7 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
                   <Ionicons name="checkmark" size={13} color="#ffffff" />
                 </View>
                 <Text style={styles.trackNodeLabelBold}>Eligibility{'\n'}Check</Text>
-                <Text style={styles.trackNodeTimestamp}>12 Nov, 11:30 AM</Text>
+                <Text style={styles.trackNodeTimestamp}>Completed</Text>
               </View>
 
               {/* Green Connector 2 */}
@@ -449,7 +522,7 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
           >
             <View style={styles.requestIdCol}>
               <Text style={styles.requestIdLabel}>Top Up Request ID</Text>
-              <Text style={styles.requestIdValue}>{topUpRequestId}</Text>
+              <Text style={styles.requestIdValue}>{topUpRequestId || 'TU-SUBMITTED'}</Text>
             </View>
             <View style={styles.copyIconWrap}>
               <Ionicons name="copy-outline" size={26} color="#002e75" />
@@ -476,7 +549,8 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
                 {/* Cell 1: Loan Type */}
                 <View style={[styles.summaryCell, styles.cellBorderRight]}>
                   <LoanIcon
-                    type={application?.loanType || 'home'}
+                    type={activeApp?.loanType || 'home'}
+                    name={loanTypeName}
                     size={20}
                     containerSize={38}
                     borderRadius={10}
@@ -494,7 +568,7 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
                   </View>
                   <View style={styles.summaryTextCol}>
                     <Text style={styles.summaryLabel}>Top Up Amount</Text>
-                    <Text style={styles.summaryBoldText}>₹{topUpAmount || '15,00,000'}</Text>
+                    <Text style={styles.summaryBoldText}>₹{topUpAmount || '0'}</Text>
                   </View>
                 </View>
               </View>
@@ -543,7 +617,7 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
                   <Ionicons name="checkmark" size={13} color="#ffffff" />
                 </View>
                 <Text style={styles.stepperLabelBold}>Request{'\n'}Submitted</Text>
-                <Text style={styles.stepperTimestamp}>{submissionTimestamp}</Text>
+                <Text style={styles.stepperTimestamp}>{submissionTimestamp || 'Just now'}</Text>
               </View>
 
               {/* Connector line 1 (Solid Green) */}
@@ -646,6 +720,31 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
     );
   }
 
+  // If user has no active loan at all, render clean empty state
+  if (!activeApp) {
+    return (
+      <View style={styles.root}>
+        <View style={styles.emptyStateContainer}>
+          <View style={styles.emptyIconCircle}>
+            <MaterialCommunityIcons name="cash-plus" size={48} color="#004aad" />
+          </View>
+          <Text style={styles.emptyTitle}>No Active Loans Found</Text>
+          <Text style={styles.emptyDescription}>
+            Top Up loans are offered as an additional sanction on an existing active loan. Once you have an active disbursed loan, you can request extra funds here instantly.
+          </Text>
+          <TouchableOpacity
+            style={styles.emptyActionBtn}
+            onPress={onBack}
+            activeOpacity={0.88}
+          >
+            <Ionicons name="arrow-back" size={18} color="#ffffff" style={{ marginRight: 6 }} />
+            <Text style={styles.emptyActionBtnText}>Back to Home</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   // =========================================================================
   // VIEW 1: TOP UP REQUEST FORM
   // =========================================================================
@@ -670,13 +769,25 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
 
         {/* 1. Existing Loan Details Card */}
         <View style={styles.sectionCard}>
-          <View style={styles.sectionHeaderTab}>
-            <Text style={styles.sectionHeaderText}>Existing Loan Details</Text>
+          <View style={styles.sectionHeaderTabRow}>
+            <View style={styles.sectionHeaderTab}>
+              <Text style={styles.sectionHeaderText}>Existing Loan Details</Text>
+            </View>
+            {availableLoans.length > 1 && (
+              <TouchableOpacity
+                style={styles.changeLoanPill}
+                onPress={() => setShowLoanPickerModal(true)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.changeLoanPillText}>Change Loan</Text>
+                <Ionicons name="chevron-forward" size={12} color="#004aad" />
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.existingLoanHeaderRow}>
             <LoanIcon
-              type={application?.loanType || 'home'}
+              type={activeApp.loanType || 'home'}
               name={loanTypeName}
               size={24}
               containerSize={48}
@@ -748,7 +859,7 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
                 value={topUpAmount}
                 onChangeText={handleAmountChange}
                 keyboardType="numeric"
-                placeholder="15,00,000"
+                placeholder="5,00,000"
                 placeholderTextColor="#94a3b8"
               />
             </View>
@@ -781,7 +892,7 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
             <View style={styles.estimatedEmiDivider} />
 
             <View style={styles.estimatedEmiPill}>
-              <Text style={styles.estimatedEmiValue}>₹56,200 / Month</Text>
+              <Text style={styles.estimatedEmiValue}>{revisedEmi} / Month</Text>
             </View>
           </View>
         </View>
@@ -885,6 +996,67 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
                     </Text>
                     {isSelected && (
                       <Ionicons name="checkmark-circle" size={20} color="#16a34a" />
+                    )}
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Select Active Loan Modal (when user has multiple loans) */}
+      <Modal
+        visible={showLoanPickerModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLoanPickerModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowLoanPickerModal(false)}
+        >
+          <View style={styles.modalContentCard}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.modalTitle}>Select Active Loan</Text>
+              <TouchableOpacity onPress={() => setShowLoanPickerModal(false)}>
+                <Ionicons name="close-circle" size={24} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+
+            <FlatList
+              data={availableLoans}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => {
+                const isSelected = selectedApp?.id === item.id;
+                const itemLoanName = item.loanTypeName || `${item.loanType.charAt(0).toUpperCase() + item.loanType.slice(1)} Loan`;
+                const itemBank = item.bankName || 'Partner Bank';
+                const itemAmount = item.requestedAmount ? formatINR(item.requestedAmount) : '₹0';
+
+                return (
+                  <TouchableOpacity
+                    style={[
+                      styles.loanPickerOptionItem,
+                      isSelected && styles.modalOptionItemSelected,
+                    ]}
+                    onPress={() => {
+                      setSelectedApp(item);
+                      if (onSelectApplication) onSelectApplication(item);
+                      setShowLoanPickerModal(false);
+                    }}
+                  >
+                    <View style={{ marginRight: 12 }}>
+                      <LoanIcon type={item.loanType} size={22} containerSize={40} borderRadius={10} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.loanPickerTitle}>{itemLoanName}</Text>
+                      <Text style={styles.loanPickerSubtitle}>
+                        {itemBank} • {itemAmount} • ID: {item.id}
+                      </Text>
+                    </View>
+                    {isSelected && (
+                      <Ionicons name="checkmark-circle" size={22} color="#16a34a" />
                     )}
                   </TouchableOpacity>
                 );
@@ -2018,5 +2190,92 @@ const styles = StyleSheet.create({
   modalOptionTextSelected: {
     color: '#004aad',
     fontWeight: '800',
+  },
+  // Loan picker in modal
+  loanPickerOptionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  loanPickerTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#002e75',
+    marginBottom: 2,
+  },
+  loanPickerSubtitle: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  sectionHeaderTabRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  changeLoanPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    borderRadius: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    gap: 4,
+  },
+  changeLoanPillText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#004aad',
+  },
+  emptyStateContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    backgroundColor: '#ffffff',
+  },
+  emptyIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#002e75',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyDescription: {
+    fontSize: 13,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  emptyActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#004aad',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 24,
+  },
+  emptyActionBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#ffffff',
   },
 });

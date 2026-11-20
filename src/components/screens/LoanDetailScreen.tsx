@@ -24,6 +24,7 @@ interface LoanDetailScreenProps {
   onOpenCalculator: (category: LoanCategory) => void;
   onOpenWhatsApp?: (phone?: string, text?: string) => void;
   onBack: () => void;
+  onNavigate?: (screen: string, params?: Record<string, unknown>) => void;
 }
 
 interface BenefitItem {
@@ -52,6 +53,7 @@ export const LoanDetailScreen: React.FC<LoanDetailScreenProps> = ({
   onApplyNow,
   onOpenCalculator,
   onOpenWhatsApp,
+  onNavigate,
 }) => {
   // Extract starting interest rate (e.g. "9.99%" or from category.indicativeInterestRate)
   const rateMatch = category.indicativeInterestRate.match(/[\d.]+/);
@@ -453,7 +455,43 @@ export const LoanDetailScreen: React.FC<LoanDetailScreenProps> = ({
         <Ionicons name="arrow-forward" size={18} color="#000000" style={{ marginLeft: 6 }} />
       </TouchableOpacity>
 
-      {/* 7. WhatsApp Guidance Strip */}
+      {/* 7. Credit Card & CIBIL Services Advisory Buttons */}
+      <View style={styles.detailServicesContainer}>
+        <Text style={styles.detailServicesHeader}>Related Services & Credit Check</Text>
+        <View style={styles.detailServicesRow}>
+          <TouchableOpacity
+            style={styles.detailServiceCard}
+            onPress={() => onNavigate ? onNavigate('credit_card') : null}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.detailServiceIconWrap, { backgroundColor: '#ede9fe' }]}>
+              <MaterialCommunityIcons name="credit-card-outline" size={20} color="#7c3aed" />
+            </View>
+            <View style={styles.detailServiceTextWrap}>
+              <Text style={styles.detailServiceTitle}>Credit Card</Text>
+              <Text style={styles.detailServiceSub}>Top cards & instant approval</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="#7c3aed" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.detailServiceCard}
+            onPress={() => onNavigate ? onNavigate('cibil_services') : null}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.detailServiceIconWrap, { backgroundColor: '#ffe4e6' }]}>
+              <MaterialCommunityIcons name="speedometer" size={20} color="#e11d48" />
+            </View>
+            <View style={styles.detailServiceTextWrap}>
+              <Text style={styles.detailServiceTitle}>CIBIL Services</Text>
+              <Text style={styles.detailServiceSub}>Check & improve credit score</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="#e11d48" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* 8. WhatsApp Guidance Strip */}
       <View style={styles.whatsAppCard}>
         <View style={styles.whatsAppLeft}>
           <Ionicons name="logo-whatsapp" size={32} color="#22c55e" />
@@ -823,7 +861,53 @@ const styles = StyleSheet.create({
     color: '#000000',
   },
 
-  // 7. WhatsApp Guidance Strip
+  // 7. Detail Services Section (Credit Card & CIBIL)
+  detailServicesContainer: {
+    marginBottom: 16,
+  },
+  detailServicesHeader: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginBottom: 8,
+  },
+  detailServicesRow: {
+    gap: 8,
+  },
+  detailServiceCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  detailServiceIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  detailServiceTextWrap: {
+    flex: 1,
+  },
+  detailServiceTitle: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  detailServiceSub: {
+    fontSize: 10,
+    color: '#64748b',
+    marginTop: 1,
+    fontWeight: '500',
+  },
+
+  // 8. WhatsApp Guidance Strip
   whatsAppCard: {
     backgroundColor: '#f0fdf4',
     borderRadius: 18,

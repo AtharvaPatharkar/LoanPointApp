@@ -37,8 +37,8 @@ export const ServicesScreen: React.FC<ServicesScreenProps> = ({
   onNavigate,
   onOpenCall,
 }) => {
-  // 10 Product Cards in 2 columns matching the exact reference layout
-  const products: ProductItem[] = [
+  // Exclusively 8 Loan Types in 2 columns
+  const loanProducts: ProductItem[] = [
     {
       id: 'home',
       isLoanType: true,
@@ -90,15 +90,6 @@ export const ServicesScreen: React.FC<ServicesScreenProps> = ({
       cardBorder: '#e0f2fe',
     },
     {
-      id: 'credit_card',
-      isLoanType: false,
-      title: 'Credit Card',
-      subtitle: 'Choose from top bank cards',
-      imageSource: require('../../../assets/exploreAllLoanProducts/credit-card.png'),
-      cardBg: '#f8f6ff', // soft lavender
-      cardBorder: '#ede9fe',
-    },
-    {
       id: 'agriculture',
       isLoanType: true,
       loanTypeId: 'agriculture',
@@ -128,24 +119,11 @@ export const ServicesScreen: React.FC<ServicesScreenProps> = ({
       cardBg: '#fffdf5', // soft pale yellow
       cardBorder: '#fef9c3',
     },
-    {
-      id: 'cibil_services',
-      isLoanType: false,
-      title: 'CIBIL Services',
-      subtitle: 'Check & Improve your CIBIL Score',
-      imageSource: require('../../../assets/exploreAllLoanProducts/cibil-services.png'),
-      cardBg: '#fdf4f4', // soft pale rose
-      cardBorder: '#ffe4e6',
-    },
   ];
 
   const handleCardPress = (item: ProductItem) => {
     if (item.isLoanType && item.loanTypeId) {
       onSelectCategory(item.loanTypeId);
-    } else if (item.id === 'cibil_services') {
-      onNavigate('cibil_services');
-    } else if (item.id === 'credit_card') {
-      onNavigate('loan_apply', { loanType: 'personal' });
     }
   };
 
@@ -168,9 +146,20 @@ export const ServicesScreen: React.FC<ServicesScreenProps> = ({
         />
       </TouchableOpacity>
 
-      {/* 2. 10 Loan Products Grid (2 Columns, Horizontal Row inside each card) */}
+      {/* 2. Section Header: Available Loan Categories */}
+      <View style={styles.sectionHeaderRow}>
+        <View style={styles.sectionTitleWrap}>
+          <Text style={styles.sectionTitle}>Loan Services</Text>
+          <View style={styles.countBadge}>
+            <Text style={styles.countBadgeText}>8 Types</Text>
+          </View>
+        </View>
+        <Text style={styles.sectionSubtitle}>Select a loan to view details & apply</Text>
+      </View>
+
+      {/* 3. Exactly 8 Loan Products Grid (2 Columns, Horizontal Row inside each card) */}
       <View style={styles.grid}>
-        {products.map((item) => (
+        {loanProducts.map((item) => (
           <TouchableOpacity
             key={item.id}
             style={[
@@ -208,6 +197,53 @@ export const ServicesScreen: React.FC<ServicesScreenProps> = ({
             </View>
           </TouchableOpacity>
         ))}
+      </View>
+
+      {/* 4. Credit Card & CIBIL Services Action Buttons Section */}
+      <View style={styles.specialServicesContainer}>
+        <Text style={styles.specialServicesTitle}>Credit & Financial Advisory</Text>
+
+        <View style={styles.specialServicesRow}>
+          {/* Credit Card Button */}
+          <TouchableOpacity
+            style={styles.specialServiceBtn}
+            onPress={() => onNavigate('credit_card')}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.specialServiceIconWrap, { backgroundColor: '#ede9fe' }]}>
+              <Image
+                source={require('../../../assets/exploreAllLoanProducts/credit-card.png')}
+                style={styles.specialServiceImg}
+                resizeMode="contain"
+              />
+            </View>
+            <View style={styles.specialServiceTextWrap}>
+              <Text style={styles.specialServiceBtnTitle}>Credit Cards</Text>
+              <Text style={styles.specialServiceBtnSub}>Top bank cards & rewards</Text>
+            </View>
+            <Ionicons name="chevron-forward-circle" size={20} color="#6366f1" />
+          </TouchableOpacity>
+
+          {/* CIBIL Services Button */}
+          <TouchableOpacity
+            style={styles.specialServiceBtn}
+            onPress={() => onNavigate('cibil_services')}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.specialServiceIconWrap, { backgroundColor: '#ffe4e6' }]}>
+              <Image
+                source={require('../../../assets/exploreAllLoanProducts/cibil-services.png')}
+                style={styles.specialServiceImg}
+                resizeMode="contain"
+              />
+            </View>
+            <View style={styles.specialServiceTextWrap}>
+              <Text style={styles.specialServiceBtnTitle}>CIBIL Services</Text>
+              <Text style={styles.specialServiceBtnSub}>Score check & improvement</Text>
+            </View>
+            <Ionicons name="chevron-forward-circle" size={20} color="#e11d48" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* 3. Four Value Props Bar with Vertical Dividers */}
@@ -302,7 +338,42 @@ const styles = StyleSheet.create({
     height: '100%',
   },
 
-  // 2. 10 Product Cards Grid (2 Columns, Horizontal Row Layout)
+  // 2. Section Header: Available Loan Categories
+  sectionHeaderRow: {
+    marginBottom: 10,
+    marginTop: 2,
+  },
+  sectionTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0f172a',
+    letterSpacing: -0.2,
+  },
+  countBadge: {
+    backgroundColor: '#eff6ff',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+  },
+  countBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1d4ed8',
+  },
+  sectionSubtitle: {
+    fontSize: 11.5,
+    color: '#64748b',
+    marginTop: 2,
+  },
+
+  // 3. Exactly 8 Loan Products Grid (2 Columns, Horizontal Row Layout)
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -369,6 +440,63 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
     flexShrink: 0,
+  },
+
+  // 4. Special Services (Credit Cards & CIBIL) Action Buttons Section
+  specialServicesContainer: {
+    marginBottom: 16,
+  },
+  specialServicesTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginBottom: 10,
+    letterSpacing: -0.2,
+  },
+  specialServicesRow: {
+    flexDirection: 'column',
+    gap: 10,
+  },
+  specialServiceBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  specialServiceIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  specialServiceImg: {
+    width: 28,
+    height: 28,
+  },
+  specialServiceTextWrap: {
+    flex: 1,
+  },
+  specialServiceBtnTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  specialServiceBtnSub: {
+    fontSize: 10.5,
+    color: '#64748b',
+    marginTop: 2,
+    fontWeight: '500',
   },
 
   // 3. Value Props Bar with Vertical Dividers

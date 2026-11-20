@@ -237,27 +237,52 @@ class AuthService {
     this.state = {
       isAuthenticated: false,
       user: null,
+      pendingMobile: undefined,
+      pendingOtpCode: undefined,
+      pendingReferralCode: undefined,
+      otpExpiresAt: undefined,
     };
   }
 
-  public updateProfile(updated: Partial<UserProfile>): UserProfile {
+  public async updateProfile(updated: Partial<UserProfile>): Promise<UserProfile> {
     if (!this.state.user) throw new Error('No user logged in');
-    const updatedUser = { ...this.state.user, ...updated };
+    
+    // Always preserve documents under all conditions so profile edits never wipe uploaded files
+    const existingDocs = (this.state.user.documents && this.state.user.documents.length > 0)
+      ? this.state.user.documents
+      : (updated.documents || []);
+
+    const updatedUser: UserProfile = {
+      ...this.state.user,
+      ...updated,
+      documents: existingDocs,
+    };
     this.state.user = updatedUser;
 
-    apiRequest('/user/profile', {
-      method: 'PUT',
-      body: updatedUser,
-    }).then((res) => {
-      if (res && res.user) {
-        this.state.user = res.user;
-      }
-    }).catch((err) => {
-      console.warn('API updateProfile sync error:', err.message);
-    });
+    try {
+      const res = await apiRequest('/user/profile', {
+        method: 'PUT',
+        body: updatedUser,
+      });
 
-    crmService.syncCustomerLead(updatedUser);
-    return updatedUser;
+      if (res && res.user) {
+        // Protect documents from ever being overwritten by empty arrays from responses
+        const serverDocs = (Array.isArray(res.user.documents) && res.user.documents.length > 0)
+          ? res.user.documents
+          : this.state.user?.documents || [];
+
+        this.state.user = {
+          ...this.state.user,
+          ...res.user,
+          documents: serverDocs,
+        };
+      }
+    } catch (err: any) {
+      console.warn('API updateProfile sync error:', err.message);
+    }
+
+    crmService.syncCustomerLead(this.state.user || updatedUser);
+    return this.state.user || updatedUser;
   }
 }
 

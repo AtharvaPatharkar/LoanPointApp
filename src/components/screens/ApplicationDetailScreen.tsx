@@ -7,6 +7,7 @@ import {
   ScrollView,
   Share,
   Alert,
+  Image,
 } from 'react-native';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
@@ -311,7 +312,11 @@ Contact Support: +91 95455 55999
 
         <View style={styles.advisorProfileRow}>
           <View style={styles.advisorAvatar}>
-            <Ionicons name="person" size={20} color="#003399" />
+            <Image
+              source={require('../../../assets/logo/arvind_patil.png')}
+              style={styles.advisorAvatarImage}
+              resizeMode="cover"
+            />
           </View>
           <View style={styles.advisorInfo}>
             <Text style={styles.advisorName}>{managerName}</Text>
@@ -646,12 +651,19 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   advisorAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#e0f2fe',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#eff6ff',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#003399',
+  },
+  advisorAvatarImage: {
+    width: '100%',
+    height: '100%',
   },
   advisorInfo: {
     flex: 1,

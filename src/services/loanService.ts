@@ -25,7 +25,7 @@ class LoanService {
   public async fetchApplicationsForMobile(mobile: string): Promise<LoanApplication[]> {
     try {
       const res = await apiRequest('/loans/applications', { method: 'GET' });
-      if (res && res.applications && res.applications.length > 0) {
+      if (res && Array.isArray(res.applications)) {
         this.applications = res.applications;
         return res.applications;
       }
@@ -220,8 +220,66 @@ class LoanService {
     return updatedApp;
   }
 
+  public async submitTopUpRequest(params: {
+    parentApplicationId: string;
+    topUpAmount: number;
+    purpose: string;
+    applicantName?: string;
+    applicantMobile?: string;
+  }): Promise<LoanApplication> {
+    const parentApp = this.getApplicationById(params.parentApplicationId);
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const seq = String(Math.floor(1000 + Math.random() * 9000));
+    const generatedId = `TU-${yyyy}${mm}${dd}-${seq}`;
+
+    const loanType: LoanType = parentApp?.loanType || 'home';
+    const loanTypeName = parentApp?.loanTypeName || 'Home Loan';
+    const bankName = parentApp?.bankName || 'Partner Bank';
+    const existingAmount = parentApp?.requestedAmount || 5000000;
+    const tenureMonths = parentApp?.tenureMonths || 240;
+
+    const newTopUpApp: LoanApplication = {
+      id: generatedId,
+      loanType,
+      loanTypeName,
+      requestedAmount: existingAmount + params.topUpAmount,
+      tenureMonths,
+      submissionDate: now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+      status: 'Processing',
+      statusUpdatedDate: 'Just now',
+      bankName,
+      assignedManager: parentApp?.assignedManager || {
+        name: COMPANY_INFO.leadRelationshipManager,
+        role: 'Principal Loan Advisor & Branch Head',
+        phone: COMPANY_INFO.contactNumber,
+        email: COMPANY_INFO.primaryEmail,
+      },
+      pendingDocuments: [],
+      submittedDocuments: ['Top Up Declaration'],
+      nextAction: 'Top up request submitted. Under lender assessment.',
+      remarks: `Top Up Request of ₹${params.topUpAmount.toLocaleString('en-IN')} for ${params.purpose} linked to ${params.parentApplicationId}.`,
+      applicantName: params.applicantName || parentApp?.applicantName,
+      applicantMobile: params.applicantMobile || parentApp?.applicantMobile,
+      isTopUp: true,
+      existingLoanAmount: existingAmount,
+      topUpRequestedAmount: params.topUpAmount,
+      topUpStageIndex: 1,
+    };
+
+    this.applications.unshift(newTopUpApp);
+    await crmService.pushLoanEnquiry(newTopUpApp);
+    return newTopUpApp;
+  }
+
+  public clearUserData(): void {
+    this.applications = [];
+  }
+
   public resetToDefaultDemo(): void {
-    this.applications = [...INITIAL_APPLICATIONS];
+    this.applications = [];
   }
 }
 

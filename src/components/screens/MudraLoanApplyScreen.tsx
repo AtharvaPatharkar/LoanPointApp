@@ -91,8 +91,8 @@ export const MudraLoanApplyScreen: React.FC<MudraLoanApplyScreenProps> = ({
   const [uploadedDocs, setUploadedDocs] = useState<UploadedDocState>({
     panCard: isUserDocUploaded(user, 'pan_card', ['pan']),
     aadhaarCard: isUserDocUploaded(user, 'aadhaar_card', ['aadhaar', 'uidai']),
-    businessProofUdyam: isUserDocUploaded(user, 'business_registration', ['udyam', 'shop act', 'registration']),
-    machineryStockQuotation: isUserDocUploaded(user, 'purchase_quotation', ['quotation', 'invoice', 'machinery']),
+    businessProofUdyam: isUserDocUploaded(user, 'business_proof_udyam', ['udyam', 'shop act', 'registration', 'msme']),
+    machineryStockQuotation: isUserDocUploaded(user, 'machinery_stock_quotation', ['quotation', 'invoice', 'machinery', 'stock']),
     bankStatements: isUserDocUploaded(user, 'bank_statement', ['statement', 'passbook']),
     projectOutline: isUserDocUploaded(user, 'project_outline', ['project', 'outline', 'report']),
     photograph: isUserDocUploaded(user, 'passport_photo', ['photo', 'passport']),
@@ -116,6 +116,20 @@ export const MudraLoanApplyScreen: React.FC<MudraLoanApplyScreenProps> = ({
   const handleViewDocument = (doc: DocumentItem) => {
     setPreviewDoc(doc);
     setShowPreviewModal(true);
+  };
+
+  const syncDocKeyToState = (docKey: string) => {
+    setUploadedDocs((prev) => {
+      const next = { ...prev };
+      if (docKey === 'pan_card') next.panCard = true;
+      else if (docKey === 'aadhaar_card') next.aadhaarCard = true;
+      else if (docKey === 'machinery_stock_quotation') next.machineryStockQuotation = true;
+      else if (docKey === 'business_proof_udyam') next.businessProofUdyam = true;
+      else if (docKey === 'bank_statement') next.bankStatements = true;
+      else if (docKey === 'project_outline') next.projectOutline = true;
+      else if (docKey === 'passport_photo') next.photograph = true;
+      return next;
+    });
   };
 
   const handleUploadOrReuploadDoc = (docKey: string, defaultTitle: string, category: DocumentItem['category']) => {
@@ -163,6 +177,7 @@ export const MudraLoanApplyScreen: React.FC<MudraLoanApplyScreenProps> = ({
                 user.documents.push(newDoc);
               }
             }
+            syncDocKeyToState(docKey);
             Alert.alert('Success', `"${defaultTitle}" uploaded successfully!`);
           } catch {
             Alert.alert('Error', 'Document upload failed. Please try again.');
@@ -212,6 +227,7 @@ export const MudraLoanApplyScreen: React.FC<MudraLoanApplyScreenProps> = ({
                   user.documents.push(newDoc);
                 }
               }
+              syncDocKeyToState(docKey);
               Alert.alert('Success', `"${defaultTitle}" uploaded successfully!`);
             } catch (err) {
               Alert.alert('Error', 'Unable to pick or upload document.');
@@ -252,6 +268,7 @@ export const MudraLoanApplyScreen: React.FC<MudraLoanApplyScreenProps> = ({
                   user.documents.push(newDoc);
                 }
               }
+              syncDocKeyToState(docKey);
               Alert.alert('Success', `"${defaultTitle}" photo uploaded successfully!`);
             } catch (err) {
               Alert.alert('Error', 'Unable to choose photo.');
@@ -385,10 +402,21 @@ export const MudraLoanApplyScreen: React.FC<MudraLoanApplyScreenProps> = ({
       return;
     }
     const cleanAadhaar = aadhaarNumber.replace(/\D/g, '');
-    if (cleanAadhaar && cleanAadhaar.length !== 12) {
+    const isMaskedValid = (cleanAadhaar.length === 4 && (aadhaarNumber.includes('XXXX') || aadhaarNumber.includes('xxxx')));
+    if (cleanAadhaar && cleanAadhaar.length !== 12 && !isMaskedValid) {
       setFormError('Aadhaar Number must be 12 digits');
       return;
     }
+    // Re-sync uploadedDocs state from user.documents
+    setUploadedDocs({
+      panCard: isUserDocUploaded(user, 'pan_card', ['pan']),
+      aadhaarCard: isUserDocUploaded(user, 'aadhaar_card', ['aadhaar', 'uidai']),
+      businessProofUdyam: isUserDocUploaded(user, 'business_proof_udyam', ['udyam', 'shop act', 'registration', 'msme']),
+      machineryStockQuotation: isUserDocUploaded(user, 'machinery_stock_quotation', ['quotation', 'invoice', 'machinery', 'stock']),
+      bankStatements: isUserDocUploaded(user, 'bank_statement', ['statement', 'passbook']),
+      projectOutline: isUserDocUploaded(user, 'project_outline', ['project', 'outline', 'report']),
+      photograph: isUserDocUploaded(user, 'passport_photo', ['photo', 'passport']),
+    });
     setCurrentStep(5);
   };
 
@@ -1504,9 +1532,11 @@ export const MudraLoanApplyScreen: React.FC<MudraLoanApplyScreenProps> = ({
                   <View style={styles.appIdIconWrap}>
                     <MaterialCommunityIcons name="file-document-outline" size={20} color="#004aad" />
                   </View>
-                  <View>
+                  <View style={styles.appIdTextWrap}>
                     <Text style={styles.appIdLabel}>Application ID</Text>
-                    <Text style={styles.appIdValue}>{submittedApp.id}</Text>
+                    <Text style={styles.appIdValue} numberOfLines={1} ellipsizeMode="tail">
+                      {submittedApp.id}
+                    </Text>
                   </View>
                 </View>
 
@@ -1514,9 +1544,11 @@ export const MudraLoanApplyScreen: React.FC<MudraLoanApplyScreenProps> = ({
                   <View style={styles.appIdIconWrap}>
                     <Ionicons name="calendar-outline" size={20} color="#004aad" />
                   </View>
-                  <View>
+                  <View style={styles.appIdTextWrap}>
                     <Text style={styles.appIdLabel}>Submitted On</Text>
-                    <Text style={styles.appIdDateValue}>{submittedDateString || 'Today'}</Text>
+                    <Text style={styles.appIdDateValue} numberOfLines={1} ellipsizeMode="tail">
+                      {submittedDateString || 'Today'}
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -2311,15 +2343,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 13,
+    minHeight: 48,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     borderRadius: 12,
     elevation: 2,
   },
   continueButtonText: {
     color: '#002e75',
     fontWeight: '800',
-    fontSize: 15,
+    fontSize: 14,
     marginRight: 6,
+    flexShrink: 1,
+    textAlign: 'center',
   },
   dualButtonRow: {
     flexDirection: 'row',
@@ -2350,15 +2386,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 13,
+    minHeight: 48,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     borderRadius: 12,
     elevation: 2,
   },
   primaryActionButtonText: {
     color: '#002e75',
     fontWeight: '800',
-    fontSize: 14,
+    fontSize: 13.5,
     marginRight: 6,
+    flexShrink: 1,
+    textAlign: 'center',
   },
   subSectionTitle: {
     fontSize: 13,
@@ -2608,7 +2648,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    minHeight: 48,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     borderRadius: 12,
     elevation: 3,
   },
@@ -2618,8 +2660,10 @@ const styles = StyleSheet.create({
   submitBigButtonText: {
     color: '#002e75',
     fontWeight: '800',
-    fontSize: 15,
+    fontSize: 14,
     marginRight: 6,
+    flexShrink: 1,
+    textAlign: 'center',
   },
   successScreenWrapper: {
     marginHorizontal: 14,
@@ -2669,9 +2713,11 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 14,
     marginBottom: 14,
+    overflow: 'hidden',
   },
   appIdBox: {
     flex: 1,
+    flexShrink: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#eff6ff',
@@ -2679,6 +2725,7 @@ const styles = StyleSheet.create({
     borderColor: '#bfdbfe',
     borderRadius: 12,
     padding: 10,
+    overflow: 'hidden',
   },
   appIdIconWrap: {
     width: 32,
@@ -2688,6 +2735,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 8,
+    flexShrink: 0,
+  },
+  appIdTextWrap: {
+    flex: 1,
+    flexShrink: 1,
   },
   appIdLabel: {
     fontSize: 10,
@@ -2698,11 +2750,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     color: '#002e75',
+    flexShrink: 1,
   },
   appIdDateValue: {
     fontSize: 11,
     fontWeight: '700',
     color: '#0f172a',
+    flexShrink: 1,
   },
   lifecycleTrackerRow: {
     flexDirection: 'row',

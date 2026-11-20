@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   StyleSheet,
   Dimensions,
@@ -81,16 +81,7 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
   const [referralFilterTab, setReferralFilterTab] = useState<'all' | 'in_process' | 'disbursed' | 'earnings'>('all');
 
   // Active submitted referral being displayed on the success screen
-  const [currentSubmitted, setCurrentSubmitted] = useState<SubmittedReferral>({
-    id: 'REF-20261112-0045',
-    fullName: 'Rahul Deshmukh',
-    mobileNumber: '+91 9545555999',
-    loanType: 'Home Loan',
-    city: '',
-    submittedOn: '12 Nov 2026, 09:41 AM',
-    status: 'Referral Submitted',
-    estimatedCommission: 'Up to 1.5% on Disbursal',
-  });
+  const [currentSubmitted, setCurrentSubmitted] = useState<SubmittedReferral | null>(null);
 
   // Live dataset purely from user actions & Neon Postgres DB
   const [myReferralsList, setMyReferralsList] = useState<ReferralItem[]>([]);
@@ -130,30 +121,75 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
     loadReferrals();
   }, [user?.mobile]);
 
+  // Combine DB referrals and any newly submitted in-session leads into unified ReferralItem list
+  const combinedReferralsList = useMemo(() => {
+    const list: ReferralItem[] = [];
+    const seenIds = new Set<string>();
+
+    // 1. First add from dbReferrals (database source of truth for the logged-in user)
+    dbReferrals.forEach((d) => {
+      seenIds.add(d.id);
+      const isDisbursed = d.status === 'Disbursed';
+      const isApproved = d.status === 'Loan Approval' || d.status === 'Approved';
+      let displayStatus: ReferralItem['status'] = 'In Process';
+      if (isDisbursed) displayStatus = 'Disbursed';
+      else if (isApproved) displayStatus = 'Approved';
+      else if (d.status === 'Login / Application' || d.status === 'Application / Login') displayStatus = 'Application / Login';
+
+      list.push({
+        id: d.id,
+        fullName: d.friendName,
+        mobileNumber: `+91 ${d.friendMobile}`,
+        city: d.city,
+        loanProduct: (d.loanProduct as any) || 'Home Loan',
+        loanAmount: d.loanAmount ? `₹${d.loanAmount.toLocaleString('en-IN')}` : '₹25,00,000',
+        status: displayStatus,
+        earning: d.payoutAmount > 0 ? `₹${d.payoutAmount.toLocaleString('en-IN')}` : '—',
+        earningRate: isDisbursed ? 'Credited' : undefined,
+        date: d.statusUpdatedAt ? new Date(d.statusUpdatedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'Recent',
+      });
+    });
+
+    // 2. Add any newly submitted session items not yet in dbReferrals
+    myReferralsList.forEach((m) => {
+      if (!seenIds.has(m.id)) {
+        list.unshift(m);
+        seenIds.add(m.id);
+      }
+    });
+
+    return list;
+  }, [dbReferrals, myReferralsList]);
+
   // Dynamic Live Metrics from database referrals
-  const allCurrentRefs = [
-    ...dbReferrals.map((d) => ({
-      status: d.status,
-      payout: d.payoutAmount || 0,
-    })),
-    ...myReferralsList.map((m) => ({
+  const allCurrentRefs = useMemo(() => {
+    return combinedReferralsList.map((m) => ({
       status: m.status,
       payout: parseFloat(m.earning.replace(/[^0-9.]/g, '')) || 0,
-    })),
-  ];
+    }));
+  }, [combinedReferralsList]);
 
   const statsTotalReferrals = allCurrentRefs.length;
   const statsApplicationsLogin = allCurrentRefs.filter(
-    (r) => r.status === 'Login / Application' || r.status === 'Application / Login'
+    (r) => r.status === 'Application / Login'
   ).length;
   const statsLoansApproved = allCurrentRefs.filter(
-    (r) => r.status === 'Loan Approval' || r.status === 'Approved'
+    (r) => r.status === 'Approved'
   ).length;
   const statsLoansDisbursed = allCurrentRefs.filter(
     (r) => r.status === 'Disbursed'
   ).length;
   const sumTotalEarnings = allCurrentRefs.reduce((acc, r) => acc + (r.payout || 0), 0);
   const statsTotalEarnings = sumTotalEarnings > 0 ? `₹${sumTotalEarnings.toLocaleString('en-IN')}` : '₹0';
+
+  // Dynamic counts for filter tabs
+  const countInProcess = allCurrentRefs.filter(
+    (r) => r.status === 'In Process' || r.status === 'Application / Login'
+  ).length;
+  const countDisbursed = statsLoansDisbursed;
+  const countEarnings = allCurrentRefs.filter(
+    (r) => (r.payout && r.payout > 0) || r.status === 'Disbursed'
+  ).length;
 
   const handleCopyLink = () => {
     setCopied(true);
@@ -304,8 +340,8 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
     return { bg: bgs[index % bgs.length], color: colors[index % colors.length] };
   };
 
-  // Filtered referrals list for View My Referrals
-  const filteredReferrals = myReferralsList.filter((item) => {
+  // Filtered referrals list for View My Referrals (dynamically fed from DB & live session)
+  const filteredReferrals = combinedReferralsList.filter((item) => {
     if (referralFilterTab === 'all') return true;
     if (referralFilterTab === 'in_process') {
       return item.status === 'In Process' || item.status === 'Application / Login';
@@ -437,7 +473,7 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
             </View>
           </View>
 
-          {/* 4 Navigation Filter Pills: All Referrals ({statsTotalReferrals}) | In Process ({allCurrentRefs.filter((r) => r.status === "In Process" || r.status === "Referral Submitted" || r.status === "Login / Application").length}) | Disbursed ({statsLoansDisbursed}) | Earnings ({allCurrentRefs.filter((r) => r.payout > 0 || r.status === "Disbursed").length}) */}
+          {/* 4 Navigation Filter Pills */}
           <View style={styles.filterPillsRow}>
             {/* Pill 1: All Referrals */}
             <TouchableOpacity
@@ -454,7 +490,7 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
                   referralFilterTab === 'all' && styles.filterPillTextActive,
                 ]}
               >
-                All Referrals (26)
+                All Referrals ({statsTotalReferrals})
               </Text>
             </TouchableOpacity>
 
@@ -473,7 +509,7 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
                   referralFilterTab === 'in_process' && styles.filterPillTextActive,
                 ]}
               >
-                In Process (10)
+                In Process ({countInProcess})
               </Text>
             </TouchableOpacity>
 
@@ -492,7 +528,7 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
                   referralFilterTab === 'disbursed' && styles.filterPillTextActive,
                 ]}
               >
-                Disbursed (8)
+                Disbursed ({countDisbursed})
               </Text>
             </TouchableOpacity>
 
@@ -511,107 +547,31 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
                   referralFilterTab === 'earnings' && styles.filterPillTextActive,
                 ]}
               >
-                Earnings (8)
+                Earnings ({countEarnings})
               </Text>
             </TouchableOpacity>
           </View>
 
-          {/* Live Neon DB Submitted Referrals Section */}
+          {/* Live Referrals Table */}
           <View style={{ marginBottom: 16 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, paddingHorizontal: 4 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, paddingHorizontal: 4 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Ionicons name="flash" size={16} color="#d97706" />
-                <Text style={{ fontSize: 15, fontWeight: '800', color: '#0f172a' }}>
-                  Live Tracked Referrals ({dbReferrals.length})
+                <Ionicons name="people" size={18} color="#002e75" />
+                <Text style={{ fontSize: 16, fontWeight: '800', color: '#002e75' }}>
+                  Referral Records ({filteredReferrals.length})
                 </Text>
               </View>
-              <TouchableOpacity onPress={loadReferrals} style={{ padding: 4 }}>
-                <Ionicons name="refresh" size={15} color="#004aad" />
+              <TouchableOpacity onPress={loadReferrals} style={{ padding: 4 }} activeOpacity={0.7}>
+                <Ionicons name="refresh" size={16} color="#004aad" />
               </TouchableOpacity>
             </View>
 
-            {isLoadingReferrals ? (
-              <View style={{ padding: 14, alignItems: 'center' }}>
+            {isLoadingReferrals && (
+              <View style={{ padding: 12, alignItems: 'center' }}>
                 <ActivityIndicator size="small" color="#004aad" />
-                <Text style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>Checking database for updates...</Text>
+                <Text style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>Syncing referrals with server...</Text>
               </View>
-            ) : dbReferrals.length > 0 ? (
-              dbReferrals.map((lead) => {
-                const isDisbursed = lead.status === 'Disbursed';
-                const isApproved = lead.status === 'Loan Approval';
-                const isRejected = lead.status === 'Rejected';
-
-                return (
-                  <View
-                    key={lead.id}
-                    style={{
-                      backgroundColor: '#ffffff',
-                      borderRadius: 12,
-                      padding: 12,
-                      marginBottom: 8,
-                      borderWidth: 1,
-                      borderColor: isDisbursed ? '#86efac' : isApproved ? '#fde68a' : isRejected ? '#fca5a5' : '#bfdbfe',
-                    }}
-                  >
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                      <Text style={{ fontSize: 13, fontWeight: '800', color: '#002e75' }}>{lead.id}</Text>
-                      <View
-                        style={{
-                          paddingHorizontal: 8,
-                          paddingVertical: 2,
-                          borderRadius: 10,
-                          backgroundColor: isDisbursed ? '#ecfdf5' : isApproved ? '#fffbeb' : isRejected ? '#fef2f2' : '#eff6ff',
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: 10,
-                            fontWeight: '700',
-                            color: isDisbursed ? '#15803d' : isApproved ? '#d97706' : isRejected ? '#dc2626' : '#1d4ed8',
-                          }}
-                        >
-                          {lead.status}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#0f172a' }}>
-                      {lead.friendName} • <Text style={{ color: '#004aad' }}>{lead.loanProduct}</Text>
-                    </Text>
-                    <Text style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
-                      Mobile: +91 {lead.friendMobile} | City: {lead.city}
-                    </Text>
-
-                    {/* Admin Payout & Reason */}
-                    {lead.payoutAmount > 0 && (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                        <Ionicons name="gift" size={13} color="#16a34a" />
-                        <Text style={{ fontSize: 12, fontWeight: '800', color: '#16a34a' }}>
-                          Earned Payout: ₹{lead.payoutAmount.toLocaleString('en-IN')} ({lead.payoutStatus})
-                        </Text>
-                      </View>
-                    )}
-
-                    {lead.remarks && (
-                      <View style={{ backgroundColor: '#f8fafc', padding: 6, borderRadius: 6, marginTop: 6 }}>
-                        <Text style={{ fontSize: 10, fontWeight: '700', color: '#334155' }}>Admin Note: </Text>
-                        <Text style={{ fontSize: 10, color: '#475569' }}>{lead.remarks}</Text>
-                      </View>
-                    )}
-
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 4 }}>
-                      <Text style={{ fontSize: 10, color: '#004aad' }}>Next Step: {lead.nextAction || 'Verification in progress'}</Text>
-                      <Text style={{ fontSize: 9, color: '#94a3b8' }}>
-                        {new Date(lead.statusUpdatedAt || lead.createdAt).toLocaleDateString('en-IN', {
-                          day: '2-digit',
-                          month: 'short',
-                        })}
-                      </Text>
-                    </View>
-                  </View>
-                );
-              })
-            ) : null}
+            )}
           </View>
 
           {filteredReferrals.length > 0 ? (
@@ -810,10 +770,10 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
               </View>
 
               {[
-                { key: 'all', label: 'All Referrals (26)' },
-                { key: 'in_process', label: 'In Process (10)' },
-                { key: 'disbursed', label: 'Disbursed (8)' },
-                { key: 'earnings', label: 'Completed Earnings (8)' },
+                { key: 'all', label: `All Referrals (${statsTotalReferrals})` },
+                { key: 'in_process', label: `In Process (${countInProcess})` },
+                { key: 'disbursed', label: `Disbursed (${countDisbursed})` },
+                { key: 'earnings', label: `Completed Earnings (${countEarnings})` },
               ].map((opt) => (
                 <TouchableOpacity
                   key={opt.key}
@@ -888,6 +848,25 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
   // VIEW: 2. REFERRAL SUBMITTED SUCCESSFULLY SCREEN
   // =========================================================================
   if (screenMode === 'submitted_success') {
+    if (!currentSubmitted) {
+      return (
+        <View style={styles.screenWrapper}>
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+            <Ionicons name="checkmark-circle-outline" size={56} color="#16a34a" />
+            <Text style={{ fontSize: 18, fontWeight: '800', color: '#002e75', marginTop: 12 }}>
+              Referral Submitted Successfully
+            </Text>
+            <TouchableOpacity
+              style={[styles.backToHomeBigBtn, { marginTop: 24, width: '100%' }]}
+              onPress={() => setScreenMode('form')}
+            >
+              <Text style={styles.backToHomeBigBtnText}>Back to Refer & Earn</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      );
+    }
+
     return (
       <View style={styles.screenWrapper}>
         <ScrollView
@@ -1022,7 +1001,7 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
                   <Ionicons name="location" size={18} color="#004aad" />
                 </View>
                 <Text style={styles.detailGridLabel}>City / Location</Text>
-                <Text style={styles.detailGridValue}>{currentSubmitted.city}</Text>
+                <Text style={styles.detailGridValue}>{currentSubmitted.city || '—'}</Text>
               </View>
             </View>
           </View>
@@ -1049,7 +1028,9 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
                     <Text style={styles.stepPillActiveTitle}>Referral</Text>
                     <Text style={styles.stepPillActiveTitle}>Submitted</Text>
                   </View>
-                  <Text style={styles.stepTimeSubtext}>12 Nov, 09:41 AM</Text>
+                  <Text style={styles.stepTimeSubtext}>
+                    {currentSubmitted.submittedOn ? currentSubmitted.submittedOn.split(',')[0] : 'Today'}
+                  </Text>
                 </View>
 
                 {/* Step 2: Login / Application */}
@@ -1178,7 +1159,7 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
             activeOpacity={0.8}
           >
             <Ionicons name="people" size={16} color="#002e75" style={{ marginRight: 4 }} />
-            <Text style={styles.myReferralsQuickBtnText}>My Referrals (26)</Text>
+            <Text style={styles.myReferralsQuickBtnText}>My Referrals ({statsTotalReferrals})</Text>
           </TouchableOpacity>
         </View>
 

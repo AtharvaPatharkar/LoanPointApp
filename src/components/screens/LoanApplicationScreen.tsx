@@ -909,7 +909,15 @@ export const LoanApplicationScreen: React.FC<LoanApplicationScreenProps> = ({
               </View>
               <View style={styles.readOnlyRight}>
                 <Text style={styles.readOnlyValue}>
-                  {aadhaarNumber || user?.aadhaarNumber ? `XXXX-XXXX-${(aadhaarNumber || user?.aadhaarNumber || '1234').slice(-4)}` : 'Verified KYC'}
+                  {(() => {
+                    const val = aadhaarNumber || user?.aadhaarNumber;
+                    if (!val) return 'Verified KYC';
+                    const digits = val.replace(/\D/g, '');
+                    if (digits.length === 12) {
+                      return `${digits.slice(0, 4)} ${digits.slice(4, 8)} ${digits.slice(8, 12)}`;
+                    }
+                    return val;
+                  })()}
                 </Text>
               </View>
             </View>

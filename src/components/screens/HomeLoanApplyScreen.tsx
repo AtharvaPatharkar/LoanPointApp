@@ -44,7 +44,7 @@ interface UploadedHomeDocsState {
   addressProof: boolean;
   incomeProof: boolean;
   bankStatements: boolean;
-  existingLoanStatement: boolean;
+  propertyDoc: boolean;
   photograph: boolean;
 }
 
@@ -95,7 +95,7 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
     addressProof: isUserDocUploaded(user, 'address_proof', ['electricity', 'utility', 'rent']),
     incomeProof: isUserDocUploaded(user, 'salary_slips', ['salary', 'payslip', 'itr']),
     bankStatements: isUserDocUploaded(user, 'bank_statement', ['statement', 'passbook']),
-    existingLoanStatement: false,
+    propertyDoc: isUserDocUploaded(user, 'property_doc', ['property', 'sale deed', 'registry']),
     photograph: isUserDocUploaded(user, 'passport_photo', ['photo', 'passport']),
   });
 
@@ -113,6 +113,20 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
   const handleViewDocument = (doc: DocumentItem) => {
     setPreviewDoc(doc);
     setShowPreviewModal(true);
+  };
+
+  const syncDocKeyToState = (docKey: string) => {
+    setUploadedDocs((prev) => {
+      const next = { ...prev };
+      if (docKey === 'pan_card') next.panCard = true;
+      else if (docKey === 'aadhaar_card') next.aadhaarCard = true;
+      else if (docKey === 'address_proof') next.addressProof = true;
+      else if (docKey === 'salary_slips') next.incomeProof = true;
+      else if (docKey === 'bank_statement') next.bankStatements = true;
+      else if (docKey === 'property_doc') next.propertyDoc = true;
+      else if (docKey === 'passport_photo') next.photograph = true;
+      return next;
+    });
   };
 
   const handleUploadOrReuploadDoc = (docKey: string, defaultTitle: string, category: DocumentItem['category']) => {
@@ -160,6 +174,7 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
                 user.documents.push(newDoc);
               }
             }
+            syncDocKeyToState(docKey);
             Alert.alert('Success', `"${defaultTitle}" uploaded successfully!`);
           } catch {
             Alert.alert('Error', 'Document upload failed. Please try again.');
@@ -209,6 +224,7 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
                   user.documents.push(newDoc);
                 }
               }
+              syncDocKeyToState(docKey);
               Alert.alert('Success', `"${defaultTitle}" uploaded successfully!`);
             } catch (err) {
               Alert.alert('Error', 'Unable to pick or upload document.');
@@ -249,6 +265,7 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
                   user.documents.push(newDoc);
                 }
               }
+              syncDocKeyToState(docKey);
               Alert.alert('Success', `"${defaultTitle}" photo uploaded successfully!`);
             } catch (err) {
               Alert.alert('Error', 'Unable to choose photo.');
@@ -467,10 +484,21 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
       return;
     }
     const cleanAadhaar = aadhaarNumber.replace(/\D/g, '');
-    if (cleanAadhaar && cleanAadhaar.length !== 12) {
+    const isMaskedValid = (cleanAadhaar.length === 4 && (aadhaarNumber.includes('XXXX') || aadhaarNumber.includes('xxxx')));
+    if (cleanAadhaar && cleanAadhaar.length !== 12 && !isMaskedValid) {
       setFormError('Aadhaar Number must be 12 digits');
       return;
     }
+    // Refresh uploadedDocs state from user.documents
+    setUploadedDocs({
+      panCard: isUserDocUploaded(user, 'pan_card', ['pan']),
+      aadhaarCard: isUserDocUploaded(user, 'aadhaar_card', ['aadhaar', 'uidai']),
+      addressProof: isUserDocUploaded(user, 'address_proof', ['electricity', 'utility', 'rent']),
+      incomeProof: isUserDocUploaded(user, 'salary_slips', ['salary', 'payslip', 'itr']),
+      bankStatements: isUserDocUploaded(user, 'bank_statement', ['statement', 'passbook']),
+      propertyDoc: isUserDocUploaded(user, 'property_doc', ['property', 'sale deed', 'registry']),
+      photograph: isUserDocUploaded(user, 'passport_photo', ['photo', 'passport']),
+    });
     setCurrentStep(5);
   };
 
@@ -1611,7 +1639,11 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
                         <Text style={styles.docBadgeText}>
                           PAN Card <Text style={styles.mandatoryRed}>(Mandatory)</Text>
                         </Text>
-                        <Ionicons name="checkmark-circle" size={18} color="#16a34a" />
+                        <Ionicons
+                          name={uploadedDocs.panCard ? 'checkmark-circle' : 'alert-circle'}
+                          size={18}
+                          color={uploadedDocs.panCard ? '#16a34a' : '#94a3b8'}
+                        />
                       </View>
 
                       <View style={styles.docBadgeBox}>
@@ -1619,19 +1651,31 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
                         <Text style={styles.docBadgeText}>
                           Aadhaar Card <Text style={styles.mandatoryRed}>(Mandatory)</Text>
                         </Text>
-                        <Ionicons name="checkmark-circle" size={18} color="#16a34a" />
+                        <Ionicons
+                          name={uploadedDocs.aadhaarCard ? 'checkmark-circle' : 'alert-circle'}
+                          size={18}
+                          color={uploadedDocs.aadhaarCard ? '#16a34a' : '#94a3b8'}
+                        />
                       </View>
 
                       <View style={styles.docBadgeBox}>
                         <Ionicons name="home-outline" size={18} color="#0f172a" />
                         <Text style={styles.docBadgeText}>Address Proof</Text>
-                        <Ionicons name="checkmark-circle" size={18} color="#16a34a" />
+                        <Ionicons
+                          name={uploadedDocs.addressProof ? 'checkmark-circle' : 'alert-circle'}
+                          size={18}
+                          color={uploadedDocs.addressProof ? '#16a34a' : '#94a3b8'}
+                        />
                       </View>
 
                       <View style={styles.docBadgeBox}>
                         <MaterialCommunityIcons name="file-document-outline" size={18} color="#0f172a" />
                         <Text style={styles.docBadgeText}>Income Proof</Text>
-                        <Ionicons name="checkmark-circle" size={18} color="#16a34a" />
+                        <Ionicons
+                          name={uploadedDocs.incomeProof ? 'checkmark-circle' : 'alert-circle'}
+                          size={18}
+                          color={uploadedDocs.incomeProof ? '#16a34a' : '#94a3b8'}
+                        />
                       </View>
                     </View>
 
@@ -1639,7 +1683,11 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
                       <View style={styles.docBadgeBox}>
                         <MaterialCommunityIcons name="bank" size={18} color="#0f172a" />
                         <Text style={styles.docBadgeText}>Bank Statements</Text>
-                        <Ionicons name="checkmark-circle" size={18} color="#16a34a" />
+                        <Ionicons
+                          name={uploadedDocs.bankStatements ? 'checkmark-circle' : 'alert-circle'}
+                          size={18}
+                          color={uploadedDocs.bankStatements ? '#16a34a' : '#94a3b8'}
+                        />
                       </View>
 
                       <View style={styles.docBadgeBox}>
@@ -1648,7 +1696,11 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
                           Property Papers{'\n'}
                           <Text style={styles.optionalGray}>(If Available)</Text>
                         </Text>
-                        <Ionicons name="checkmark-circle" size={18} color="#16a34a" />
+                        <Ionicons
+                          name={uploadedDocs.propertyDoc ? 'checkmark-circle' : 'alert-circle'}
+                          size={18}
+                          color={uploadedDocs.propertyDoc ? '#16a34a' : '#94a3b8'}
+                        />
                       </View>
 
                       <View style={styles.docBadgeBox}>
@@ -1657,7 +1709,11 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
                           Photograph{'\n'}
                           <Text style={styles.optionalGray}>(Applicant)</Text>
                         </Text>
-                        <Ionicons name="checkmark-circle" size={18} color="#16a34a" />
+                        <Ionicons
+                          name={uploadedDocs.photograph ? 'checkmark-circle' : 'alert-circle'}
+                          size={18}
+                          color={uploadedDocs.photograph ? '#16a34a' : '#94a3b8'}
+                        />
                       </View>
                     </View>
                   </View>
@@ -1748,9 +1804,11 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
                     <View style={styles.appMetaIconWrap}>
                       <MaterialCommunityIcons name="file-document-outline" size={24} color="#004aad" />
                     </View>
-                    <View style={{ flex: 1 }}>
+                    <View style={{ flex: 1, flexShrink: 1 }}>
                       <Text style={styles.appMetaLabel}>Application ID</Text>
-                      <Text style={styles.appMetaIdVal}>{submittedApp.id}</Text>
+                      <Text style={styles.appMetaIdVal} numberOfLines={1} ellipsizeMode="tail">
+                        {submittedApp.id}
+                      </Text>
                     </View>
                   </View>
 
@@ -1760,9 +1818,11 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
                     <View style={styles.appMetaIconWrap}>
                       <MaterialCommunityIcons name="calendar-clock-outline" size={24} color="#004aad" />
                     </View>
-                    <View style={{ flex: 1 }}>
+                    <View style={{ flex: 1, flexShrink: 1 }}>
                       <Text style={styles.appMetaLabel}>Submitted On</Text>
-                      <Text style={styles.appMetaDateVal}>{submittedDateString || 'Today'}</Text>
+                      <Text style={styles.appMetaDateVal} numberOfLines={1} ellipsizeMode="tail">
+                        {submittedDateString || 'Today'}
+                      </Text>
                     </View>
                   </View>
                 </View>
@@ -1810,7 +1870,11 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
                 <View style={styles.managerCard}>
                   <View style={styles.managerLeftRow}>
                     <View style={styles.managerAvatarFrame}>
-                      <MaterialCommunityIcons name="face-agent" size={32} color="#002e75" />
+                      <Image
+                        source={require('../../../assets/logo/arvind_patil.png')}
+                        style={styles.managerAvatarImage}
+                        resizeMode="cover"
+                      />
                     </View>
                     <View style={styles.managerInfoCol}>
                       <Text style={styles.managerRoleLabel}>Your Relationship Manager</Text>
@@ -2603,7 +2667,9 @@ const styles = StyleSheet.create({
   },
   continueButton: {
     marginHorizontal: 16,
-    height: 52,
+    minHeight: 52,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     backgroundColor: '#ffd700',
     borderRadius: 26,
     flexDirection: 'row',
@@ -2616,10 +2682,12 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   continueText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
     color: '#000000',
     marginRight: 8,
+    flexShrink: 1,
+    textAlign: 'center',
   },
   continueArrow: {
     marginTop: 2,
@@ -2632,7 +2700,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   step2BackBtn: {
-    width: 100,
+    paddingHorizontal: 16,
     height: 50,
     borderRadius: 25,
     borderWidth: 1.5,
@@ -2643,13 +2711,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   step2BackBtnText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: '#000000',
   },
   step2ContinueBtn: {
     flex: 1,
-    height: 50,
+    minHeight: 50,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     borderRadius: 25,
     backgroundColor: '#ffd700',
     flexDirection: 'row',
@@ -2662,9 +2732,11 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   step2ContinueBtnText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '800',
     color: '#000000',
+    flexShrink: 1,
+    textAlign: 'center',
   },
   empTypeRow: {
     flexDirection: 'row',
@@ -3185,6 +3257,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     marginBottom: 14,
+    overflow: 'hidden',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
@@ -3193,12 +3266,14 @@ const styles = StyleSheet.create({
   },
   appMetaLeftPill: {
     flex: 1,
+    flexShrink: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
   appMetaRightPill: {
     flex: 1,
+    flexShrink: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -3210,6 +3285,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#eff6ff',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   appMetaLabel: {
     fontSize: 10,
@@ -3221,12 +3297,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '900',
     color: '#002e75',
+    flexShrink: 1,
   },
   appMetaDateVal: {
     fontSize: 11,
     fontWeight: '800',
     color: '#0f172a',
     lineHeight: 14,
+    flexShrink: 1,
   },
   appMetaDivider: {
     width: 1,
@@ -3324,6 +3402,11 @@ const styles = StyleSheet.create({
     borderColor: '#ffd700',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  managerAvatarImage: {
+    width: '100%',
+    height: '100%',
   },
   managerInfoCol: {
     flex: 1,
