@@ -26,7 +26,7 @@ import { cityLocationService, CityResultItem } from '../../services/cityLocation
 import { BankLogo } from '../common/BankLogo';
 import { COMPANY_INFO } from '../../data/mockData';
 import { LoanIcon } from '../common/LoanIcon';
-import { isUserDocUploaded, findUserDocument } from '../../utils/formPreFill';
+import { isUserDocUploaded, findUserDocument, getLatestApplicationForType, parseApplicationPurposeData } from '../../utils/formPreFill';
 import { LoanDocItemRow } from '../common/LoanDocItemRow';
 import { DocumentViewPreviewModal } from '../common/DocumentViewPreviewModal';
 import { CalendarPickerModal } from '../common/CalendarPickerModal';
@@ -59,31 +59,67 @@ export const MudraLoanApplyScreen: React.FC<MudraLoanApplyScreenProps> = ({
 }) => {
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
+  // Check previous application for this loan type
+  const [existingPastApp, setExistingPastApp] = useState<LoanApplication | null>(null);
+
+  useEffect(() => {
+    const apps = loanService.getApplications();
+    const past = getLatestApplicationForType(apps, 'mudra');
+    if (past) {
+      setExistingPastApp(past);
+      const parsedPurpose = parseApplicationPurposeData(past.remarks || (past as any).purpose);
+      if (!requiredLoanAmount && past.requestedAmount) {
+        setRequiredLoanAmount(`₹${past.requestedAmount.toLocaleString('en-IN')}`);
+      }
+      if (!loanTenure && past.tenureMonths) {
+        setLoanTenure(`${past.tenureMonths} Months`);
+      }
+      if (!bankPreference && (past.bankName || parsedPurpose['bank'])) {
+        setBankPreference(past.bankName || parsedPurpose['bank']);
+      }
+      if (!mudraTier && parsedPurpose['scheme tier']) {
+        setMudraTier(parsedPurpose['scheme tier']);
+      }
+      if (!enterpriseName && parsedPurpose['unit']) {
+        setEnterpriseName(parsedPurpose['unit']);
+      }
+      if (!activitySector && parsedPurpose['sector']) {
+        setActivitySector(parsedPurpose['sector']);
+      }
+      if (!loanPurpose && parsedPurpose['purpose']) {
+        setLoanPurpose(parsedPurpose['purpose']);
+      }
+      if (parsedPurpose['mudra card']) {
+        setMudraCardRequired(parsedPurpose['mudra card'] === 'Yes' ? 'Yes' : 'No');
+      }
+    }
+  }, []);
+
   // ---------------- STEP 1: Basic Details ----------------
   const [fullName, setFullName] = useState<string>(user?.name && user.name !== 'Valued Customer' ? user.name : '');
   const [mobileNumber, setMobileNumber] = useState<string>(user?.mobile || '');
   const [emailId, setEmailId] = useState<string>(user?.email || '');
-  const [dob, setDob] = useState<string>('');
+  const [dob, setDob] = useState<string>(user?.dob || '');
   const [city, setCity] = useState<string>(user?.city || '');
-  const [socialCategory, setSocialCategory] = useState<string>('');
+  const [socialCategory, setSocialCategory] = useState<string>(user?.socialCategory || '');
   const [isAgreedStep1, setIsAgreedStep1] = useState<boolean>(true);
 
   // ---------------- STEP 2: Enterprise / Activity Details ----------------
-  const [enterpriseName, setEnterpriseName] = useState<string>('');
-  const [enterpriseActivity, setEnterpriseActivity] = useState<string>('');
-  const [activitySector, setActivitySector] = useState<string>('');
-  const [businessPremises, setBusinessPremises] = useState<string>('');
-  const [businessVintage, setBusinessVintage] = useState<string>('');
-  const [hasUdyamNumber, setHasUdyamNumber] = useState<'Yes' | 'No'>('No');
-  const [udyamRegNumber, setUdyamRegNumber] = useState<string>('');
+  const [enterpriseName, setEnterpriseName] = useState<string>(user?.enterpriseName || user?.registeredBusiness || user?.companyName || '');
+  const [enterpriseActivity, setEnterpriseActivity] = useState<string>(user?.enterpriseActivity || '');
+  const [activitySector, setActivitySector] = useState<string>(user?.activitySector || user?.industrySector || '');
+  const [businessPremises, setBusinessPremises] = useState<string>(user?.businessPremises || '');
+  const [businessVintage, setBusinessVintage] = useState<string>(user?.businessVintage || user?.workExperience || '');
+  const [hasUdyamNumber, setHasUdyamNumber] = useState<'Yes' | 'No'>((user?.hasUdyamNumber as 'Yes' | 'No') || (user?.udyamRegNumber ? 'Yes' : 'No'));
+  const [udyamRegNumber, setUdyamRegNumber] = useState<string>(user?.udyamRegNumber || '');
 
   // ---------------- STEP 3: Mudra Tier & Financing Details ----------------
-  const [mudraTier, setMudraTier] = useState<string>('');
+  const [mudraTier, setMudraTier] = useState<string>(user?.mudraTier || '');
   const [requiredLoanAmount, setRequiredLoanAmount] = useState<string>('');
   const [loanTenure, setLoanTenure] = useState<string>('');
   const [loanPurpose, setLoanPurpose] = useState<string>('');
-  const [bankPreference, setBankPreference] = useState<string>('');
-  const [mudraCardRequired, setMudraCardRequired] = useState<'Yes' | 'No'>('No');
+  const [bankPreference, setBankPreference] = useState<string>(user?.salaryBank || '');
+  const [mudraCardRequired, setMudraCardRequired] = useState<'Yes' | 'No'>((user?.mudraCardRequired as 'Yes' | 'No') || 'No');
 
   // ---------------- STEP 4: Documents (Pre-fill ONLY if authentic document exists in database) ----------------
   const [panNumber, setPanNumber] = useState<string>(user?.panNumber || '');
@@ -446,6 +482,19 @@ export const MudraLoanApplyScreen: React.FC<MudraLoanApplyScreenProps> = ({
         panNumber: panNumber.trim().toUpperCase() || undefined,
         aadhaarNumber: aadhaarNumber.replace(/\D/g, '') || undefined,
         bankName: bankPreference || undefined,
+        companyName: enterpriseName.trim() || undefined,
+        workExperience: businessVintage.trim() || undefined,
+        salaryBank: bankPreference || undefined,
+        dob: dob.trim() || undefined,
+        socialCategory: socialCategory || undefined,
+        enterpriseName: enterpriseName.trim() || undefined,
+        enterpriseActivity: enterpriseActivity.trim() || undefined,
+        activitySector: activitySector.trim() || undefined,
+        businessPremises: businessPremises || undefined,
+        hasUdyamNumber: hasUdyamNumber,
+        udyamRegNumber: udyamRegNumber.trim().toUpperCase() || undefined,
+        mudraTier: mudraTier || undefined,
+        mudraCardRequired: mudraCardRequired,
         purpose: `Mudra Loan (PMMY) | Scheme Tier: ${mudraTier} | Unit: ${enterpriseName.trim()} (${enterpriseActivity}) | Sector: ${activitySector} | Purpose: ${loanPurpose} | Bank: ${bankPreference} | Mudra Card: ${mudraCardRequired}`,
       });
 
@@ -572,6 +621,21 @@ export const MudraLoanApplyScreen: React.FC<MudraLoanApplyScreenProps> = ({
                   </React.Fragment>
                 );
               })}
+            </View>
+          </View>
+        )}
+
+        {/* Re-application alert banner if previous application exists */}
+        {existingPastApp && !submittedApp && (
+          <View style={styles.reapplyBanner}>
+            <View style={styles.reapplyIconWrap}>
+              <MaterialCommunityIcons name="history" size={22} color="#004aad" />
+            </View>
+            <View style={styles.reapplyTextCol}>
+              <Text style={styles.reapplyTitle}>Existing Mudra Loan Application Found</Text>
+              <Text style={styles.reapplySubtitle}>
+                You previously submitted on {existingPastApp.submissionDate} (Status: <Text style={styles.reapplyStatusHighlight}>{existingPastApp.status}</Text>). We have auto-filled your details below for your convenience.
+              </Text>
             </View>
           </View>
         )}
@@ -1332,9 +1396,11 @@ export const MudraLoanApplyScreen: React.FC<MudraLoanApplyScreenProps> = ({
                     <Text style={styles.summaryLabel}>Bank Preference</Text>
                   </View>
                   <Text style={styles.summaryColon}>:</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'flex-end' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
                     {bankPreference ? <BankLogo bank={bankPreference} width={18} height={18} /> : null}
-                    <Text style={styles.summaryValue}>{bankPreference}</Text>
+                    <Text style={styles.summaryValue} numberOfLines={1} ellipsizeMode="tail">
+                      {bankPreference || 'Primary Bank'}
+                    </Text>
                   </View>
                 </View>
 
@@ -3249,5 +3315,43 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#166534',
     lineHeight: 15,
+  },
+  reapplyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#eff6ff',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#93c5fd',
+    padding: 14,
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  reapplyIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#dbeafe',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reapplyTextCol: {
+    flex: 1,
+  },
+  reapplyTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#1e3a8a',
+    marginBottom: 3,
+  },
+  reapplySubtitle: {
+    fontSize: 12,
+    color: '#334155',
+    lineHeight: 16,
+  },
+  reapplyStatusHighlight: {
+    fontWeight: '700',
+    color: '#004aad',
   },
 });

@@ -1,4 +1,4 @@
-import { UserProfile, DocumentItem } from '../types';
+import { UserProfile, DocumentItem, LoanApplication } from '../types';
 
 /**
  * Helper to find the actual DocumentItem in the user's database records.
@@ -64,3 +64,37 @@ export const getUserEmploymentType = (
   }
   return 'Salaried';
 };
+
+/**
+ * Finds the latest existing application for a given loan type if previously submitted by the user.
+ */
+export const getLatestApplicationForType = (
+  applications: LoanApplication[] | null | undefined,
+  loanType: string
+): LoanApplication | undefined => {
+  if (!applications || !Array.isArray(applications) || applications.length === 0) {
+    return undefined;
+  }
+  return applications.find((app) => (app.loanType || '').toLowerCase() === loanType.toLowerCase());
+};
+
+/**
+ * Parses purpose/data fields from past application
+ */
+export const parseApplicationPurposeData = (purposeStr?: string): Record<string, string> => {
+  const result: Record<string, string> = {};
+  if (!purposeStr) return result;
+  const parts = purposeStr.split('|');
+  for (const part of parts) {
+    const colonIdx = part.indexOf(':');
+    if (colonIdx > -1) {
+      const key = part.slice(0, colonIdx).trim().toLowerCase();
+      const val = part.slice(colonIdx + 1).trim();
+      if (key && val) {
+        result[key] = val;
+      }
+    }
+  }
+  return result;
+};
+

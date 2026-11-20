@@ -804,7 +804,9 @@ export const MyInsuranceScreen: React.FC<MyInsuranceScreenProps> = ({
             <View style={styles.headerShieldIconWrap}>
               <MaterialCommunityIcons name="heart-pulse" size={24} color="#ffd700" />
             </View>
-            <Text style={styles.headerTitleText}>{selectedInsuranceType}</Text>
+            <Text style={styles.headerTitleText} numberOfLines={2} ellipsizeMode="tail">
+              {selectedInsuranceType}
+            </Text>
           </View>
 
           {/* 1. Hero Banner: Type-Specific Insurance Banner from assets/insurance */}
@@ -1499,6 +1501,7 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 12,
     marginTop: 2,
+    paddingRight: 8,
   },
   backButtonTouch: {
     width: 38,
@@ -1509,6 +1512,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1.5,
     borderColor: '#cbd5e1',
+    flexShrink: 0,
   },
   headerShieldIconWrap: {
     width: 38,
@@ -1522,12 +1526,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3,
     elevation: 3,
+    flexShrink: 0,
   },
   headerTitleText: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '900',
     color: '#002e75',
     letterSpacing: -0.3,
+    flex: 1,
+    flexShrink: 1,
   },
 
   // ---------------- 1. HERO BANNER CARD ----------------

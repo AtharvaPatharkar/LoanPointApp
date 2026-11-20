@@ -23,7 +23,7 @@ import { UserProfile, LoanApplication } from '../../types';
 import { loanService } from '../../services/loanService';
 import { cityLocationService, CityResultItem } from '../../services/cityLocationService';
 import { BankLogo } from '../common/BankLogo';
-import { isUserDocUploaded, getUserIncomeFormatted, getUserEmploymentType, findUserDocument } from '../../utils/formPreFill';
+import { isUserDocUploaded, getUserIncomeFormatted, getUserEmploymentType, findUserDocument, getLatestApplicationForType, parseApplicationPurposeData } from '../../utils/formPreFill';
 import { LoanDocItemRow } from '../common/LoanDocItemRow';
 import { DocumentViewPreviewModal } from '../common/DocumentViewPreviewModal';
 import { DocumentItem } from '../../types';
@@ -56,6 +56,41 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
   // 5-Step Tracker matching Personal Loan: 1: Basic Details, 2: Property & Work, 3: Loan Details, 4: Documents, 5: Submit
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
+  // Check previous application for this loan type
+  const [existingPastApp, setExistingPastApp] = useState<LoanApplication | null>(null);
+
+  useEffect(() => {
+    const apps = loanService.getApplications();
+    const past = getLatestApplicationForType(apps, 'home');
+    if (past) {
+      setExistingPastApp(past);
+      const parsedPurpose = parseApplicationPurposeData(past.remarks || (past as any).purpose);
+      if (!companyName && parsedPurpose['work']) {
+        setCompanyName(parsedPurpose['work']);
+      }
+      if (!salaryBankAccount && (past.bankName || parsedPurpose['bank'])) {
+        setSalaryBankAccount(past.bankName || parsedPurpose['bank']);
+      }
+      if (!loanAmount && past.requestedAmount) {
+        setLoanAmount(`₹${past.requestedAmount.toLocaleString('en-IN')}`);
+        setDetailedLoanAmount(`₹${past.requestedAmount.toLocaleString('en-IN')}`);
+      }
+      if (!loanTenure && past.tenureMonths) {
+        setLoanTenure(`${past.tenureMonths} Months`);
+        setDetailedTenure(`${past.tenureMonths} Months`);
+      }
+      if (!loanPurpose && parsedPurpose['purpose']) {
+        setLoanPurpose(parsedPurpose['purpose']);
+      }
+      if (!propertyType && parsedPurpose['property']) {
+        setPropertyType(parsedPurpose['property']);
+      }
+      if (!propertyLocation && parsedPurpose['location']) {
+        setPropertyLocation(parsedPurpose['location']);
+      }
+    }
+  }, []);
+
   // ---------------- STEP 1: Basic Details ----------------
   const [fullName, setFullName] = useState<string>(user?.name && user.name !== 'Valued Customer' ? user.name : '');
   const [mobileNumber, setMobileNumber] = useState<string>(user?.mobile || '');
@@ -71,10 +106,10 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
   const [propertyLocation, setPropertyLocation] = useState<string>(user?.city || '');
   const [propertyValue, setPropertyValue] = useState<string>('');
   const [employmentType, setEmploymentType] = useState<'Salaried' | 'Self-Employed'>(getUserEmploymentType(user));
-  const [companyName, setCompanyName] = useState<string>('');
-  const [workExperience, setWorkExperience] = useState<string>('');
-  const [salaryBankAccount, setSalaryBankAccount] = useState<string>('');
-  const [companyType, setCompanyType] = useState<string>('');
+  const [companyName, setCompanyName] = useState<string>(user?.companyName || '');
+  const [workExperience, setWorkExperience] = useState<string>(user?.workExperience || '');
+  const [salaryBankAccount, setSalaryBankAccount] = useState<string>(user?.salaryBank || '');
+  const [companyType, setCompanyType] = useState<string>(user?.companyType || '');
 
   // ---------------- STEP 3: Customize Loan Details ----------------
   const [detailedLoanAmount, setDetailedLoanAmount] = useState<string>('');
@@ -82,7 +117,7 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
   const [loanPurpose, setLoanPurpose] = useState<string>('');
   const [existingEmi, setExistingEmi] = useState<string>('');
   const [cibilScoreRange, setCibilScoreRange] = useState<string>(
-    user?.cibilEstimateScore ? (user.cibilEstimateScore >= 750 ? '750 and Above (Excellent)' : '700 - 749 (Good)') : ''
+    user?.cibilScoreRange || (user?.cibilEstimateScore ? (user.cibilEstimateScore >= 750 ? '750 and Above (Excellent)' : '700 - 749 (Good)') : '')
   );
   const [hasCoApplicant, setHasCoApplicant] = useState<'Yes' | 'No'>('No');
 
@@ -536,6 +571,11 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
         panNumber: panNumber.trim().toUpperCase() || undefined,
         aadhaarNumber: aadhaarNumber.replace(/\D/g, '') || undefined,
         bankName: salaryBankAccount || undefined,
+        companyName: companyName.trim() || undefined,
+        workExperience: workExperience.trim() || undefined,
+        salaryBank: salaryBankAccount || undefined,
+        companyType: companyType || undefined,
+        cibilScoreRange: cibilScoreRange || undefined,
         purpose: `Home Loan | Property: ${propertyType} at ${propertyLocation} (Est: ${propertyValue}) | Work: ${companyName.trim()} (${companyType}) | Bank: ${salaryBankAccount} | Purpose: ${loanPurpose} | Co-Applicant: ${hasCoApplicant} | CIBIL: ${cibilScoreRange}`,
       });
 
@@ -667,6 +707,21 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
                   </React.Fragment>
                 );
               })}
+            </View>
+          </View>
+        )}
+
+        {/* Re-application alert banner if previous application exists */}
+        {existingPastApp && !submittedApp && (
+          <View style={styles.reapplyBanner}>
+            <View style={styles.reapplyIconWrap}>
+              <MaterialCommunityIcons name="history" size={22} color="#004aad" />
+            </View>
+            <View style={styles.reapplyTextCol}>
+              <Text style={styles.reapplyTitle}>Existing Home Loan Application Found</Text>
+              <Text style={styles.reapplySubtitle}>
+                You previously submitted on {existingPastApp.submissionDate} (Status: <Text style={styles.reapplyStatusHighlight}>{existingPastApp.status}</Text>). We have auto-filled your details below for your convenience.
+              </Text>
             </View>
           </View>
         )}
@@ -1600,6 +1655,20 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
                       </View>
                       <Text style={styles.summaryColon}>:</Text>
                       <Text style={styles.summaryValue}>{employmentType} · {companyName}</Text>
+                    </View>
+
+                    <View style={styles.summaryRow}>
+                      <View style={styles.rowLabelCol}>
+                        <MaterialCommunityIcons name="bank-outline" size={16} color="#0f172a" style={styles.rowIcon} />
+                        <Text style={styles.summaryLabel}>Salary Bank</Text>
+                      </View>
+                      <Text style={styles.summaryColon}>:</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
+                        {salaryBankAccount ? <BankLogo bank={salaryBankAccount} width={18} height={18} /> : null}
+                        <Text style={styles.summaryValue} numberOfLines={1} ellipsizeMode="tail">
+                          {salaryBankAccount || 'Primary Bank'}
+                        </Text>
+                      </View>
                     </View>
 
                     <View style={styles.summaryRow}>
@@ -3606,5 +3675,43 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748b',
     marginTop: 2,
+  },
+  reapplyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#eff6ff',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#93c5fd',
+    padding: 14,
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  reapplyIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#dbeafe',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reapplyTextCol: {
+    flex: 1,
+  },
+  reapplyTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#1e3a8a',
+    marginBottom: 3,
+  },
+  reapplySubtitle: {
+    fontSize: 12,
+    color: '#334155',
+    lineHeight: 16,
+  },
+  reapplyStatusHighlight: {
+    fontWeight: '700',
+    color: '#004aad',
   },
 });

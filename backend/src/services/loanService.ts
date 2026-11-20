@@ -126,16 +126,125 @@ export class LoanService {
         data = EXCLUDED.data;
     `;
 
-    // Also update users table if full 12-digit Aadhaar was submitted
-    if (fullAadhaar && fullAadhaar.length === 12) {
-      await sql`
-        UPDATE users
-        SET aadhaar_number = ${fullAadhaar},
-            aadhaar_last_four = ${fullAadhaar.slice(-4)},
-            updated_at = NOW()
-        WHERE mobile = ${cleaned};
-      `;
-    }
+    // Smart Profile Sync: Automatically save/update user details in users database table
+    // Non-destructive: if user already has information or submitted value is empty, keep existing
+    const cleanPan = params.panNumber ? String(params.panNumber).trim().toUpperCase() : '';
+    const cleanCity = params.city ? String(params.city).trim() : '';
+    const cleanEmp = params.employmentType ? String(params.employmentType).trim() : '';
+    const cleanIncome = Number(params.monthlyIncome) || 0;
+    const cleanCompany = params.companyName ? String(params.companyName).trim() : '';
+    const cleanExp = params.workExperience ? String(params.workExperience).trim() : '';
+    const cleanBank = (params.salaryBank || params.bankName || '') ? String(params.salaryBank || params.bankName).trim() : '';
+    const cleanCompType = params.companyType ? String(params.companyType).trim() : '';
+    const cleanCreditCard = params.hasCreditCard ? String(params.hasCreditCard).trim() : '';
+    const cleanCibil = params.cibilScoreRange ? String(params.cibilScoreRange).trim() : '';
+    const cleanDob = params.dob ? String(params.dob).trim() : '';
+    const cleanBizLocation = (params.businessLocation || params.city || '') ? String(params.businessLocation || params.city).trim() : '';
+    const cleanRegBiz = (params.registeredBusiness || params.businessName || params.companyName || '') ? String(params.registeredBusiness || params.businessName || params.companyName).trim() : '';
+    const cleanBizConst = (params.businessConstitution || params.businessType || params.companyType || '') ? String(params.businessConstitution || params.businessType || params.companyType).trim() : '';
+    const cleanBizVintage = (params.businessVintage || params.workExperience || '') ? String(params.businessVintage || params.workExperience).trim() : '';
+    const cleanIndSector = (params.industrySector || params.industryType || '') ? String(params.industrySector || params.industryType).trim() : '';
+    const cleanTurnover = params.annualTurnover ? String(params.annualTurnover).trim() : '';
+    const cleanIsGst = (params.isGstRegistered || params.hasGstRegistration || '') ? String(params.isGstRegistered || params.hasGstRegistration).trim() : '';
+    const cleanGstin = (params.gstin || params.gstNumber || '') ? String(params.gstin || params.gstNumber).trim().toUpperCase() : '';
+
+    // Car Loan params
+    const cleanCarCondition = params.carCondition ? String(params.carCondition).trim() : '';
+    const cleanCarMakeModel = params.carMakeModel ? String(params.carMakeModel).trim() : '';
+    const cleanCarDealer = params.carDealerSeller || params.carDealerOrSeller ? String(params.carDealerSeller || params.carDealerOrSeller).trim() : '';
+    const cleanCarPrice = params.carOnRoadPrice || params.onRoadPrice ? String(params.carOnRoadPrice || params.onRoadPrice).trim() : '';
+    const cleanCarFuel = params.carFuelType || params.fuelType ? String(params.carFuelType || params.fuelType).trim() : '';
+    const cleanCarYear = params.carMfgYear || params.manufacturingYear ? String(params.carMfgYear || params.manufacturingYear).trim() : '';
+    const cleanCarDown = params.carDownPayment || params.downPayment ? String(params.carDownPayment || params.downPayment).trim() : '';
+
+    // Mortgage Loan (LAP) params
+    const cleanPropType = params.propertyType ? String(params.propertyType).trim() : '';
+    const cleanPropLoc = params.propertyLocation ? String(params.propertyLocation).trim() : '';
+    const cleanValuation = params.marketValuation ? String(params.marketValuation).trim() : '';
+    const cleanOwnership = params.propertyOwnership ? String(params.propertyOwnership).trim() : '';
+    const cleanFreehold = params.isPropertyFreehold ? String(params.isPropertyFreehold).trim() : '';
+    const cleanExistingLoanProp = params.hasExistingLoanOnProperty ? String(params.hasExistingLoanOnProperty).trim() : '';
+    const cleanLapPurpose = params.lapPurpose ? String(params.lapPurpose).trim() : '';
+
+    // Agriculture Loan params
+    const cleanLandAcres = params.landHoldingAcres ? String(params.landHoldingAcres).trim() : '';
+    const cleanTaluka = params.talukaVillage ? String(params.talukaVillage).trim() : '';
+    const cleanGatNumber = params.gatNumber ? String(params.gatNumber).trim() : '';
+    const cleanIrrigation = params.irrigationSource ? String(params.irrigationSource).trim() : '';
+    const cleanCrops = params.primaryCrops ? String(params.primaryCrops).trim() : '';
+    const cleanKcc = params.hasKccCard ? String(params.hasKccCard).trim() : '';
+    const cleanFarmingType = params.farmingType ? String(params.farmingType).trim() : '';
+    const cleanAgriScheme = params.agriLoanType ? String(params.agriLoanType).trim() : '';
+
+    // Mudra Loan params
+    const cleanSocialCategory = params.socialCategory ? String(params.socialCategory).trim() : '';
+    const cleanEnterpriseName = params.enterpriseName ? String(params.enterpriseName).trim() : '';
+    const cleanEnterpriseActivity = params.enterpriseActivity ? String(params.enterpriseActivity).trim() : '';
+    const cleanActivitySector = params.activitySector ? String(params.activitySector).trim() : '';
+    const cleanPremises = params.businessPremises ? String(params.businessPremises).trim() : '';
+    const cleanHasUdyam = params.hasUdyamNumber ? String(params.hasUdyamNumber).trim() : '';
+    const cleanUdyamReg = params.udyamRegNumber ? String(params.udyamRegNumber).trim().toUpperCase() : '';
+    const cleanMudraTier = params.mudraTier ? String(params.mudraTier).trim() : '';
+    const cleanMudraCard = params.mudraCardRequired ? String(params.mudraCardRequired).trim() : '';
+
+    await sql`
+      UPDATE users
+      SET 
+        city = CASE WHEN (city IS NULL OR city = '') AND ${cleanCity} <> '' THEN ${cleanCity} ELSE city END,
+        employment_type = CASE WHEN (employment_type IS NULL OR employment_type = '') AND ${cleanEmp} <> '' THEN ${cleanEmp} ELSE employment_type END,
+        monthly_income = CASE WHEN (monthly_income IS NULL OR monthly_income = 0) AND ${cleanIncome} > 0 THEN ${cleanIncome} ELSE monthly_income END,
+        pan_number = CASE WHEN (pan_number IS NULL OR pan_number = '') AND ${cleanPan} <> '' THEN ${cleanPan} ELSE pan_number END,
+        aadhaar_number = CASE WHEN (aadhaar_number IS NULL OR aadhaar_number = '') AND ${fullAadhaar || ''} <> '' THEN ${fullAadhaar} ELSE aadhaar_number END,
+        aadhaar_last_four = CASE WHEN (aadhaar_last_four IS NULL OR aadhaar_last_four = '') AND ${fullAadhaar || ''} <> '' THEN ${fullAadhaar ? fullAadhaar.slice(-4) : ''} ELSE aadhaar_last_four END,
+        company_name = CASE WHEN (company_name IS NULL OR company_name = '') AND ${cleanCompany || cleanRegBiz || cleanEnterpriseName} <> '' THEN ${cleanCompany || cleanRegBiz || cleanEnterpriseName} ELSE company_name END,
+        work_experience = CASE WHEN (work_experience IS NULL OR work_experience = '') AND ${cleanExp || cleanBizVintage} <> '' THEN ${cleanExp || cleanBizVintage} ELSE work_experience END,
+        salary_bank = CASE WHEN (salary_bank IS NULL OR salary_bank = '') AND ${cleanBank} <> '' THEN ${cleanBank} ELSE salary_bank END,
+        company_type = CASE WHEN (company_type IS NULL OR company_type = '') AND ${cleanCompType || cleanBizConst} <> '' THEN ${cleanCompType || cleanBizConst} ELSE company_type END,
+        has_credit_card = CASE WHEN (has_credit_card IS NULL OR has_credit_card = '') AND ${cleanCreditCard} <> '' THEN ${cleanCreditCard} ELSE has_credit_card END,
+        cibil_score_range = CASE WHEN (cibil_score_range IS NULL OR cibil_score_range = '') AND ${cleanCibil} <> '' THEN ${cleanCibil} ELSE cibil_score_range END,
+        dob = CASE WHEN (dob IS NULL OR dob = '') AND ${cleanDob} <> '' THEN ${cleanDob} ELSE dob END,
+        business_location = CASE WHEN (business_location IS NULL OR business_location = '') AND ${cleanBizLocation} <> '' THEN ${cleanBizLocation} ELSE business_location END,
+        registered_business = CASE WHEN (registered_business IS NULL OR registered_business = '') AND ${cleanRegBiz || cleanEnterpriseName} <> '' THEN ${cleanRegBiz || cleanEnterpriseName} ELSE registered_business END,
+        business_constitution = CASE WHEN (business_constitution IS NULL OR business_constitution = '') AND ${cleanBizConst} <> '' THEN ${cleanBizConst} ELSE business_constitution END,
+        business_vintage = CASE WHEN (business_vintage IS NULL OR business_vintage = '') AND ${cleanBizVintage} <> '' THEN ${cleanBizVintage} ELSE business_vintage END,
+        industry_sector = CASE WHEN (industry_sector IS NULL OR industry_sector = '') AND ${cleanIndSector || cleanActivitySector} <> '' THEN ${cleanIndSector || cleanActivitySector} ELSE industry_sector END,
+        annual_turnover = CASE WHEN (annual_turnover IS NULL OR annual_turnover = '') AND ${cleanTurnover} <> '' THEN ${cleanTurnover} ELSE annual_turnover END,
+        is_gst_registered = CASE WHEN (is_gst_registered IS NULL OR is_gst_registered = '') AND ${cleanIsGst} <> '' THEN ${cleanIsGst} ELSE is_gst_registered END,
+        gstin = CASE WHEN (gstin IS NULL OR gstin = '') AND ${cleanGstin} <> '' THEN ${cleanGstin} ELSE gstin END,
+        car_condition = CASE WHEN (car_condition IS NULL OR car_condition = '') AND ${cleanCarCondition} <> '' THEN ${cleanCarCondition} ELSE car_condition END,
+        car_make_model = CASE WHEN (car_make_model IS NULL OR car_make_model = '') AND ${cleanCarMakeModel} <> '' THEN ${cleanCarMakeModel} ELSE car_make_model END,
+        car_dealer_seller = CASE WHEN (car_dealer_seller IS NULL OR car_dealer_seller = '') AND ${cleanCarDealer} <> '' THEN ${cleanCarDealer} ELSE car_dealer_seller END,
+        car_on_road_price = CASE WHEN (car_on_road_price IS NULL OR car_on_road_price = '') AND ${cleanCarPrice} <> '' THEN ${cleanCarPrice} ELSE car_on_road_price END,
+        car_fuel_type = CASE WHEN (car_fuel_type IS NULL OR car_fuel_type = '') AND ${cleanCarFuel} <> '' THEN ${cleanCarFuel} ELSE car_fuel_type END,
+        car_mfg_year = CASE WHEN (car_mfg_year IS NULL OR car_mfg_year = '') AND ${cleanCarYear} <> '' THEN ${cleanCarYear} ELSE car_mfg_year END,
+        car_down_payment = CASE WHEN (car_down_payment IS NULL OR car_down_payment = '') AND ${cleanCarDown} <> '' THEN ${cleanCarDown} ELSE car_down_payment END,
+        property_type = CASE WHEN (property_type IS NULL OR property_type = '') AND ${cleanPropType} <> '' THEN ${cleanPropType} ELSE property_type END,
+        property_location = CASE WHEN (property_location IS NULL OR property_location = '') AND ${cleanPropLoc} <> '' THEN ${cleanPropLoc} ELSE property_location END,
+        market_valuation = CASE WHEN (market_valuation IS NULL OR market_valuation = '') AND ${cleanValuation} <> '' THEN ${cleanValuation} ELSE market_valuation END,
+        property_ownership = CASE WHEN (property_ownership IS NULL OR property_ownership = '') AND ${cleanOwnership} <> '' THEN ${cleanOwnership} ELSE property_ownership END,
+        is_property_freehold = CASE WHEN (is_property_freehold IS NULL OR is_property_freehold = '') AND ${cleanFreehold} <> '' THEN ${cleanFreehold} ELSE is_property_freehold END,
+        has_existing_loan_on_property = CASE WHEN (has_existing_loan_on_property IS NULL OR has_existing_loan_on_property = '') AND ${cleanExistingLoanProp} <> '' THEN ${cleanExistingLoanProp} ELSE has_existing_loan_on_property END,
+        lap_purpose = CASE WHEN (lap_purpose IS NULL OR lap_purpose = '') AND ${cleanLapPurpose} <> '' THEN ${cleanLapPurpose} ELSE lap_purpose END,
+        land_holding_acres = CASE WHEN (land_holding_acres IS NULL OR land_holding_acres = '') AND ${cleanLandAcres} <> '' THEN ${cleanLandAcres} ELSE land_holding_acres END,
+        taluka_village = CASE WHEN (taluka_village IS NULL OR taluka_village = '') AND ${cleanTaluka} <> '' THEN ${cleanTaluka} ELSE taluka_village END,
+        gat_number = CASE WHEN (gat_number IS NULL OR gat_number = '') AND ${cleanGatNumber} <> '' THEN ${cleanGatNumber} ELSE gat_number END,
+        irrigation_source = CASE WHEN (irrigation_source IS NULL OR irrigation_source = '') AND ${cleanIrrigation} <> '' THEN ${cleanIrrigation} ELSE irrigation_source END,
+        primary_crops = CASE WHEN (primary_crops IS NULL OR primary_crops = '') AND ${cleanCrops} <> '' THEN ${cleanCrops} ELSE primary_crops END,
+        has_kcc_card = CASE WHEN (has_kcc_card IS NULL OR has_kcc_card = '') AND ${cleanKcc} <> '' THEN ${cleanKcc} ELSE has_kcc_card END,
+        farming_type = CASE WHEN (farming_type IS NULL OR farming_type = '') AND ${cleanFarmingType} <> '' THEN ${cleanFarmingType} ELSE farming_type END,
+        agri_loan_type = CASE WHEN (agri_loan_type IS NULL OR agri_loan_type = '') AND ${cleanAgriScheme} <> '' THEN ${cleanAgriScheme} ELSE agri_loan_type END,
+        social_category = CASE WHEN (social_category IS NULL OR social_category = '') AND ${cleanSocialCategory} <> '' THEN ${cleanSocialCategory} ELSE social_category END,
+        enterprise_name = CASE WHEN (enterprise_name IS NULL OR enterprise_name = '') AND ${cleanEnterpriseName} <> '' THEN ${cleanEnterpriseName} ELSE enterprise_name END,
+        enterprise_activity = CASE WHEN (enterprise_activity IS NULL OR enterprise_activity = '') AND ${cleanEnterpriseActivity} <> '' THEN ${cleanEnterpriseActivity} ELSE enterprise_activity END,
+        activity_sector = CASE WHEN (activity_sector IS NULL OR activity_sector = '') AND ${cleanActivitySector} <> '' THEN ${cleanActivitySector} ELSE activity_sector END,
+        business_premises = CASE WHEN (business_premises IS NULL OR business_premises = '') AND ${cleanPremises} <> '' THEN ${cleanPremises} ELSE business_premises END,
+        has_udyam_number = CASE WHEN (has_udyam_number IS NULL OR has_udyam_number = '') AND ${cleanHasUdyam} <> '' THEN ${cleanHasUdyam} ELSE has_udyam_number END,
+        udyam_reg_number = CASE WHEN (udyam_reg_number IS NULL OR udyam_reg_number = '') AND ${cleanUdyamReg} <> '' THEN ${cleanUdyamReg} ELSE udyam_reg_number END,
+        mudra_tier = CASE WHEN (mudra_tier IS NULL OR mudra_tier = '') AND ${cleanMudraTier} <> '' THEN ${cleanMudraTier} ELSE mudra_tier END,
+        mudra_card_required = CASE WHEN (mudra_card_required IS NULL OR mudra_card_required = '') AND ${cleanMudraCard} <> '' THEN ${cleanMudraCard} ELSE mudra_card_required END,
+        updated_at = NOW()
+      WHERE mobile = ${cleaned};
+    `;
 
     return newApp;
   }

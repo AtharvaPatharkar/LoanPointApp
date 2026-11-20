@@ -121,7 +121,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const isPanValid = !isPanEntered || validatePAN(editPanNumber);
 
   const isAadhaarEntered = editAadhaarNumber.replace(/[\s-]/g, '').length > 0;
-  const aadhaarValidation = isAadhaarEntered ? validateAadhaar(editAadhaarNumber) : { isValid: true };
+  const aadhaarValidation = validateAadhaar(editAadhaarNumber);
   const isAadhaarValid = aadhaarValidation.isValid;
 
   const openEditModal = (targetStep = 1) => {
@@ -191,7 +191,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       setEditErrorMessage('Please enter a valid 10-character PAN format (e.g. ABCDE1234F)');
       return;
     }
-    if (isAadhaarEntered && !isAadhaarValid) {
+    if (!isAadhaarEntered) {
+      setEditErrorMessage('Please enter your 12-digit Aadhaar number');
+      return;
+    }
+    if (!isAadhaarValid) {
       setEditErrorMessage(aadhaarValidation.error || 'Please enter a valid 12-digit Aadhaar number');
       return;
     }
@@ -544,7 +548,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </View>
           </View>
 
-          {/* Aadhaar Number (Optional) */}
+          {/* Aadhaar Number (Mandatory) */}
           <View style={styles.regInfoRow}>
             <View style={styles.regInfoLeft}>
               <View style={[styles.fieldIcon3D, { backgroundColor: '#e0f2fe', borderColor: '#bae6fd' }]}>
@@ -1270,9 +1274,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   {/* Aadhaar Number */}
                   <View style={styles.fieldGroup}>
                     <View style={styles.fieldLabelRow}>
-                      <Text style={styles.fieldLabel}>Aadhaar Card Number</Text>
-                      <Text style={styles.fieldHint}>
-                        {editAadhaarNumber.length > 0 ? `${editAadhaarNumber.replace(/[\s-]/g, '').length}/12 Digits` : 'Optional'}
+                      <Text style={styles.fieldLabel}>Aadhaar Card Number *</Text>
+                      <Text style={[styles.fieldHint, !isAadhaarValid && isAadhaarEntered && { color: '#dc2626' }]}>
+                        {editAadhaarNumber.length > 0 ? `${editAadhaarNumber.replace(/[\s-]/g, '').length}/12 Digits` : 'Required'}
                       </Text>
                     </View>
                     <View

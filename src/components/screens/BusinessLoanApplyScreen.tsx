@@ -27,7 +27,7 @@ import { BankLogo } from '../common/BankLogo';
 import { formatINR } from '../../utils/calculator';
 import { COMPANY_INFO } from '../../data/mockData';
 import { LoanIcon } from '../common/LoanIcon';
-import { isUserDocUploaded, findUserDocument } from '../../utils/formPreFill';
+import { isUserDocUploaded, findUserDocument, getLatestApplicationForType, parseApplicationPurposeData } from '../../utils/formPreFill';
 import { LoanDocItemRow } from '../common/LoanDocItemRow';
 import { DocumentViewPreviewModal } from '../common/DocumentViewPreviewModal';
 import { CalendarPickerModal } from '../common/CalendarPickerModal';
@@ -60,31 +60,71 @@ export const BusinessLoanApplyScreen: React.FC<BusinessLoanApplyScreenProps> = (
 }) => {
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
+  // Check previous application for this loan type
+  const [existingPastApp, setExistingPastApp] = useState<LoanApplication | null>(null);
+
+  useEffect(() => {
+    const apps = loanService.getApplications();
+    const past = getLatestApplicationForType(apps, 'business');
+    if (past) {
+      setExistingPastApp(past);
+      const parsedPurpose = parseApplicationPurposeData(past.remarks || (past as any).purpose);
+      if (!requiredLoanAmount && past.requestedAmount) {
+        setRequiredLoanAmount(`₹${past.requestedAmount.toLocaleString('en-IN')}`);
+      }
+      if (!loanTenure && past.tenureMonths) {
+        setLoanTenure(`${past.tenureMonths} Months`);
+      }
+      if (!primaryBank && (past.bankName || parsedPurpose['bank'])) {
+        setPrimaryBank(past.bankName || parsedPurpose['bank']);
+      }
+      if (!businessName && parsedPurpose['enterprise']) {
+        setBusinessName(parsedPurpose['enterprise']);
+      }
+      if (!industryType && parsedPurpose['industry']) {
+        setIndustryType(parsedPurpose['industry']);
+      }
+      if (!annualTurnover && parsedPurpose['turnover']) {
+        setAnnualTurnover(parsedPurpose['turnover']);
+      }
+      if (!businessVintage && parsedPurpose['vintage']) {
+        setBusinessVintage(parsedPurpose['vintage']);
+      }
+      if (!gstNumber && parsedPurpose['gst']) {
+        setGstNumber(parsedPurpose['gst']);
+        setHasGstRegistration('Yes');
+      }
+      if (!loanPurpose && parsedPurpose['purpose']) {
+        setLoanPurpose(parsedPurpose['purpose']);
+      }
+    }
+  }, []);
+
   // ---------------- STEP 1: Basic Details ----------------
   const [fullName, setFullName] = useState<string>(user?.name && user.name !== 'Valued Customer' ? user.name : '');
   const [mobileNumber, setMobileNumber] = useState<string>(user?.mobile || '');
   const [emailId, setEmailId] = useState<string>(user?.email || '');
-  const [dob, setDob] = useState<string>('');
-  const [city, setCity] = useState<string>(user?.city || '');
+  const [dob, setDob] = useState<string>(user?.dob || '');
+  const [city, setCity] = useState<string>(user?.businessLocation || user?.city || '');
   const [isAgreedStep1, setIsAgreedStep1] = useState<boolean>(true);
 
   // ---------------- STEP 2: Business Details ----------------
-  const [businessName, setBusinessName] = useState<string>('');
-  const [businessType, setBusinessType] = useState<string>('');
-  const [businessVintage, setBusinessVintage] = useState<string>('');
-  const [industryType, setIndustryType] = useState<string>('');
-  const [annualTurnover, setAnnualTurnover] = useState<string>('');
-  const [hasGstRegistration, setHasGstRegistration] = useState<'Yes' | 'No'>('No');
-  const [gstNumber, setGstNumber] = useState<string>('');
+  const [businessName, setBusinessName] = useState<string>(user?.registeredBusiness || user?.companyName || '');
+  const [businessType, setBusinessType] = useState<string>(user?.businessConstitution || user?.companyType || '');
+  const [businessVintage, setBusinessVintage] = useState<string>(user?.businessVintage || user?.workExperience || '');
+  const [industryType, setIndustryType] = useState<string>(user?.industrySector || '');
+  const [annualTurnover, setAnnualTurnover] = useState<string>(user?.annualTurnover || '');
+  const [hasGstRegistration, setHasGstRegistration] = useState<'Yes' | 'No'>((user?.isGstRegistered as 'Yes' | 'No') || (user?.gstin ? 'Yes' : 'No'));
+  const [gstNumber, setGstNumber] = useState<string>(user?.gstin || '');
 
   // ---------------- STEP 3: Financial & Loan Details ----------------
   const [requiredLoanAmount, setRequiredLoanAmount] = useState<string>('');
   const [loanTenure, setLoanTenure] = useState<string>('');
   const [loanPurpose, setLoanPurpose] = useState<string>('');
-  const [primaryBank, setPrimaryBank] = useState<string>('');
+  const [primaryBank, setPrimaryBank] = useState<string>(user?.salaryBank || '');
   const [existingMonthlyEmi, setExistingMonthlyEmi] = useState<string>('');
   const [cibilScoreRange, setCibilScoreRange] = useState<string>(
-    user?.cibilEstimateScore ? (user.cibilEstimateScore >= 750 ? '750 and Above (Excellent)' : '700 - 749 (Good)') : ''
+    user?.cibilScoreRange || (user?.cibilEstimateScore ? (user.cibilEstimateScore >= 750 ? '750 and Above (Excellent)' : '700 - 749 (Good)') : '')
   );
 
   // ---------------- STEP 4: Documents (Pre-fill ONLY if authentic document exists in database) ----------------
@@ -511,6 +551,22 @@ export const BusinessLoanApplyScreen: React.FC<BusinessLoanApplyScreenProps> = (
         panNumber: panNumber.trim().toUpperCase() || undefined,
         aadhaarNumber: aadhaarNumber.replace(/\D/g, '') || undefined,
         bankName: primaryBank || undefined,
+        companyName: businessName.trim() || undefined,
+        workExperience: businessVintage.trim() || undefined,
+        salaryBank: primaryBank || undefined,
+        companyType: businessType || undefined,
+        cibilScoreRange: cibilScoreRange || undefined,
+        dob: dob.trim() || undefined,
+        businessLocation: city.trim() || undefined,
+        registeredBusiness: businessName.trim() || undefined,
+        businessConstitution: businessType || undefined,
+        businessVintage: businessVintage.trim() || undefined,
+        industrySector: industryType || undefined,
+        annualTurnover: annualTurnover || undefined,
+        isGstRegistered: hasGstRegistration,
+        gstin: gstNumber.trim().toUpperCase() || undefined,
+        gstNumber: gstNumber.trim().toUpperCase() || undefined,
+        hasGstRegistration: hasGstRegistration,
         purpose: `Business Loan | Enterprise: ${businessName.trim()} (${businessType}) | Industry: ${industryType} | Turnover: ${annualTurnover} | Vintage: ${businessVintage} | GST: ${gstNumber} | Bank: ${primaryBank} | Purpose: ${loanPurpose}`,
       });
 
@@ -637,6 +693,21 @@ export const BusinessLoanApplyScreen: React.FC<BusinessLoanApplyScreenProps> = (
                   </React.Fragment>
                 );
               })}
+            </View>
+          </View>
+        )}
+
+        {/* Re-application alert banner if previous application exists */}
+        {existingPastApp && !submittedApp && (
+          <View style={styles.reapplyBanner}>
+            <View style={styles.reapplyIconWrap}>
+              <MaterialCommunityIcons name="history" size={22} color="#004aad" />
+            </View>
+            <View style={styles.reapplyTextCol}>
+              <Text style={styles.reapplyTitle}>Existing Business Loan Application Found</Text>
+              <Text style={styles.reapplySubtitle}>
+                You previously submitted on {existingPastApp.submissionDate} (Status: <Text style={styles.reapplyStatusHighlight}>{existingPastApp.status}</Text>). We have auto-filled your details below for your convenience.
+              </Text>
             </View>
           </View>
         )}
@@ -1381,9 +1452,11 @@ export const BusinessLoanApplyScreen: React.FC<BusinessLoanApplyScreenProps> = (
                     <Text style={styles.summaryLabel}>Operating Bank</Text>
                   </View>
                   <Text style={styles.summaryColon}>:</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'flex-end' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
                     {primaryBank ? <BankLogo bank={primaryBank} width={18} height={18} /> : null}
-                    <Text style={styles.summaryValue}>{primaryBank}</Text>
+                    <Text style={styles.summaryValue} numberOfLines={1} ellipsizeMode="tail">
+                      {primaryBank || 'Primary Bank'}
+                    </Text>
                   </View>
                 </View>
 
@@ -3560,6 +3633,44 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#475569',
     lineHeight: 15,
+  },
+  reapplyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#eff6ff',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#93c5fd',
+    padding: 14,
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  reapplyIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#dbeafe',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reapplyTextCol: {
+    flex: 1,
+  },
+  reapplyTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#1e3a8a',
+    marginBottom: 3,
+  },
+  reapplySubtitle: {
+    fontSize: 12,
+    color: '#334155',
+    lineHeight: 16,
+  },
+  reapplyStatusHighlight: {
+    fontWeight: '700',
+    color: '#004aad',
   },
 });
 

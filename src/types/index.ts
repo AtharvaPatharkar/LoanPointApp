@@ -91,6 +91,56 @@ export interface UserProfile {
   panNumber?: string;
   aadhaarNumber?: string;
   aadhaarLinked: boolean;
+  companyName?: string;
+  workExperience?: string;
+  salaryBank?: string;
+  companyType?: string;
+  hasCreditCard?: string;
+  cibilScoreRange?: string;
+  dob?: string;
+  businessLocation?: string;
+  registeredBusiness?: string;
+  businessConstitution?: string;
+  businessVintage?: string;
+  industrySector?: string;
+  annualTurnover?: string;
+  isGstRegistered?: string;
+  gstin?: string;
+  // Car Loan
+  carCondition?: string;
+  carMakeModel?: string;
+  carDealerSeller?: string;
+  carOnRoadPrice?: string;
+  carFuelType?: string;
+  carMfgYear?: string;
+  carDownPayment?: string;
+  // Mortgage Loan (LAP)
+  propertyType?: string;
+  propertyLocation?: string;
+  marketValuation?: string;
+  propertyOwnership?: string;
+  isPropertyFreehold?: string;
+  hasExistingLoanOnProperty?: string;
+  lapPurpose?: string;
+  // Agriculture Loan
+  landHoldingAcres?: string;
+  talukaVillage?: string;
+  gatNumber?: string;
+  irrigationSource?: string;
+  primaryCrops?: string;
+  hasKccCard?: string;
+  farmingType?: string;
+  agriLoanType?: string;
+  // Mudra Loan
+  socialCategory?: string;
+  enterpriseName?: string;
+  enterpriseActivity?: string;
+  activitySector?: string;
+  businessPremises?: string;
+  hasUdyamNumber?: string;
+  udyamRegNumber?: string;
+  mudraTier?: string;
+  mudraCardRequired?: string;
   cibilEstimateScore?: number;
   memberSince: string;
   referralCode: string;

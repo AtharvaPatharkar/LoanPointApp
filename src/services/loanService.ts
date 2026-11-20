@@ -53,6 +53,68 @@ class LoanService {
     aadhaarNumber?: string;
     purpose?: string;
     bankName?: string;
+    companyName?: string;
+    workExperience?: string;
+    salaryBank?: string;
+    companyType?: string;
+    hasCreditCard?: string;
+    cibilScoreRange?: string;
+    dob?: string;
+    businessLocation?: string;
+    registeredBusiness?: string;
+    businessConstitution?: string;
+    businessVintage?: string;
+    industrySector?: string;
+    annualTurnover?: string;
+    isGstRegistered?: string;
+    gstin?: string;
+    gstNumber?: string;
+    businessName?: string;
+    businessType?: string;
+    industryType?: string;
+    hasGstRegistration?: string;
+    // Car Loan
+    carCondition?: string;
+    carMakeModel?: string;
+    carDealerSeller?: string;
+    carDealerOrSeller?: string;
+    carOnRoadPrice?: string;
+    onRoadPrice?: string;
+    carFuelType?: string;
+    fuelType?: string;
+    carMfgYear?: string;
+    manufacturingYear?: string;
+    carDownPayment?: string;
+    downPayment?: string;
+    // Mortgage Loan (LAP)
+    propertyType?: string;
+    propertyLocation?: string;
+    marketValuation?: string;
+    propertyOwnership?: string;
+    isPropertyFreehold?: string;
+    hasExistingLoanOnProperty?: string;
+    lapPurpose?: string;
+    // Agriculture Loan
+    landHoldingAcres?: string;
+    talukaVillage?: string;
+    gatNumber?: string;
+    irrigationSource?: string;
+    primaryCrops?: string;
+    hasKccCard?: string;
+    farmingType?: string;
+    agriLoanType?: string;
+    primaryAgriBank?: string;
+    // Mudra Loan
+    socialCategory?: string;
+    enterpriseName?: string;
+    enterpriseActivity?: string;
+    activitySector?: string;
+    businessPremises?: string;
+    hasUdyamNumber?: string;
+    udyamRegNumber?: string;
+    mudraTier?: string;
+    mudraCardRequired?: string;
+    bankPreference?: string;
   }): Promise<LoanApplication> {
     const category = this.getCategoryById(params.loanType);
     const categoryTitle = category ? category.title : 'Loan';

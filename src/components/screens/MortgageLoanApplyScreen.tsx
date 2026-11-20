@@ -26,7 +26,7 @@ import { cityLocationService, CityResultItem } from '../../services/cityLocation
 import { BankLogo } from '../common/BankLogo';
 import { COMPANY_INFO } from '../../data/mockData';
 import { LoanIcon } from '../common/LoanIcon';
-import { isUserDocUploaded, getUserIncomeFormatted, findUserDocument } from '../../utils/formPreFill';
+import { isUserDocUploaded, getUserIncomeFormatted, findUserDocument, getLatestApplicationForType, parseApplicationPurposeData } from '../../utils/formPreFill';
 import { LoanDocItemRow } from '../common/LoanDocItemRow';
 import { DocumentViewPreviewModal } from '../common/DocumentViewPreviewModal';
 import { CalendarPickerModal } from '../common/CalendarPickerModal';
@@ -59,21 +59,57 @@ export const MortgageLoanApplyScreen: React.FC<MortgageLoanApplyScreenProps> = (
 }) => {
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
+  // Check previous application for this loan type
+  const [existingPastApp, setExistingPastApp] = useState<LoanApplication | null>(null);
+
+  useEffect(() => {
+    const apps = loanService.getApplications();
+    const past = getLatestApplicationForType(apps, 'mortgage');
+    if (past) {
+      setExistingPastApp(past);
+      const parsedPurpose = parseApplicationPurposeData(past.remarks || (past as any).purpose);
+      if (!requiredLoanAmount && past.requestedAmount) {
+        setRequiredLoanAmount(`₹${past.requestedAmount.toLocaleString('en-IN')}`);
+      }
+      if (!loanTenure && past.tenureMonths) {
+        setLoanTenure(`${past.tenureMonths} Months`);
+      }
+      if (!bankAccount && (past.bankName || parsedPurpose['bank'])) {
+        setBankAccount(past.bankName || parsedPurpose['bank']);
+      }
+      if (!propertyType && parsedPurpose['property']) {
+        setPropertyType(parsedPurpose['property']);
+      }
+      if (!propertyLocation && parsedPurpose['location']) {
+        setPropertyLocation(parsedPurpose['location']);
+      }
+      if (!marketValuation && parsedPurpose['valuation']) {
+        setMarketValuation(parsedPurpose['valuation']);
+      }
+      if (!propertyOwnership && parsedPurpose['ownership']) {
+        setPropertyOwnership(parsedPurpose['ownership']);
+      }
+      if (!lapPurpose && parsedPurpose['purpose']) {
+        setLapPurpose(parsedPurpose['purpose']);
+      }
+    }
+  }, []);
+
   // ---------------- STEP 1: Basic Details ----------------
   const [fullName, setFullName] = useState<string>(user?.name && user.name !== 'Valued Customer' ? user.name : '');
   const [mobileNumber, setMobileNumber] = useState<string>(user?.mobile || '');
   const [emailId, setEmailId] = useState<string>(user?.email || '');
-  const [dob, setDob] = useState<string>('');
+  const [dob, setDob] = useState<string>(user?.dob || '');
   const [city, setCity] = useState<string>(user?.city || '');
   const [isAgreedStep1, setIsAgreedStep1] = useState<boolean>(true);
 
   // ---------------- STEP 2: Mortgage Property Details ----------------
-  const [propertyType, setPropertyType] = useState<string>('');
-  const [propertyLocation, setPropertyLocation] = useState<string>(user?.city || '');
-  const [marketValuation, setMarketValuation] = useState<string>('');
-  const [propertyOwnership, setPropertyOwnership] = useState<string>('');
-  const [isPropertyFreehold, setIsPropertyFreehold] = useState<'Yes' | 'No'>('Yes');
-  const [hasExistingLoanOnProperty, setHasExistingLoanOnProperty] = useState<'No' | 'Yes'>('No');
+  const [propertyType, setPropertyType] = useState<string>(user?.propertyType || '');
+  const [propertyLocation, setPropertyLocation] = useState<string>(user?.propertyLocation || user?.city || '');
+  const [marketValuation, setMarketValuation] = useState<string>(user?.marketValuation || '');
+  const [propertyOwnership, setPropertyOwnership] = useState<string>(user?.propertyOwnership || '');
+  const [isPropertyFreehold, setIsPropertyFreehold] = useState<'Yes' | 'No'>((user?.isPropertyFreehold as 'Yes' | 'No') || 'Yes');
+  const [hasExistingLoanOnProperty, setHasExistingLoanOnProperty] = useState<'No' | 'Yes'>((user?.hasExistingLoanOnProperty as 'No' | 'Yes') || 'No');
 
   // ---------------- STEP 3: Income & Financing Details ----------------
   const [occupationType, setOccupationType] = useState<'Self-Employed / Business' | 'Salaried'>(
@@ -84,10 +120,10 @@ export const MortgageLoanApplyScreen: React.FC<MortgageLoanApplyScreenProps> = (
   const [monthlyIncome, setMonthlyIncome] = useState<string>(getUserIncomeFormatted(user));
   const [requiredLoanAmount, setRequiredLoanAmount] = useState<string>('');
   const [loanTenure, setLoanTenure] = useState<string>('');
-  const [lapPurpose, setLapPurpose] = useState<string>('');
-  const [bankAccount, setBankAccount] = useState<string>('');
+  const [lapPurpose, setLapPurpose] = useState<string>(user?.lapPurpose || '');
+  const [bankAccount, setBankAccount] = useState<string>(user?.salaryBank || '');
   const [cibilScoreRange, setCibilScoreRange] = useState<string>(
-    user?.cibilEstimateScore ? (user.cibilEstimateScore >= 750 ? '750 and Above (Excellent)' : '700 - 749 (Good)') : ''
+    user?.cibilScoreRange || (user?.cibilEstimateScore ? (user.cibilEstimateScore >= 750 ? '750 and Above (Excellent)' : '700 - 749 (Good)') : '')
   );
 
   // ---------------- STEP 4: Documents (Pre-fill ONLY if authentic document exists in database) ----------------
@@ -459,12 +495,22 @@ export const MortgageLoanApplyScreen: React.FC<MortgageLoanApplyScreenProps> = (
         mobile: cleanMobile,
         requestedAmount: numericAmount,
         tenureMonths: tenureMonths,
-        monthlyIncome: 150000,
+        monthlyIncome: parseInt(monthlyIncome.replace(/[^0-9]/g, ''), 10) || 150000,
         employmentType: occupationType === 'Salaried' ? 'Salaried' : 'Self-Employed',
         city: city.trim(),
         panNumber: panNumber.trim().toUpperCase() || undefined,
         aadhaarNumber: aadhaarNumber.replace(/\D/g, '') || undefined,
         bankName: bankAccount || undefined,
+        salaryBank: bankAccount || undefined,
+        cibilScoreRange: cibilScoreRange || undefined,
+        dob: dob.trim() || undefined,
+        propertyType: propertyType || undefined,
+        propertyLocation: propertyLocation || undefined,
+        marketValuation: marketValuation || undefined,
+        propertyOwnership: propertyOwnership || undefined,
+        isPropertyFreehold: isPropertyFreehold,
+        hasExistingLoanOnProperty: hasExistingLoanOnProperty,
+        lapPurpose: lapPurpose || undefined,
         purpose: `Mortgage Loan (LAP) | Property: ${propertyType} | Location: ${propertyLocation} | Valuation: ${marketValuation} | Ownership: ${propertyOwnership} | Freehold: ${isPropertyFreehold} | Purpose: ${lapPurpose} | Bank: ${bankAccount}`,
       });
 
@@ -591,6 +637,21 @@ export const MortgageLoanApplyScreen: React.FC<MortgageLoanApplyScreenProps> = (
                   </React.Fragment>
                 );
               })}
+            </View>
+          </View>
+        )}
+
+        {/* Re-application alert banner if previous application exists */}
+        {existingPastApp && !submittedApp && (
+          <View style={styles.reapplyBanner}>
+            <View style={styles.reapplyIconWrap}>
+              <MaterialCommunityIcons name="history" size={22} color="#004aad" />
+            </View>
+            <View style={styles.reapplyTextCol}>
+              <Text style={styles.reapplyTitle}>Existing Mortgage Loan Application Found</Text>
+              <Text style={styles.reapplySubtitle}>
+                You previously submitted on {existingPastApp.submissionDate} (Status: <Text style={styles.reapplyStatusHighlight}>{existingPastApp.status}</Text>). We have auto-filled your details below for your convenience.
+              </Text>
             </View>
           </View>
         )}
@@ -1381,6 +1442,20 @@ export const MortgageLoanApplyScreen: React.FC<MortgageLoanApplyScreenProps> = (
                   </View>
                   <Text style={styles.summaryColon}>:</Text>
                   <Text style={styles.summaryValueHighlight}>{requiredLoanAmount}</Text>
+                </View>
+
+                <View style={styles.summaryRow}>
+                  <View style={styles.rowLabelCol}>
+                    <MaterialCommunityIcons name="bank-outline" size={16} color="#0f172a" style={styles.rowIcon} />
+                    <Text style={styles.summaryLabel}>Bank Account</Text>
+                  </View>
+                  <Text style={styles.summaryColon}>:</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
+                    {bankAccount ? <BankLogo bank={bankAccount} width={18} height={18} /> : null}
+                    <Text style={styles.summaryValue} numberOfLines={1} ellipsizeMode="tail">
+                      {bankAccount || 'Primary Bank'}
+                    </Text>
+                  </View>
                 </View>
 
                 <View style={styles.summaryRow}>
@@ -3248,5 +3323,43 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#475569',
     lineHeight: 15,
+  },
+  reapplyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#eff6ff',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#93c5fd',
+    padding: 14,
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  reapplyIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#dbeafe',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reapplyTextCol: {
+    flex: 1,
+  },
+  reapplyTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#1e3a8a',
+    marginBottom: 3,
+  },
+  reapplySubtitle: {
+    fontSize: 12,
+    color: '#334155',
+    lineHeight: 16,
+  },
+  reapplyStatusHighlight: {
+    fontWeight: '700',
+    color: '#004aad',
   },
 });

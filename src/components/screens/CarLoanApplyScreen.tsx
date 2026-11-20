@@ -26,7 +26,7 @@ import { cityLocationService, CityResultItem } from '../../services/cityLocation
 import { BankLogo } from '../common/BankLogo';
 import { COMPANY_INFO } from '../../data/mockData';
 import { LoanIcon } from '../common/LoanIcon';
-import { isUserDocUploaded, getUserIncomeFormatted, getUserEmploymentType, findUserDocument } from '../../utils/formPreFill';
+import { isUserDocUploaded, getUserIncomeFormatted, getUserEmploymentType, findUserDocument, getLatestApplicationForType, parseApplicationPurposeData } from '../../utils/formPreFill';
 import { LoanDocItemRow } from '../common/LoanDocItemRow';
 import { DocumentViewPreviewModal } from '../common/DocumentViewPreviewModal';
 import { CalendarPickerModal } from '../common/CalendarPickerModal';
@@ -59,31 +59,67 @@ export const CarLoanApplyScreen: React.FC<CarLoanApplyScreenProps> = ({
 }) => {
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
+  // Check previous application for this loan type
+  const [existingPastApp, setExistingPastApp] = useState<LoanApplication | null>(null);
+
+  useEffect(() => {
+    const apps = loanService.getApplications();
+    const past = getLatestApplicationForType(apps, 'car');
+    if (past) {
+      setExistingPastApp(past);
+      const parsedPurpose = parseApplicationPurposeData(past.remarks || (past as any).purpose);
+      if (!requiredLoanAmount && past.requestedAmount) {
+        setRequiredLoanAmount(`₹${past.requestedAmount.toLocaleString('en-IN')}`);
+      }
+      if (!loanTenure && past.tenureMonths) {
+        setLoanTenure(`${past.tenureMonths} Months`);
+      }
+      if (!salaryBank && (past.bankName || parsedPurpose['bank'])) {
+        setSalaryBank(past.bankName || parsedPurpose['bank']);
+      }
+      if (!carMakeModel && parsedPurpose['car']) {
+        setCarMakeModel(parsedPurpose['car']);
+      }
+      if (!fuelType && parsedPurpose['fuel']) {
+        setFuelType(parsedPurpose['fuel']);
+      }
+      if (!onRoadPrice && parsedPurpose['on-road price']) {
+        setOnRoadPrice(parsedPurpose['on-road price']);
+      }
+      if (!downPayment && parsedPurpose['down payment']) {
+        setDownPayment(parsedPurpose['down payment']);
+      }
+      if (!carDealerOrSeller && parsedPurpose['dealer']) {
+        setCarDealerOrSeller(parsedPurpose['dealer']);
+      }
+    }
+  }, []);
+
   // ---------------- STEP 1: Basic Details ----------------
   const [fullName, setFullName] = useState<string>(user?.name && user.name !== 'Valued Customer' ? user.name : '');
   const [mobileNumber, setMobileNumber] = useState<string>(user?.mobile || '');
   const [emailId, setEmailId] = useState<string>(user?.email || '');
-  const [dob, setDob] = useState<string>('');
+  const [dob, setDob] = useState<string>(user?.dob || '');
   const [city, setCity] = useState<string>(user?.city || '');
   const [isAgreedStep1, setIsAgreedStep1] = useState<boolean>(true);
 
   // ---------------- STEP 2: Car Details ----------------
-  const [carCondition, setCarCondition] = useState<'New' | 'Used / Pre-Owned'>('New');
-  const [carMakeModel, setCarMakeModel] = useState<string>('');
-  const [carDealerOrSeller, setCarDealerOrSeller] = useState<string>('');
-  const [onRoadPrice, setOnRoadPrice] = useState<string>('');
-  const [fuelType, setFuelType] = useState<string>('');
-  const [manufacturingYear, setManufacturingYear] = useState<string>('');
+  const [carCondition, setCarCondition] = useState<'New' | 'Used / Pre-Owned'>((user?.carCondition as 'New' | 'Used / Pre-Owned') || 'New');
+  const [carMakeModel, setCarMakeModel] = useState<string>(user?.carMakeModel || '');
+  const [carDealerOrSeller, setCarDealerOrSeller] = useState<string>(user?.carDealerSeller || '');
+  const [onRoadPrice, setOnRoadPrice] = useState<string>(user?.carOnRoadPrice || '');
+  const [fuelType, setFuelType] = useState<string>(user?.carFuelType || '');
+  const [manufacturingYear, setManufacturingYear] = useState<string>(user?.carMfgYear || '');
 
   // ---------------- STEP 3: Income & Financing Details ----------------
   const [employmentType, setEmploymentType] = useState<'Salaried' | 'Self-Employed'>(getUserEmploymentType(user));
   const [monthlyIncome, setMonthlyIncome] = useState<string>(getUserIncomeFormatted(user));
-  const [downPayment, setDownPayment] = useState<string>('');
+  const [downPayment, setDownPayment] = useState<string>(user?.carDownPayment || '');
   const [requiredLoanAmount, setRequiredLoanAmount] = useState<string>('');
   const [loanTenure, setLoanTenure] = useState<string>('');
-  const [salaryBank, setSalaryBank] = useState<string>('');
+  const [salaryBank, setSalaryBank] = useState<string>(user?.salaryBank || '');
   const [cibilScoreRange, setCibilScoreRange] = useState<string>(
-    user?.cibilEstimateScore ? (user.cibilEstimateScore >= 750 ? '750 and Above (Excellent)' : '700 - 749 (Good)') : ''
+    user?.cibilScoreRange || (user?.cibilEstimateScore ? (user.cibilEstimateScore >= 750 ? '750 and Above (Excellent)' : '700 - 749 (Good)') : '')
   );
 
   // ---------------- STEP 4: Documents (Pre-fill ONLY if authentic document exists in database) ----------------
@@ -476,12 +512,22 @@ export const CarLoanApplyScreen: React.FC<CarLoanApplyScreenProps> = ({
         mobile: cleanMobile,
         requestedAmount: numericAmount,
         tenureMonths: tenureMonths,
-        monthlyIncome: 85000,
+        monthlyIncome: parseInt(monthlyIncome.replace(/[^0-9]/g, ''), 10) || 85000,
         employmentType: employmentType,
         city: city.trim(),
         panNumber: panNumber.trim().toUpperCase() || undefined,
         aadhaarNumber: aadhaarNumber.replace(/\D/g, '') || undefined,
         bankName: salaryBank || undefined,
+        salaryBank: salaryBank || undefined,
+        cibilScoreRange: cibilScoreRange || undefined,
+        dob: dob.trim() || undefined,
+        carCondition: carCondition,
+        carMakeModel: carMakeModel.trim() || undefined,
+        carDealerSeller: carDealerOrSeller.trim() || undefined,
+        carOnRoadPrice: onRoadPrice || undefined,
+        carFuelType: fuelType || undefined,
+        carMfgYear: manufacturingYear || undefined,
+        carDownPayment: downPayment || undefined,
         purpose: `Car Loan | Car: ${carMakeModel.trim()} (${carCondition}) | Fuel: ${fuelType} | On-Road Price: ${onRoadPrice} | Down Payment: ${downPayment} | Dealer: ${carDealerOrSeller} | Bank: ${salaryBank}`,
       });
 
@@ -608,6 +654,21 @@ export const CarLoanApplyScreen: React.FC<CarLoanApplyScreenProps> = ({
                   </React.Fragment>
                 );
               })}
+            </View>
+          </View>
+        )}
+
+        {/* Re-application alert banner if previous application exists */}
+        {existingPastApp && !submittedApp && (
+          <View style={styles.reapplyBanner}>
+            <View style={styles.reapplyIconWrap}>
+              <MaterialCommunityIcons name="history" size={22} color="#004aad" />
+            </View>
+            <View style={styles.reapplyTextCol}>
+              <Text style={styles.reapplyTitle}>Existing Car Loan Application Found</Text>
+              <Text style={styles.reapplySubtitle}>
+                You previously submitted on {existingPastApp.submissionDate} (Status: <Text style={styles.reapplyStatusHighlight}>{existingPastApp.status}</Text>). We have auto-filled your details below for your convenience.
+              </Text>
             </View>
           </View>
         )}
@@ -1420,6 +1481,20 @@ export const CarLoanApplyScreen: React.FC<CarLoanApplyScreenProps> = ({
                   </View>
                   <Text style={styles.summaryColon}>:</Text>
                   <Text style={styles.summaryValueHighlight}>{requiredLoanAmount}</Text>
+                </View>
+
+                <View style={styles.summaryRow}>
+                  <View style={styles.rowLabelCol}>
+                    <MaterialCommunityIcons name="bank-outline" size={16} color="#0f172a" style={styles.rowIcon} />
+                    <Text style={styles.summaryLabel}>Salary Bank</Text>
+                  </View>
+                  <Text style={styles.summaryColon}>:</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
+                    {salaryBank ? <BankLogo bank={salaryBank} width={18} height={18} /> : null}
+                    <Text style={styles.summaryValue} numberOfLines={1} ellipsizeMode="tail">
+                      {salaryBank || 'Primary Bank'}
+                    </Text>
+                  </View>
                 </View>
 
                 <View style={styles.summaryRow}>
@@ -3439,5 +3514,43 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#475569',
     lineHeight: 15,
+  },
+  reapplyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#eff6ff',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#93c5fd',
+    padding: 14,
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  reapplyIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#dbeafe',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reapplyTextCol: {
+    flex: 1,
+  },
+  reapplyTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#1e3a8a',
+    marginBottom: 3,
+  },
+  reapplySubtitle: {
+    fontSize: 12,
+    color: '#334155',
+    lineHeight: 16,
+  },
+  reapplyStatusHighlight: {
+    fontWeight: '700',
+    color: '#004aad',
   },
 });

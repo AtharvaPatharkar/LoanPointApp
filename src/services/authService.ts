@@ -288,6 +288,27 @@ class AuthService {
     crmService.syncCustomerLead(this.state.user || updatedUser);
     return this.state.user || updatedUser;
   }
+
+  public async fetchLatestProfile(): Promise<UserProfile | null> {
+    if (!this.state.user) return null;
+    try {
+      const res = await apiRequest('/user/profile', { method: 'GET' });
+      if (res && res.user) {
+        const serverDocs = (Array.isArray(res.user.documents) && res.user.documents.length > 0)
+          ? res.user.documents
+          : this.state.user?.documents || [];
+        this.state.user = {
+          ...this.state.user,
+          ...res.user,
+          documents: serverDocs,
+        };
+        return this.state.user;
+      }
+    } catch (err: any) {
+      console.warn('API fetchLatestProfile error:', err.message);
+    }
+    return this.state.user;
+  }
 }
 
 export const authService = new AuthService();

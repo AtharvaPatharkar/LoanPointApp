@@ -26,7 +26,7 @@ import { cityLocationService, CityResultItem } from '../../services/cityLocation
 import { BankLogo } from '../common/BankLogo';
 import { COMPANY_INFO } from '../../data/mockData';
 import { LoanIcon } from '../common/LoanIcon';
-import { isUserDocUploaded, findUserDocument } from '../../utils/formPreFill';
+import { isUserDocUploaded, findUserDocument, getLatestApplicationForType, parseApplicationPurposeData } from '../../utils/formPreFill';
 import { LoanDocItemRow } from '../common/LoanDocItemRow';
 import { DocumentViewPreviewModal } from '../common/DocumentViewPreviewModal';
 import { CalendarPickerModal } from '../common/CalendarPickerModal';
@@ -59,31 +59,68 @@ export const AgricultureLoanApplyScreen: React.FC<AgricultureLoanApplyScreenProp
 }) => {
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
+  // Check previous application for this loan type
+  const [existingPastApp, setExistingPastApp] = useState<LoanApplication | null>(null);
+
+  useEffect(() => {
+    const apps = loanService.getApplications();
+    const past = getLatestApplicationForType(apps, 'agriculture');
+    if (past) {
+      setExistingPastApp(past);
+      const parsedPurpose = parseApplicationPurposeData(past.remarks || (past as any).purpose);
+      if (!requiredLoanAmount && past.requestedAmount) {
+        setRequiredLoanAmount(`₹${past.requestedAmount.toLocaleString('en-IN')}`);
+      }
+      if (!loanTenure && past.tenureMonths) {
+        setLoanTenure(`${past.tenureMonths / 12} Years`);
+      }
+      if (!primaryAgriBank && (past.bankName || parsedPurpose['bank'])) {
+        setPrimaryAgriBank(past.bankName || parsedPurpose['bank']);
+      }
+      if (!agriLoanType && parsedPurpose['scheme']) {
+        setAgriLoanType(parsedPurpose['scheme']);
+      }
+      if (!landHoldingAcres && parsedPurpose['land']) {
+        const match = parsedPurpose['land'].match(/^([0-9.]+)/);
+        if (match) setLandHoldingAcres(match[1]);
+      }
+      if (!talukaVillage && parsedPurpose['location']) {
+        setTalukaVillage(parsedPurpose['location']);
+      }
+      if (!primaryCrops && parsedPurpose['crops']) {
+        setPrimaryCrops(parsedPurpose['crops']);
+      }
+      if (!irrigationSource && parsedPurpose['irrigation']) {
+        setIrrigationSource(parsedPurpose['irrigation']);
+      }
+    }
+  }, []);
+
   // ---------------- STEP 1: Basic Details ----------------
   const [fullName, setFullName] = useState<string>(user?.name && user.name !== 'Valued Customer' ? user.name : '');
   const [mobileNumber, setMobileNumber] = useState<string>(user?.mobile || '');
   const [emailId, setEmailId] = useState<string>(user?.email || '');
-  const [dob, setDob] = useState<string>('');
+  const [dob, setDob] = useState<string>(user?.dob || '');
   const [city, setCity] = useState<string>(user?.city || '');
   const [isAgreedStep1, setIsAgreedStep1] = useState<boolean>(true);
 
   // ---------------- STEP 2: Agriculture & Land Details ----------------
-  const [landHoldingAcres, setLandHoldingAcres] = useState<string>('');
-  const [talukaVillage, setTalukaVillage] = useState<string>(user?.city ? `Taluka & Dist ${user.city}` : '');
-  const [gatNumber, setGatNumber] = useState<string>('');
-  const [irrigationSource, setIrrigationSource] = useState<string>('');
-  const [primaryCrops, setPrimaryCrops] = useState<string>('');
-  const [hasKccCard, setHasKccCard] = useState<'Yes' | 'No'>('No');
-  const [farmingType, setFarmingType] = useState<string>('');
+  const [landHoldingAcres, setLandHoldingAcres] = useState<string>(user?.landHoldingAcres || '');
+  const [talukaVillage, setTalukaVillage] = useState<string>(user?.talukaVillage || (user?.city ? `Taluka & Dist ${user.city}` : ''));
+  const [gatNumber, setGatNumber] = useState<string>(user?.gatNumber || '');
+  const [irrigationSource, setIrrigationSource] = useState<string>(user?.irrigationSource || '');
+  const [primaryCrops, setPrimaryCrops] = useState<string>(user?.primaryCrops || '');
+  const [hasKccCard, setHasKccCard] = useState<'Yes' | 'No'>((user?.hasKccCard as 'Yes' | 'No') || 'No');
+  const [farmingType, setFarmingType] = useState<string>(user?.farmingType || '');
 
   // ---------------- STEP 3: Loan Purpose & Credit Details ----------------
-  const [agriLoanType, setAgriLoanType] = useState<string>('');
+  const [agriLoanType, setAgriLoanType] = useState<string>(user?.agriLoanType || '');
   const [requiredLoanAmount, setRequiredLoanAmount] = useState<string>('');
   const [loanTenure, setLoanTenure] = useState<string>('');
   const [repaymentPattern, setRepaymentPattern] = useState<string>('');
-  const [primaryAgriBank, setPrimaryAgriBank] = useState<string>('');
+  const [primaryAgriBank, setPrimaryAgriBank] = useState<string>(user?.salaryBank || '');
   const [cibilScoreRange, setCibilScoreRange] = useState<string>(
-    user?.cibilEstimateScore ? (user.cibilEstimateScore >= 750 ? '750 and Above (Excellent)' : '700 - 749 (Good)') : ''
+    user?.cibilScoreRange || (user?.cibilEstimateScore ? (user.cibilEstimateScore >= 750 ? '750 and Above (Excellent)' : '700 - 749 (Good)') : '')
   );
 
   // ---------------- STEP 4: Documents (Pre-fill ONLY if authentic document exists in database) ----------------
@@ -467,6 +504,17 @@ export const AgricultureLoanApplyScreen: React.FC<AgricultureLoanApplyScreenProp
         panNumber: panNumber.trim().toUpperCase() || undefined,
         aadhaarNumber: aadhaarNumber.replace(/\D/g, '') || undefined,
         bankName: primaryAgriBank || undefined,
+        salaryBank: primaryAgriBank || undefined,
+        cibilScoreRange: cibilScoreRange || undefined,
+        dob: dob.trim() || undefined,
+        landHoldingAcres: landHoldingAcres || undefined,
+        talukaVillage: talukaVillage || undefined,
+        gatNumber: gatNumber || undefined,
+        irrigationSource: irrigationSource || undefined,
+        primaryCrops: primaryCrops || undefined,
+        hasKccCard: hasKccCard,
+        farmingType: farmingType || undefined,
+        agriLoanType: agriLoanType || undefined,
         purpose: `Agriculture Loan | Scheme: ${agriLoanType} | Land: ${landHoldingAcres} (${gatNumber}) | Location: ${talukaVillage} | Crops: ${primaryCrops} | Irrigation: ${irrigationSource} | Bank: ${primaryAgriBank} | KCC Active: ${hasKccCard}`,
       });
 
@@ -593,6 +641,21 @@ export const AgricultureLoanApplyScreen: React.FC<AgricultureLoanApplyScreenProp
                   </React.Fragment>
                 );
               })}
+            </View>
+          </View>
+        )}
+
+        {/* Re-application alert banner if previous application exists */}
+        {existingPastApp && !submittedApp && (
+          <View style={styles.reapplyBanner}>
+            <View style={styles.reapplyIconWrap}>
+              <MaterialCommunityIcons name="history" size={22} color="#004aad" />
+            </View>
+            <View style={styles.reapplyTextCol}>
+              <Text style={styles.reapplyTitle}>Existing Agriculture Loan Application Found</Text>
+              <Text style={styles.reapplySubtitle}>
+                You previously submitted on {existingPastApp.submissionDate} (Status: <Text style={styles.reapplyStatusHighlight}>{existingPastApp.status}</Text>). We have auto-filled your details below for your convenience.
+              </Text>
             </View>
           </View>
         )}
@@ -1305,9 +1368,11 @@ export const AgricultureLoanApplyScreen: React.FC<AgricultureLoanApplyScreenProp
                     <Text style={styles.summaryLabel}>Agri Bank</Text>
                   </View>
                   <Text style={styles.summaryColon}>:</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'flex-end' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
                     {primaryAgriBank ? <BankLogo bank={primaryAgriBank} width={18} height={18} /> : null}
-                    <Text style={styles.summaryValue}>{primaryAgriBank}</Text>
+                    <Text style={styles.summaryValue} numberOfLines={1} ellipsizeMode="tail">
+                      {primaryAgriBank || 'Primary Bank'}
+                    </Text>
                   </View>
                 </View>
 
@@ -3221,5 +3286,43 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#475569',
     lineHeight: 15,
+  },
+  reapplyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#eff6ff',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#93c5fd',
+    padding: 14,
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  reapplyIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#dbeafe',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reapplyTextCol: {
+    flex: 1,
+  },
+  reapplyTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#1e3a8a',
+    marginBottom: 3,
+  },
+  reapplySubtitle: {
+    fontSize: 12,
+    color: '#334155',
+    lineHeight: 16,
+  },
+  reapplyStatusHighlight: {
+    fontWeight: '700',
+    color: '#004aad',
   },
 });

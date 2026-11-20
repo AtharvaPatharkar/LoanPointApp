@@ -116,7 +116,7 @@ export class AuthService {
     // Customer Login -> Fetch from Neon Postgres
     const sql = getDb();
     const existing = (await sql`
-      SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, aadhaar_number, is_kyc_completed, documents, created_at
+      SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, aadhaar_number, company_name, work_experience, salary_bank, company_type, has_credit_card, cibil_score_range, dob, business_location, registered_business, business_constitution, business_vintage, industry_sector, annual_turnover, is_gst_registered, gstin, car_condition, car_make_model, car_dealer_seller, car_on_road_price, car_fuel_type, car_mfg_year, car_down_payment, property_type, property_location, market_valuation, property_ownership, is_property_freehold, has_existing_loan_on_property, lap_purpose, land_holding_acres, taluka_village, gat_number, irrigation_source, primary_crops, has_kcc_card, farming_type, agri_loan_type, social_category, enterprise_name, enterprise_activity, activity_sector, business_premises, has_udyam_number, udyam_reg_number, mudra_tier, mudra_card_required, is_kyc_completed, documents, created_at
       FROM users
       WHERE mobile = ${cleaned}
       LIMIT 1;
@@ -142,6 +142,56 @@ export class AuthService {
           panNumber: row.pan_number || '',
           aadhaarNumber: row.aadhaar_number || row.aadhaar_last_four || '',
           aadhaarLinked: Boolean(row.aadhaar_number || row.aadhaar_last_four),
+          companyName: row.company_name || '',
+          workExperience: row.work_experience || '',
+          salaryBank: row.salary_bank || '',
+          companyType: row.company_type || '',
+          hasCreditCard: row.has_credit_card || '',
+          cibilScoreRange: row.cibil_score_range || '',
+          dob: row.dob || '',
+          businessLocation: row.business_location || '',
+          registeredBusiness: row.registered_business || '',
+          businessConstitution: row.business_constitution || '',
+          businessVintage: row.business_vintage || '',
+          industrySector: row.industry_sector || '',
+          annualTurnover: row.annual_turnover || '',
+          isGstRegistered: row.is_gst_registered || '',
+          gstin: row.gstin || '',
+          // Car Loan
+          carCondition: row.car_condition || '',
+          carMakeModel: row.car_make_model || '',
+          carDealerSeller: row.car_dealer_seller || '',
+          carOnRoadPrice: row.car_on_road_price || '',
+          carFuelType: row.car_fuel_type || '',
+          carMfgYear: row.car_mfg_year || '',
+          carDownPayment: row.car_down_payment || '',
+          // Mortgage Loan (LAP)
+          propertyType: row.property_type || '',
+          propertyLocation: row.property_location || '',
+          marketValuation: row.market_valuation || '',
+          propertyOwnership: row.property_ownership || '',
+          isPropertyFreehold: row.is_property_freehold || '',
+          hasExistingLoanOnProperty: row.has_existing_loan_on_property || '',
+          lapPurpose: row.lap_purpose || '',
+          // Agriculture Loan
+          landHoldingAcres: row.land_holding_acres || '',
+          talukaVillage: row.taluka_village || '',
+          gatNumber: row.gat_number || '',
+          irrigationSource: row.irrigation_source || '',
+          primaryCrops: row.primary_crops || '',
+          hasKccCard: row.has_kcc_card || '',
+          farmingType: row.farming_type || '',
+          agriLoanType: row.agri_loan_type || '',
+          // Mudra Loan
+          socialCategory: row.social_category || '',
+          enterpriseName: row.enterprise_name || '',
+          enterpriseActivity: row.enterprise_activity || '',
+          activitySector: row.activity_sector || '',
+          businessPremises: row.business_premises || '',
+          hasUdyamNumber: row.has_udyam_number || '',
+          udyamRegNumber: row.udyam_reg_number || '',
+          mudraTier: row.mudra_tier || '',
+          mudraCardRequired: row.mudra_card_required || '',
           cibilEstimateScore: 740,
           memberSince: new Date(row.created_at).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
           referralCode: row.referral_code,
@@ -199,7 +249,7 @@ export class AuthService {
     `;
 
     const updated = (await sql`
-      SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, aadhaar_number, is_kyc_completed, documents, created_at
+      SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, aadhaar_number, company_name, work_experience, salary_bank, company_type, has_credit_card, cibil_score_range, is_kyc_completed, documents, created_at
       FROM users
       WHERE mobile = ${cleaned}
       LIMIT 1;
@@ -215,6 +265,12 @@ export class AuthService {
         city: row.city || '',
         employmentType: row.employment_type || 'Salaried',
         monthlyIncome: Number(row.monthly_income) || 0,
+        companyName: row.company_name || '',
+        workExperience: row.work_experience || '',
+        salaryBank: row.salary_bank || '',
+        companyType: row.company_type || '',
+        hasCreditCard: row.has_credit_card || '',
+        cibilScoreRange: row.cibil_score_range || '',
         referralCode: row.referral_code,
         referredBy: row.referred_by || undefined,
         role: 'customer',

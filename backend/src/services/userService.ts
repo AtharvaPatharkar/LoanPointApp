@@ -5,7 +5,7 @@ export class UserService {
   public async getProfileByUserId(userId: string): Promise<any | null> {
     const sql = getDb();
     const rows = (await sql`
-      SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, aadhaar_number, is_kyc_completed, documents, created_at, updated_at
+      SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, aadhaar_number, company_name, work_experience, salary_bank, company_type, has_credit_card, cibil_score_range, dob, business_location, registered_business, business_constitution, business_vintage, industry_sector, annual_turnover, is_gst_registered, gstin, car_condition, car_make_model, car_dealer_seller, car_on_road_price, car_fuel_type, car_mfg_year, car_down_payment, property_type, property_location, market_valuation, property_ownership, is_property_freehold, has_existing_loan_on_property, lap_purpose, land_holding_acres, taluka_village, gat_number, irrigation_source, primary_crops, has_kcc_card, farming_type, agri_loan_type, social_category, enterprise_name, enterprise_activity, activity_sector, business_premises, has_udyam_number, udyam_reg_number, mudra_tier, mudra_card_required, is_kyc_completed, documents, created_at, updated_at
       FROM users
       WHERE id = ${userId}
       LIMIT 1;
@@ -18,7 +18,7 @@ export class UserService {
     const cleaned = cleanMobile(mobile);
     const sql = getDb();
     const rows = (await sql`
-      SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, aadhaar_number, is_kyc_completed, documents, created_at, updated_at
+      SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, aadhaar_number, company_name, work_experience, salary_bank, company_type, has_credit_card, cibil_score_range, dob, business_location, registered_business, business_constitution, business_vintage, industry_sector, annual_turnover, is_gst_registered, gstin, car_condition, car_make_model, car_dealer_seller, car_on_road_price, car_fuel_type, car_mfg_year, car_down_payment, property_type, property_location, market_valuation, property_ownership, is_property_freehold, has_existing_loan_on_property, lap_purpose, land_holding_acres, taluka_village, gat_number, irrigation_source, primary_crops, has_kcc_card, farming_type, agri_loan_type, social_category, enterprise_name, enterprise_activity, activity_sector, business_premises, has_udyam_number, udyam_reg_number, mudra_tier, mudra_card_required, is_kyc_completed, documents, created_at, updated_at
       FROM users
       WHERE mobile = ${cleaned}
       LIMIT 1;
@@ -37,7 +37,13 @@ export class UserService {
     const docsJson = (Array.isArray(updates.documents) && updates.documents.length > 0)
       ? JSON.stringify(updates.documents)
       : null;
-    const isComplete = Boolean(updates.city && updates.panNumber && (Number(updates.monthlyIncome) > 0));
+    const isComplete = Boolean(
+      updates.city &&
+      updates.panNumber &&
+      Number(updates.monthlyIncome) > 0 &&
+      fullAadhaar &&
+      fullAadhaar.length === 12
+    );
 
     await sql`
       UPDATE users
@@ -49,6 +55,21 @@ export class UserService {
           pan_number = CASE WHEN ${updates.panNumber || ''} <> '' THEN ${updates.panNumber} ELSE pan_number END,
           aadhaar_number = CASE WHEN ${fullAadhaar || ''} <> '' THEN ${fullAadhaar} ELSE aadhaar_number END,
           aadhaar_last_four = CASE WHEN ${lastFour || ''} <> '' THEN ${lastFour} ELSE aadhaar_last_four END,
+          company_name = CASE WHEN ${updates.companyName || ''} <> '' THEN ${updates.companyName} ELSE company_name END,
+          work_experience = CASE WHEN ${updates.workExperience || ''} <> '' THEN ${updates.workExperience} ELSE work_experience END,
+          salary_bank = CASE WHEN ${updates.salaryBank || updates.bankName || ''} <> '' THEN ${updates.salaryBank || updates.bankName} ELSE salary_bank END,
+          company_type = CASE WHEN ${updates.companyType || ''} <> '' THEN ${updates.companyType} ELSE company_type END,
+          has_credit_card = CASE WHEN ${updates.hasCreditCard || ''} <> '' THEN ${updates.hasCreditCard} ELSE has_credit_card END,
+          cibil_score_range = CASE WHEN ${updates.cibilScoreRange || ''} <> '' THEN ${updates.cibilScoreRange} ELSE cibil_score_range END,
+          dob = CASE WHEN ${updates.dob || ''} <> '' THEN ${updates.dob} ELSE dob END,
+          business_location = CASE WHEN ${updates.businessLocation || ''} <> '' THEN ${updates.businessLocation} ELSE business_location END,
+          registered_business = CASE WHEN ${updates.registeredBusiness || updates.businessName || ''} <> '' THEN ${updates.registeredBusiness || updates.businessName} ELSE registered_business END,
+          business_constitution = CASE WHEN ${updates.businessConstitution || updates.businessType || ''} <> '' THEN ${updates.businessConstitution || updates.businessType} ELSE business_constitution END,
+          business_vintage = CASE WHEN ${updates.businessVintage || ''} <> '' THEN ${updates.businessVintage} ELSE business_vintage END,
+          industry_sector = CASE WHEN ${updates.industrySector || updates.industryType || ''} <> '' THEN ${updates.industrySector || updates.industryType} ELSE industry_sector END,
+          annual_turnover = CASE WHEN ${updates.annualTurnover || ''} <> '' THEN ${updates.annualTurnover} ELSE annual_turnover END,
+          is_gst_registered = CASE WHEN ${updates.isGstRegistered || updates.hasGstRegistration || ''} <> '' THEN ${updates.isGstRegistered || updates.hasGstRegistration} ELSE is_gst_registered END,
+          gstin = CASE WHEN ${updates.gstin || updates.gstNumber || ''} <> '' THEN ${updates.gstin || updates.gstNumber} ELSE gstin END,
           documents = CASE WHEN ${docsJson || ''} <> '' THEN ${docsJson}::jsonb ELSE documents END,
           is_kyc_completed = CASE WHEN ${isComplete} THEN TRUE ELSE is_kyc_completed END,
           updated_at = NOW()
@@ -61,7 +82,7 @@ export class UserService {
   public async getAllUsers(): Promise<any[]> {
     const sql = getDb();
     const rows = (await sql`
-      SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, aadhaar_number, is_kyc_completed, documents, created_at, updated_at
+      SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, aadhaar_number, company_name, work_experience, salary_bank, company_type, has_credit_card, cibil_score_range, dob, business_location, registered_business, business_constitution, business_vintage, industry_sector, annual_turnover, is_gst_registered, gstin, car_condition, car_make_model, car_dealer_seller, car_on_road_price, car_fuel_type, car_mfg_year, car_down_payment, property_type, property_location, market_valuation, property_ownership, is_property_freehold, has_existing_loan_on_property, lap_purpose, land_holding_acres, taluka_village, gat_number, irrigation_source, primary_crops, has_kcc_card, farming_type, agri_loan_type, social_category, enterprise_name, enterprise_activity, activity_sector, business_premises, has_udyam_number, udyam_reg_number, mudra_tier, mudra_card_required, is_kyc_completed, documents, created_at, updated_at
       FROM users
       ORDER BY created_at DESC;
     `) as any[];
@@ -155,6 +176,56 @@ export class UserService {
       panNumber: row.pan_number || '',
       aadhaarNumber: row.aadhaar_number || row.aadhaar_last_four || '',
       aadhaarLinked: Boolean(row.aadhaar_number || row.aadhaar_last_four),
+      companyName: row.company_name || '',
+      workExperience: row.work_experience || '',
+      salaryBank: row.salary_bank || '',
+      companyType: row.company_type || '',
+      hasCreditCard: row.has_credit_card || '',
+      cibilScoreRange: row.cibil_score_range || '',
+      dob: row.dob || '',
+      businessLocation: row.business_location || '',
+      registeredBusiness: row.registered_business || '',
+      businessConstitution: row.business_constitution || '',
+      businessVintage: row.business_vintage || '',
+      industrySector: row.industry_sector || '',
+      annualTurnover: row.annual_turnover || '',
+      isGstRegistered: row.is_gst_registered || '',
+      gstin: row.gstin || '',
+      // Car Loan
+      carCondition: row.car_condition || '',
+      carMakeModel: row.car_make_model || '',
+      carDealerSeller: row.car_dealer_seller || '',
+      carOnRoadPrice: row.car_on_road_price || '',
+      carFuelType: row.car_fuel_type || '',
+      carMfgYear: row.car_mfg_year || '',
+      carDownPayment: row.car_down_payment || '',
+      // Mortgage Loan (LAP)
+      propertyType: row.property_type || '',
+      propertyLocation: row.property_location || '',
+      marketValuation: row.market_valuation || '',
+      propertyOwnership: row.property_ownership || '',
+      isPropertyFreehold: row.is_property_freehold || '',
+      hasExistingLoanOnProperty: row.has_existing_loan_on_property || '',
+      lapPurpose: row.lap_purpose || '',
+      // Agriculture Loan
+      landHoldingAcres: row.land_holding_acres || '',
+      talukaVillage: row.taluka_village || '',
+      gatNumber: row.gat_number || '',
+      irrigationSource: row.irrigation_source || '',
+      primaryCrops: row.primary_crops || '',
+      hasKccCard: row.has_kcc_card || '',
+      farmingType: row.farming_type || '',
+      agriLoanType: row.agri_loan_type || '',
+      // Mudra Loan
+      socialCategory: row.social_category || '',
+      enterpriseName: row.enterprise_name || '',
+      enterpriseActivity: row.enterprise_activity || '',
+      activitySector: row.activity_sector || '',
+      businessPremises: row.business_premises || '',
+      hasUdyamNumber: row.has_udyam_number || '',
+      udyamRegNumber: row.udyam_reg_number || '',
+      mudraTier: row.mudra_tier || '',
+      mudraCardRequired: row.mudra_card_required || '',
       cibilEstimateScore: 740,
       memberSince: new Date(row.created_at).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
       referralCode: row.referral_code,

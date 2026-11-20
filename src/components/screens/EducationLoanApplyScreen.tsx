@@ -24,7 +24,7 @@ import { UserProfile, LoanApplication } from '../../types';
 import { loanService } from '../../services/loanService';
 import { cityLocationService, CityResultItem } from '../../services/cityLocationService';
 import { COMPANY_INFO } from '../../data/mockData';
-import { isUserDocUploaded, findUserDocument } from '../../utils/formPreFill';
+import { isUserDocUploaded, findUserDocument, getLatestApplicationForType, parseApplicationPurposeData } from '../../utils/formPreFill';
 import { LoanDocItemRow } from '../common/LoanDocItemRow';
 import { DocumentViewPreviewModal } from '../common/DocumentViewPreviewModal';
 import { CalendarPickerModal } from '../common/CalendarPickerModal';
@@ -57,6 +57,42 @@ export const EducationLoanApplyScreen: React.FC<EducationLoanApplyScreenProps> =
 }) => {
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
+  // Check previous application for this loan type
+  const [existingPastApp, setExistingPastApp] = useState<LoanApplication | null>(null);
+
+  useEffect(() => {
+    const apps = loanService.getApplications();
+    const past = getLatestApplicationForType(apps, 'education');
+    if (past) {
+      setExistingPastApp(past);
+      const parsedPurpose = parseApplicationPurposeData(past.remarks || (past as any).purpose);
+      if (!requiredLoanAmount && past.requestedAmount) {
+        setRequiredLoanAmount(`₹${past.requestedAmount.toLocaleString('en-IN')}`);
+      }
+      if (!loanTenure && past.tenureMonths) {
+        setLoanTenure(`${past.tenureMonths} Months`);
+      }
+      if (!studyDestination && parsedPurpose['destination']) {
+        setStudyDestination(parsedPurpose['destination'] === 'Abroad / Overseas' ? 'Abroad / Overseas' : 'India');
+      }
+      if (!courseName && parsedPurpose['course']) {
+        setCourseName(parsedPurpose['course']);
+      }
+      if (!instituteName && parsedPurpose['university']) {
+        setInstituteName(parsedPurpose['university']);
+      }
+      if (!totalCourseCost && parsedPurpose['total cost']) {
+        setTotalCourseCost(parsedPurpose['total cost']);
+      }
+      if (!coApplicantName && parsedPurpose['co-applicant']) {
+        setCoApplicantName(parsedPurpose['co-applicant']);
+      }
+      if (!moratoriumPeriod && parsedPurpose['moratorium']) {
+        setMoratoriumPeriod(parsedPurpose['moratorium']);
+      }
+    }
+  }, []);
+
   // ---------------- STEP 1: Student Basic Details ----------------
   const [fullName, setFullName] = useState<string>(user?.name && user.name !== 'Valued Customer' ? user.name : '');
   const [mobileNumber, setMobileNumber] = useState<string>(user?.mobile || '');
@@ -77,12 +113,14 @@ export const EducationLoanApplyScreen: React.FC<EducationLoanApplyScreenProps> =
   // ---------------- STEP 3: Co-Applicant & Financing Details ----------------
   const [coApplicantRelation, setCoApplicantRelation] = useState<string>('');
   const [coApplicantName, setCoApplicantName] = useState<string>('');
-  const [coApplicantIncome, setCoApplicantIncome] = useState<string>('');
+  const [coApplicantIncome, setCoApplicantIncome] = useState<string>(
+    user?.monthlyIncome && user.monthlyIncome > 0 ? `₹${user.monthlyIncome.toLocaleString('en-IN')}` : ''
+  );
   const [requiredLoanAmount, setRequiredLoanAmount] = useState<string>('');
   const [loanTenure, setLoanTenure] = useState<string>('');
   const [moratoriumPeriod, setMoratoriumPeriod] = useState<string>('');
   const [cibilScoreRange, setCibilScoreRange] = useState<string>(
-    user?.cibilEstimateScore ? (user.cibilEstimateScore >= 750 ? '750 and Above (Excellent)' : '700 - 749 (Good)') : ''
+    user?.cibilScoreRange || (user?.cibilEstimateScore ? (user.cibilEstimateScore >= 750 ? '750 and Above (Excellent)' : '700 - 749 (Good)') : '')
   );
 
   // ---------------- STEP 4: Documents (Pre-fill ONLY if authentic document exists in database) ----------------
@@ -465,12 +503,13 @@ export const EducationLoanApplyScreen: React.FC<EducationLoanApplyScreenProps> =
         mobile: cleanMobile,
         requestedAmount: numericAmount,
         tenureMonths: tenureMonths,
-        monthlyIncome: 95000,
+        monthlyIncome: parseInt(coApplicantIncome.replace(/[^0-9]/g, ''), 10) || 95000,
         employmentType: 'Salaried',
         city: city.trim(),
         panNumber: panNumber.trim().toUpperCase() || undefined,
         aadhaarNumber: aadhaarNumber.replace(/\D/g, '') || undefined,
         bankName: 'State Bank of India',
+        cibilScoreRange: cibilScoreRange || undefined,
         purpose: `Education Loan | Student: ${fullName.trim()} | Destination: ${studyDestination} | Course: ${courseName} (${courseLevel}) | University: ${instituteName} | Total Cost: ${totalCourseCost} | Co-Applicant: ${coApplicantName} (${coApplicantRelation}) | Moratorium: ${moratoriumPeriod}`,
       });
 
@@ -597,6 +636,21 @@ export const EducationLoanApplyScreen: React.FC<EducationLoanApplyScreenProps> =
                   </React.Fragment>
                 );
               })}
+            </View>
+          </View>
+        )}
+
+        {/* Re-application alert banner if previous application exists */}
+        {existingPastApp && !submittedApp && (
+          <View style={styles.reapplyBanner}>
+            <View style={styles.reapplyIconWrap}>
+              <MaterialCommunityIcons name="history" size={22} color="#004aad" />
+            </View>
+            <View style={styles.reapplyTextCol}>
+              <Text style={styles.reapplyTitle}>Existing Education Loan Application Found</Text>
+              <Text style={styles.reapplySubtitle}>
+                You previously submitted on {existingPastApp.submissionDate} (Status: <Text style={styles.reapplyStatusHighlight}>{existingPastApp.status}</Text>). We have auto-filled your details below for your convenience.
+              </Text>
             </View>
           </View>
         )}
@@ -3377,5 +3431,43 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#475569',
     lineHeight: 15,
+  },
+  reapplyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#eff6ff',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#93c5fd',
+    padding: 14,
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  reapplyIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#dbeafe',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reapplyTextCol: {
+    flex: 1,
+  },
+  reapplyTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#1e3a8a',
+    marginBottom: 3,
+  },
+  reapplySubtitle: {
+    fontSize: 12,
+    color: '#334155',
+    lineHeight: 16,
+  },
+  reapplyStatusHighlight: {
+    fontWeight: '700',
+    color: '#004aad',
   },
 });
