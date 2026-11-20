@@ -97,28 +97,30 @@ export const EducationLoanApplyScreen: React.FC<EducationLoanApplyScreenProps> =
   const [fullName, setFullName] = useState<string>(user?.name && user.name !== 'Valued Customer' ? user.name : '');
   const [mobileNumber, setMobileNumber] = useState<string>(user?.mobile || '');
   const [emailId, setEmailId] = useState<string>(user?.email || '');
-  const [dob, setDob] = useState<string>('');
+  const [dob, setDob] = useState<string>(user?.dob || '');
   const [city, setCity] = useState<string>(user?.city || '');
   const [isAgreedStep1, setIsAgreedStep1] = useState<boolean>(true);
 
   // ---------------- STEP 2: Education & Course Details ----------------
-  const [studyDestination, setStudyDestination] = useState<'India' | 'Abroad / Overseas'>('India');
-  const [courseLevel, setCourseLevel] = useState<string>('');
-  const [courseName, setCourseName] = useState<string>('');
-  const [instituteName, setInstituteName] = useState<string>('');
-  const [courseDuration, setCourseDuration] = useState<string>('');
-  const [admissionStatus, setAdmissionStatus] = useState<string>('');
-  const [totalCourseCost, setTotalCourseCost] = useState<string>('');
+  const [studyDestination, setStudyDestination] = useState<'India' | 'Abroad / Overseas'>(
+    user?.studyDestination === 'Abroad / Overseas' ? 'Abroad / Overseas' : 'India'
+  );
+  const [courseLevel, setCourseLevel] = useState<string>(user?.courseLevel || '');
+  const [courseName, setCourseName] = useState<string>(user?.courseName || '');
+  const [instituteName, setInstituteName] = useState<string>(user?.instituteName || '');
+  const [courseDuration, setCourseDuration] = useState<string>(user?.courseDuration || '');
+  const [admissionStatus, setAdmissionStatus] = useState<string>(user?.admissionStatus || '');
+  const [totalCourseCost, setTotalCourseCost] = useState<string>(user?.totalCourseCost || '');
 
   // ---------------- STEP 3: Co-Applicant & Financing Details ----------------
-  const [coApplicantRelation, setCoApplicantRelation] = useState<string>('');
-  const [coApplicantName, setCoApplicantName] = useState<string>('');
+  const [coApplicantRelation, setCoApplicantRelation] = useState<string>(user?.coApplicantRelation || '');
+  const [coApplicantName, setCoApplicantName] = useState<string>(user?.coApplicantName || '');
   const [coApplicantIncome, setCoApplicantIncome] = useState<string>(
     user?.monthlyIncome && user.monthlyIncome > 0 ? `₹${user.monthlyIncome.toLocaleString('en-IN')}` : ''
   );
   const [requiredLoanAmount, setRequiredLoanAmount] = useState<string>('');
   const [loanTenure, setLoanTenure] = useState<string>('');
-  const [moratoriumPeriod, setMoratoriumPeriod] = useState<string>('');
+  const [moratoriumPeriod, setMoratoriumPeriod] = useState<string>(user?.moratoriumPeriod || '');
   const [cibilScoreRange, setCibilScoreRange] = useState<string>(
     user?.cibilScoreRange || (user?.cibilEstimateScore ? (user.cibilEstimateScore >= 750 ? '750 and Above (Excellent)' : '700 - 749 (Good)') : '')
   );
@@ -506,10 +508,21 @@ export const EducationLoanApplyScreen: React.FC<EducationLoanApplyScreenProps> =
         monthlyIncome: parseInt(coApplicantIncome.replace(/[^0-9]/g, ''), 10) || 95000,
         employmentType: 'Salaried',
         city: city.trim(),
+        dob: dob || undefined,
         panNumber: panNumber.trim().toUpperCase() || undefined,
         aadhaarNumber: aadhaarNumber.replace(/\D/g, '') || undefined,
         bankName: 'State Bank of India',
         cibilScoreRange: cibilScoreRange || undefined,
+        studyDestination: studyDestination,
+        courseLevel: courseLevel.trim() || undefined,
+        courseName: courseName.trim() || undefined,
+        instituteName: instituteName.trim() || undefined,
+        courseDuration: courseDuration.trim() || undefined,
+        admissionStatus: admissionStatus.trim() || undefined,
+        totalCourseCost: totalCourseCost.trim() || undefined,
+        coApplicantRelation: coApplicantRelation.trim() || undefined,
+        coApplicantName: coApplicantName.trim() || undefined,
+        moratoriumPeriod: moratoriumPeriod.trim() || undefined,
         purpose: `Education Loan | Student: ${fullName.trim()} | Destination: ${studyDestination} | Course: ${courseName} (${courseLevel}) | University: ${instituteName} | Total Cost: ${totalCourseCost} | Co-Applicant: ${coApplicantName} (${coApplicantRelation}) | Moratorium: ${moratoriumPeriod}`,
       });
 

@@ -117,6 +117,7 @@ export interface UserProfile {
   // Mortgage Loan (LAP)
   propertyType?: string;
   propertyLocation?: string;
+  estPropertyValue?: string;
   marketValuation?: string;
   propertyOwnership?: string;
   isPropertyFreehold?: string;
@@ -141,6 +142,20 @@ export interface UserProfile {
   udyamRegNumber?: string;
   mudraTier?: string;
   mudraCardRequired?: string;
+  // Education Loan
+  studyDestination?: string;
+  courseLevel?: string;
+  courseName?: string;
+  instituteName?: string;
+  courseDuration?: string;
+  admissionStatus?: string;
+  totalCourseCost?: string;
+  coApplicantRelation?: string;
+  coApplicantName?: string;
+  moratoriumPeriod?: string;
+  // Personal Loan extras
+  existingEmi?: string;
+  loanPurpose?: string;
   cibilEstimateScore?: number;
   memberSince: string;
   referralCode: string;

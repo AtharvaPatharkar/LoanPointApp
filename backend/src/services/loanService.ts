@@ -157,14 +157,15 @@ export class LoanService {
     const cleanCarYear = params.carMfgYear || params.manufacturingYear ? String(params.carMfgYear || params.manufacturingYear).trim() : '';
     const cleanCarDown = params.carDownPayment || params.downPayment ? String(params.carDownPayment || params.downPayment).trim() : '';
 
-    // Mortgage Loan (LAP) params
+    // Mortgage Loan (LAP) & Home Loan params
     const cleanPropType = params.propertyType ? String(params.propertyType).trim() : '';
-    const cleanPropLoc = params.propertyLocation ? String(params.propertyLocation).trim() : '';
-    const cleanValuation = params.marketValuation ? String(params.marketValuation).trim() : '';
+    const cleanPropLoc = (params.propertyLocation || params.city || '') ? String(params.propertyLocation || params.city).trim() : '';
+    const cleanEstPropValue = (params.estPropertyValue || params.propertyValue || '') ? String(params.estPropertyValue || params.propertyValue).trim() : '';
+    const cleanValuation = (params.marketValuation || params.propertyValue || '') ? String(params.marketValuation || params.propertyValue).trim() : '';
     const cleanOwnership = params.propertyOwnership ? String(params.propertyOwnership).trim() : '';
     const cleanFreehold = params.isPropertyFreehold ? String(params.isPropertyFreehold).trim() : '';
     const cleanExistingLoanProp = params.hasExistingLoanOnProperty ? String(params.hasExistingLoanOnProperty).trim() : '';
-    const cleanLapPurpose = params.lapPurpose ? String(params.lapPurpose).trim() : '';
+    const cleanLapPurpose = (params.lapPurpose || params.loanPurpose || '') ? String(params.lapPurpose || params.loanPurpose).trim() : '';
 
     // Agriculture Loan params
     const cleanLandAcres = params.landHoldingAcres ? String(params.landHoldingAcres).trim() : '';
@@ -186,6 +187,22 @@ export class LoanService {
     const cleanUdyamReg = params.udyamRegNumber ? String(params.udyamRegNumber).trim().toUpperCase() : '';
     const cleanMudraTier = params.mudraTier ? String(params.mudraTier).trim() : '';
     const cleanMudraCard = params.mudraCardRequired ? String(params.mudraCardRequired).trim() : '';
+
+    // Education Loan params
+    const cleanStudyDest = params.studyDestination ? String(params.studyDestination).trim() : '';
+    const cleanCourseLevel = params.courseLevel ? String(params.courseLevel).trim() : '';
+    const cleanCourseName = params.courseName ? String(params.courseName).trim() : '';
+    const cleanInstituteName = params.instituteName ? String(params.instituteName).trim() : '';
+    const cleanCourseDuration = params.courseDuration ? String(params.courseDuration).trim() : '';
+    const cleanAdmissionStatus = params.admissionStatus ? String(params.admissionStatus).trim() : '';
+    const cleanCourseCost = params.totalCourseCost ? String(params.totalCourseCost).trim() : '';
+    const cleanCoApplicantRel = params.coApplicantRelation ? String(params.coApplicantRelation).trim() : '';
+    const cleanCoApplicantName = params.coApplicantName ? String(params.coApplicantName).trim() : '';
+    const cleanMoratorium = params.moratoriumPeriod ? String(params.moratoriumPeriod).trim() : '';
+
+    // Personal Loan extras
+    const cleanExistingEmi = params.existingEmi ? String(params.existingEmi).trim() : '';
+    const cleanLoanPurpose = params.loanPurpose || params.purpose ? String(params.loanPurpose || params.purpose).trim() : '';
 
     await sql`
       UPDATE users
@@ -220,6 +237,7 @@ export class LoanService {
         car_down_payment = CASE WHEN (car_down_payment IS NULL OR car_down_payment = '') AND ${cleanCarDown} <> '' THEN ${cleanCarDown} ELSE car_down_payment END,
         property_type = CASE WHEN (property_type IS NULL OR property_type = '') AND ${cleanPropType} <> '' THEN ${cleanPropType} ELSE property_type END,
         property_location = CASE WHEN (property_location IS NULL OR property_location = '') AND ${cleanPropLoc} <> '' THEN ${cleanPropLoc} ELSE property_location END,
+        est_property_value = CASE WHEN (est_property_value IS NULL OR est_property_value = '') AND ${cleanEstPropValue} <> '' THEN ${cleanEstPropValue} ELSE est_property_value END,
         market_valuation = CASE WHEN (market_valuation IS NULL OR market_valuation = '') AND ${cleanValuation} <> '' THEN ${cleanValuation} ELSE market_valuation END,
         property_ownership = CASE WHEN (property_ownership IS NULL OR property_ownership = '') AND ${cleanOwnership} <> '' THEN ${cleanOwnership} ELSE property_ownership END,
         is_property_freehold = CASE WHEN (is_property_freehold IS NULL OR is_property_freehold = '') AND ${cleanFreehold} <> '' THEN ${cleanFreehold} ELSE is_property_freehold END,
@@ -242,6 +260,18 @@ export class LoanService {
         udyam_reg_number = CASE WHEN (udyam_reg_number IS NULL OR udyam_reg_number = '') AND ${cleanUdyamReg} <> '' THEN ${cleanUdyamReg} ELSE udyam_reg_number END,
         mudra_tier = CASE WHEN (mudra_tier IS NULL OR mudra_tier = '') AND ${cleanMudraTier} <> '' THEN ${cleanMudraTier} ELSE mudra_tier END,
         mudra_card_required = CASE WHEN (mudra_card_required IS NULL OR mudra_card_required = '') AND ${cleanMudraCard} <> '' THEN ${cleanMudraCard} ELSE mudra_card_required END,
+        study_destination = CASE WHEN (study_destination IS NULL OR study_destination = '') AND ${cleanStudyDest} <> '' THEN ${cleanStudyDest} ELSE study_destination END,
+        course_level = CASE WHEN (course_level IS NULL OR course_level = '') AND ${cleanCourseLevel} <> '' THEN ${cleanCourseLevel} ELSE course_level END,
+        course_name = CASE WHEN (course_name IS NULL OR course_name = '') AND ${cleanCourseName} <> '' THEN ${cleanCourseName} ELSE course_name END,
+        institute_name = CASE WHEN (institute_name IS NULL OR institute_name = '') AND ${cleanInstituteName} <> '' THEN ${cleanInstituteName} ELSE institute_name END,
+        course_duration = CASE WHEN (course_duration IS NULL OR course_duration = '') AND ${cleanCourseDuration} <> '' THEN ${cleanCourseDuration} ELSE course_duration END,
+        admission_status = CASE WHEN (admission_status IS NULL OR admission_status = '') AND ${cleanAdmissionStatus} <> '' THEN ${cleanAdmissionStatus} ELSE admission_status END,
+        total_course_cost = CASE WHEN (total_course_cost IS NULL OR total_course_cost = '') AND ${cleanCourseCost} <> '' THEN ${cleanCourseCost} ELSE total_course_cost END,
+        co_applicant_relation = CASE WHEN (co_applicant_relation IS NULL OR co_applicant_relation = '') AND ${cleanCoApplicantRel} <> '' THEN ${cleanCoApplicantRel} ELSE co_applicant_relation END,
+        co_applicant_name = CASE WHEN (co_applicant_name IS NULL OR co_applicant_name = '') AND ${cleanCoApplicantName} <> '' THEN ${cleanCoApplicantName} ELSE co_applicant_name END,
+        moratorium_period = CASE WHEN (moratorium_period IS NULL OR moratorium_period = '') AND ${cleanMoratorium} <> '' THEN ${cleanMoratorium} ELSE moratorium_period END,
+        existing_emi = CASE WHEN (existing_emi IS NULL OR existing_emi = '') AND ${cleanExistingEmi} <> '' THEN ${cleanExistingEmi} ELSE existing_emi END,
+        loan_purpose = CASE WHEN (loan_purpose IS NULL OR loan_purpose = '') AND ${cleanLoanPurpose} <> '' THEN ${cleanLoanPurpose} ELSE loan_purpose END,
         updated_at = NOW()
       WHERE mobile = ${cleaned};
     `;

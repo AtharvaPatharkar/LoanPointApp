@@ -65,8 +65,14 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
     if (past) {
       setExistingPastApp(past);
       const parsedPurpose = parseApplicationPurposeData(past.remarks || (past as any).purpose);
-      if (!companyName && parsedPurpose['work']) {
-        setCompanyName(parsedPurpose['work']);
+      if (!companyName && (parsedPurpose['work'] || (past as any).companyName)) {
+        setCompanyName(parsedPurpose['work'] || (past as any).companyName);
+      }
+      if (!companyType && (past as any).companyType) {
+        setCompanyType((past as any).companyType);
+      }
+      if (!workExperience && (past as any).workExperience) {
+        setWorkExperience((past as any).workExperience);
       }
       if (!salaryBankAccount && (past.bankName || parsedPurpose['bank'])) {
         setSalaryBankAccount(past.bankName || parsedPurpose['bank']);
@@ -82,11 +88,14 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
       if (!loanPurpose && parsedPurpose['purpose']) {
         setLoanPurpose(parsedPurpose['purpose']);
       }
-      if (!propertyType && parsedPurpose['property']) {
-        setPropertyType(parsedPurpose['property']);
+      if (!propertyType && (parsedPurpose['property'] || (past as any).propertyType)) {
+        setPropertyType(parsedPurpose['property'] || (past as any).propertyType);
       }
-      if (!propertyLocation && parsedPurpose['location']) {
-        setPropertyLocation(parsedPurpose['location']);
+      if (!propertyLocation && (parsedPurpose['location'] || (past as any).propertyLocation)) {
+        setPropertyLocation(parsedPurpose['location'] || (past as any).propertyLocation);
+      }
+      if (!propertyValue && (parsedPurpose['est'] || (past as any).estPropertyValue)) {
+        setPropertyValue(parsedPurpose['est'] || (past as any).estPropertyValue);
       }
     }
   }, []);
@@ -102,14 +111,14 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
   const [isAgreedStep1, setIsAgreedStep1] = useState<boolean>(true);
 
   // ---------------- STEP 2: Property & Employment Details ----------------
-  const [propertyType, setPropertyType] = useState<string>('');
-  const [propertyLocation, setPropertyLocation] = useState<string>(user?.city || '');
-  const [propertyValue, setPropertyValue] = useState<string>('');
+  const [propertyType, setPropertyType] = useState<string>(user?.propertyType || '');
+  const [propertyLocation, setPropertyLocation] = useState<string>(user?.propertyLocation || user?.city || '');
+  const [propertyValue, setPropertyValue] = useState<string>(user?.estPropertyValue || '');
   const [employmentType, setEmploymentType] = useState<'Salaried' | 'Self-Employed'>(getUserEmploymentType(user));
-  const [companyName, setCompanyName] = useState<string>(user?.companyName || '');
-  const [workExperience, setWorkExperience] = useState<string>(user?.workExperience || '');
+  const [companyName, setCompanyName] = useState<string>(user?.companyName || user?.registeredBusiness || '');
+  const [workExperience, setWorkExperience] = useState<string>(user?.workExperience || user?.businessVintage || '');
   const [salaryBankAccount, setSalaryBankAccount] = useState<string>(user?.salaryBank || '');
-  const [companyType, setCompanyType] = useState<string>(user?.companyType || '');
+  const [companyType, setCompanyType] = useState<string>(user?.companyType || user?.businessConstitution || '');
 
   // ---------------- STEP 3: Customize Loan Details ----------------
   const [detailedLoanAmount, setDetailedLoanAmount] = useState<string>('');
@@ -576,6 +585,12 @@ export const HomeLoanApplyScreen: React.FC<HomeLoanApplyScreenProps> = ({
         salaryBank: salaryBankAccount || undefined,
         companyType: companyType || undefined,
         cibilScoreRange: cibilScoreRange || undefined,
+        propertyType: propertyType || undefined,
+        propertyLocation: propertyLocation || undefined,
+        propertyValue: propertyValue || undefined,
+        estPropertyValue: propertyValue || undefined,
+        loanPurpose: loanPurpose || undefined,
+        hasCoApplicant: hasCoApplicant,
         purpose: `Home Loan | Property: ${propertyType} at ${propertyLocation} (Est: ${propertyValue}) | Work: ${companyName.trim()} (${companyType}) | Bank: ${salaryBankAccount} | Purpose: ${loanPurpose} | Co-Applicant: ${hasCoApplicant} | CIBIL: ${cibilScoreRange}`,
       });
 

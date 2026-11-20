@@ -116,8 +116,8 @@ export const PersonalLoanApplyScreen: React.FC<PersonalLoanApplyScreenProps> = (
   // ---------------- STEP 3: Loan Details ----------------
   const [detailedLoanAmount, setDetailedLoanAmount] = useState<string>('');
   const [detailedTenure, setDetailedTenure] = useState<string>('');
-  const [loanPurpose, setLoanPurpose] = useState<string>('');
-  const [existingEmi, setExistingEmi] = useState<string>('');
+  const [loanPurpose, setLoanPurpose] = useState<string>(user?.loanPurpose || '');
+  const [existingEmi, setExistingEmi] = useState<string>(user?.existingEmi || '');
   const [cibilScoreRange, setCibilScoreRange] = useState<string>(
     user?.cibilScoreRange || (user?.cibilEstimateScore ? (user.cibilEstimateScore >= 750 ? '750 and Above (Excellent)' : '700 - 749 (Good)') : '')
   );
@@ -633,6 +633,8 @@ export const PersonalLoanApplyScreen: React.FC<PersonalLoanApplyScreenProps> = (
         companyType: companyType || undefined,
         hasCreditCard: hasCreditCard || undefined,
         cibilScoreRange: cibilScoreRange || undefined,
+        loanPurpose: loanPurpose.trim() || undefined,
+        existingEmi: existingEmi.trim() || undefined,
         purpose: `Personal Loan | ${companyName.trim()} (${companyType}) | Bank: ${salaryBankAccount} | Purpose: ${loanPurpose} | Existing EMI: ${existingEmi} | CIBIL: ${cibilScoreRange}`,
       });
 

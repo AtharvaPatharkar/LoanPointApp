@@ -5,7 +5,7 @@ export class UserService {
   public async getProfileByUserId(userId: string): Promise<any | null> {
     const sql = getDb();
     const rows = (await sql`
-      SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, aadhaar_number, company_name, work_experience, salary_bank, company_type, has_credit_card, cibil_score_range, dob, business_location, registered_business, business_constitution, business_vintage, industry_sector, annual_turnover, is_gst_registered, gstin, car_condition, car_make_model, car_dealer_seller, car_on_road_price, car_fuel_type, car_mfg_year, car_down_payment, property_type, property_location, market_valuation, property_ownership, is_property_freehold, has_existing_loan_on_property, lap_purpose, land_holding_acres, taluka_village, gat_number, irrigation_source, primary_crops, has_kcc_card, farming_type, agri_loan_type, social_category, enterprise_name, enterprise_activity, activity_sector, business_premises, has_udyam_number, udyam_reg_number, mudra_tier, mudra_card_required, is_kyc_completed, documents, created_at, updated_at
+      SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, aadhaar_number, company_name, work_experience, salary_bank, company_type, has_credit_card, cibil_score_range, dob, business_location, registered_business, business_constitution, business_vintage, industry_sector, annual_turnover, is_gst_registered, gstin, car_condition, car_make_model, car_dealer_seller, car_on_road_price, car_fuel_type, car_mfg_year, car_down_payment, property_type, property_location, est_property_value, market_valuation, property_ownership, is_property_freehold, has_existing_loan_on_property, lap_purpose, land_holding_acres, taluka_village, gat_number, irrigation_source, primary_crops, has_kcc_card, farming_type, agri_loan_type, social_category, enterprise_name, enterprise_activity, activity_sector, business_premises, has_udyam_number, udyam_reg_number, mudra_tier, mudra_card_required, study_destination, course_level, course_name, institute_name, course_duration, admission_status, total_course_cost, co_applicant_relation, co_applicant_name, moratorium_period, existing_emi, loan_purpose, is_kyc_completed, documents, created_at, updated_at
       FROM users
       WHERE id = ${userId}
       LIMIT 1;
@@ -18,7 +18,7 @@ export class UserService {
     const cleaned = cleanMobile(mobile);
     const sql = getDb();
     const rows = (await sql`
-      SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, aadhaar_number, company_name, work_experience, salary_bank, company_type, has_credit_card, cibil_score_range, dob, business_location, registered_business, business_constitution, business_vintage, industry_sector, annual_turnover, is_gst_registered, gstin, car_condition, car_make_model, car_dealer_seller, car_on_road_price, car_fuel_type, car_mfg_year, car_down_payment, property_type, property_location, market_valuation, property_ownership, is_property_freehold, has_existing_loan_on_property, lap_purpose, land_holding_acres, taluka_village, gat_number, irrigation_source, primary_crops, has_kcc_card, farming_type, agri_loan_type, social_category, enterprise_name, enterprise_activity, activity_sector, business_premises, has_udyam_number, udyam_reg_number, mudra_tier, mudra_card_required, is_kyc_completed, documents, created_at, updated_at
+      SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, aadhaar_number, company_name, work_experience, salary_bank, company_type, has_credit_card, cibil_score_range, dob, business_location, registered_business, business_constitution, business_vintage, industry_sector, annual_turnover, is_gst_registered, gstin, car_condition, car_make_model, car_dealer_seller, car_on_road_price, car_fuel_type, car_mfg_year, car_down_payment, property_type, property_location, est_property_value, market_valuation, property_ownership, is_property_freehold, has_existing_loan_on_property, lap_purpose, land_holding_acres, taluka_village, gat_number, irrigation_source, primary_crops, has_kcc_card, farming_type, agri_loan_type, social_category, enterprise_name, enterprise_activity, activity_sector, business_premises, has_udyam_number, udyam_reg_number, mudra_tier, mudra_card_required, study_destination, course_level, course_name, institute_name, course_duration, admission_status, total_course_cost, co_applicant_relation, co_applicant_name, moratorium_period, existing_emi, loan_purpose, is_kyc_completed, documents, created_at, updated_at
       FROM users
       WHERE mobile = ${cleaned}
       LIMIT 1;
@@ -82,7 +82,7 @@ export class UserService {
   public async getAllUsers(): Promise<any[]> {
     const sql = getDb();
     const rows = (await sql`
-      SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, aadhaar_number, company_name, work_experience, salary_bank, company_type, has_credit_card, cibil_score_range, dob, business_location, registered_business, business_constitution, business_vintage, industry_sector, annual_turnover, is_gst_registered, gstin, car_condition, car_make_model, car_dealer_seller, car_on_road_price, car_fuel_type, car_mfg_year, car_down_payment, property_type, property_location, market_valuation, property_ownership, is_property_freehold, has_existing_loan_on_property, lap_purpose, land_holding_acres, taluka_village, gat_number, irrigation_source, primary_crops, has_kcc_card, farming_type, agri_loan_type, social_category, enterprise_name, enterprise_activity, activity_sector, business_premises, has_udyam_number, udyam_reg_number, mudra_tier, mudra_card_required, is_kyc_completed, documents, created_at, updated_at
+      SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, aadhaar_number, company_name, work_experience, salary_bank, company_type, has_credit_card, cibil_score_range, dob, business_location, registered_business, business_constitution, business_vintage, industry_sector, annual_turnover, is_gst_registered, gstin, car_condition, car_make_model, car_dealer_seller, car_on_road_price, car_fuel_type, car_mfg_year, car_down_payment, property_type, property_location, est_property_value, market_valuation, property_ownership, is_property_freehold, has_existing_loan_on_property, lap_purpose, land_holding_acres, taluka_village, gat_number, irrigation_source, primary_crops, has_kcc_card, farming_type, agri_loan_type, social_category, enterprise_name, enterprise_activity, activity_sector, business_premises, has_udyam_number, udyam_reg_number, mudra_tier, mudra_card_required, study_destination, course_level, course_name, institute_name, course_duration, admission_status, total_course_cost, co_applicant_relation, co_applicant_name, moratorium_period, existing_emi, loan_purpose, is_kyc_completed, documents, created_at, updated_at
       FROM users
       ORDER BY created_at DESC;
     `) as any[];
@@ -202,6 +202,7 @@ export class UserService {
       // Mortgage Loan (LAP)
       propertyType: row.property_type || '',
       propertyLocation: row.property_location || '',
+      estPropertyValue: row.est_property_value || '',
       marketValuation: row.market_valuation || '',
       propertyOwnership: row.property_ownership || '',
       isPropertyFreehold: row.is_property_freehold || '',
@@ -226,6 +227,20 @@ export class UserService {
       udyamRegNumber: row.udyam_reg_number || '',
       mudraTier: row.mudra_tier || '',
       mudraCardRequired: row.mudra_card_required || '',
+      // Education Loan
+      studyDestination: row.study_destination || '',
+      courseLevel: row.course_level || '',
+      courseName: row.course_name || '',
+      instituteName: row.institute_name || '',
+      courseDuration: row.course_duration || '',
+      admissionStatus: row.admission_status || '',
+      totalCourseCost: row.total_course_cost || '',
+      coApplicantRelation: row.co_applicant_relation || '',
+      coApplicantName: row.co_applicant_name || '',
+      moratoriumPeriod: row.moratorium_period || '',
+      // Personal Loan extras
+      existingEmi: row.existing_emi || '',
+      loanPurpose: row.loan_purpose || '',
       cibilEstimateScore: 740,
       memberSince: new Date(row.created_at).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
       referralCode: row.referral_code,

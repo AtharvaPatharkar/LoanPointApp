@@ -43,9 +43,10 @@ export async function testDbConnection(): Promise<boolean> {
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS car_fuel_type VARCHAR(30);`;
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS car_mfg_year VARCHAR(10);`;
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS car_down_payment VARCHAR(50);`;
-    // Mortgage / LAP loan
+    // Mortgage / LAP / Home loan
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS property_type VARCHAR(100);`;
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS property_location VARCHAR(150);`;
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS est_property_value VARCHAR(50);`;
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS market_valuation VARCHAR(50);`;
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS property_ownership VARCHAR(50);`;
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_property_freehold VARCHAR(10);`;
@@ -70,6 +71,20 @@ export async function testDbConnection(): Promise<boolean> {
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS udyam_reg_number VARCHAR(50);`;
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS mudra_tier VARCHAR(50);`;
     await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS mudra_card_required VARCHAR(10);`;
+    // Education loan
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS study_destination VARCHAR(50);`;
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS course_level VARCHAR(50);`;
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS course_name VARCHAR(100);`;
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS institute_name VARCHAR(150);`;
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS course_duration VARCHAR(50);`;
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS admission_status VARCHAR(50);`;
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS total_course_cost VARCHAR(50);`;
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS co_applicant_relation VARCHAR(50);`;
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS co_applicant_name VARCHAR(150);`;
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS moratorium_period VARCHAR(50);`;
+    // Personal loan extras
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS existing_emi VARCHAR(50);`;
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS loan_purpose VARCHAR(150);`;
     await sql`ALTER TABLE loan_applications ADD COLUMN IF NOT EXISTS aadhaar_number VARCHAR(12);`;
     
     return Boolean(result && result.length > 0);

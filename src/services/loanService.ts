@@ -86,14 +86,18 @@ class LoanService {
     manufacturingYear?: string;
     carDownPayment?: string;
     downPayment?: string;
-    // Mortgage Loan (LAP)
+    // Mortgage Loan (LAP) & Home Loan
     propertyType?: string;
     propertyLocation?: string;
+    estPropertyValue?: string;
+    propertyValue?: string;
     marketValuation?: string;
     propertyOwnership?: string;
     isPropertyFreehold?: string;
     hasExistingLoanOnProperty?: string;
     lapPurpose?: string;
+    loanPurpose?: string;
+    hasCoApplicant?: string;
     // Agriculture Loan
     landHoldingAcres?: string;
     talukaVillage?: string;
@@ -115,6 +119,19 @@ class LoanService {
     mudraTier?: string;
     mudraCardRequired?: string;
     bankPreference?: string;
+    // Education Loan
+    studyDestination?: string;
+    courseLevel?: string;
+    courseName?: string;
+    instituteName?: string;
+    courseDuration?: string;
+    admissionStatus?: string;
+    totalCourseCost?: string;
+    coApplicantRelation?: string;
+    coApplicantName?: string;
+    moratoriumPeriod?: string;
+    // Personal Loan extras
+    existingEmi?: string;
   }): Promise<LoanApplication> {
     const category = this.getCategoryById(params.loanType);
     const categoryTitle = category ? category.title : 'Loan';
