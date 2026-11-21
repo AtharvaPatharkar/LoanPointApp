@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "LoanPoint Mobile",
+    "slug": "loanpoint-mobile",
+    "version": "3.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/logo/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/logo/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#002e75"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "in.loanpoint.mobile",
+      "versionCode": 4,
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/logo/android-icon-foreground.png",
+        "backgroundImage": "./assets/logo/android-icon-background.png",
+        "monochromeImage": "./assets/logo/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/logo/favicon.png",
+      "name": "Loan Point"
+    },
+    "plugins": [
+      "expo-status-bar",
+      "expo-font",
+      "expo-sharing",
+      "expo-splash-screen",
+      "expo-secure-store"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "fcfef7e9-5cb2-4b20-a736-99471d39f46e"
+      }
+    },
+    "owner": "atharvapatharkar-team"
+  }
+}
