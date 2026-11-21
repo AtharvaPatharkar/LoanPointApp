@@ -6,10 +6,43 @@ export class LoanService {
     const cleaned = cleanMobile(mobile);
     const sql = getDb();
     const rows = (await sql`
-      SELECT id, applicant_name, mobile, loan_type, requested_amount, tenure_months, status, status_updated_at, remarks, next_action, data, created_at
-      FROM loan_applications
-      WHERE mobile = ${cleaned}
-      ORDER BY created_at DESC;
+      SELECT 
+        la.id, la.applicant_name, la.mobile, la.loan_type, la.requested_amount, la.tenure_months, 
+        la.status, la.status_updated_at, la.remarks, la.next_action, la.data, la.created_at,
+        u.id AS user_id, u.full_name AS u_full_name, u.email AS u_email, u.city AS u_city,
+        u.employment_type AS u_employment_type, u.monthly_income AS u_monthly_income,
+        u.referral_code AS u_referral_code, u.referred_by AS u_referred_by,
+        u.pan_number AS u_pan_number, u.aadhaar_number AS u_aadhaar_number, u.aadhaar_last_four AS u_aadhaar_last_four,
+        u.company_name AS u_company_name, u.work_experience AS u_work_experience, u.salary_bank AS u_salary_bank,
+        u.company_type AS u_company_type, u.has_credit_card AS u_has_credit_card, u.cibil_score_range AS u_cibil_score_range,
+        u.dob AS u_dob, u.business_location AS u_business_location, u.registered_business AS u_registered_business,
+        u.business_constitution AS u_business_constitution, u.business_vintage AS u_business_vintage,
+        u.industry_sector AS u_industry_sector, u.annual_turnover AS u_annual_turnover,
+        u.is_gst_registered AS u_is_gst_registered, u.gstin AS u_gstin,
+        u.car_condition AS u_car_condition, u.car_make_model AS u_car_make_model, u.car_dealer_seller AS u_car_dealer_seller,
+        u.car_on_road_price AS u_car_on_road_price, u.car_fuel_type AS u_car_fuel_type, u.car_mfg_year AS u_car_mfg_year,
+        u.car_down_payment AS u_car_down_payment, u.property_type AS u_property_type, u.property_location AS u_property_location,
+        u.est_property_value AS u_est_property_value, u.market_valuation AS u_market_valuation,
+        u.property_ownership AS u_property_ownership, u.is_property_freehold AS u_is_property_freehold,
+        u.has_existing_loan_on_property AS u_has_existing_loan_on_property, u.lap_purpose AS u_lap_purpose,
+        u.land_holding_acres AS u_land_holding_acres, u.taluka_village AS u_taluka_village, u.gat_number AS u_gat_number,
+        u.irrigation_source AS u_irrigation_source, u.primary_crops AS u_primary_crops, u.has_kcc_card AS u_has_kcc_card,
+        u.farming_type AS u_farming_type, u.agri_loan_type AS u_agri_loan_type, u.social_category AS u_social_category,
+        u.enterprise_name AS u_enterprise_name, u.enterprise_activity AS u_enterprise_activity,
+        u.activity_sector AS u_activity_sector, u.business_premises AS u_business_premises,
+        u.has_udyam_number AS u_has_udyam_number, u.udyam_reg_number AS u_udyam_reg_number,
+        u.mudra_tier AS u_mudra_tier, u.mudra_card_required AS u_mudra_card_required,
+        u.study_destination AS u_study_destination, u.course_level AS u_course_level,
+        u.course_name AS u_course_name, u.institute_name AS u_institute_name,
+        u.course_duration AS u_course_duration, u.admission_status AS u_admission_status,
+        u.total_course_cost AS u_total_course_cost, u.co_applicant_relation AS u_co_applicant_relation,
+        u.co_applicant_name AS u_co_applicant_name, u.moratorium_period AS u_moratorium_period,
+        u.existing_emi AS u_existing_emi, u.loan_purpose AS u_loan_purpose,
+        u.is_kyc_completed AS u_is_kyc_completed, u.documents AS u_documents
+      FROM loan_applications la
+      LEFT JOIN users u ON la.mobile = u.mobile
+      WHERE la.mobile = ${cleaned}
+      ORDER BY la.created_at DESC;
     `) as any[];
     return rows.map((r: any) => this.mapLoanRow(r));
   }
@@ -17,9 +50,42 @@ export class LoanService {
   public async getApplicationById(id: string): Promise<any | null> {
     const sql = getDb();
     const rows = (await sql`
-      SELECT id, applicant_name, mobile, loan_type, requested_amount, tenure_months, status, status_updated_at, remarks, next_action, data, created_at
-      FROM loan_applications
-      WHERE id = ${id}
+      SELECT 
+        la.id, la.applicant_name, la.mobile, la.loan_type, la.requested_amount, la.tenure_months, 
+        la.status, la.status_updated_at, la.remarks, la.next_action, la.data, la.created_at,
+        u.id AS user_id, u.full_name AS u_full_name, u.email AS u_email, u.city AS u_city,
+        u.employment_type AS u_employment_type, u.monthly_income AS u_monthly_income,
+        u.referral_code AS u_referral_code, u.referred_by AS u_referred_by,
+        u.pan_number AS u_pan_number, u.aadhaar_number AS u_aadhaar_number, u.aadhaar_last_four AS u_aadhaar_last_four,
+        u.company_name AS u_company_name, u.work_experience AS u_work_experience, u.salary_bank AS u_salary_bank,
+        u.company_type AS u_company_type, u.has_credit_card AS u_has_credit_card, u.cibil_score_range AS u_cibil_score_range,
+        u.dob AS u_dob, u.business_location AS u_business_location, u.registered_business AS u_registered_business,
+        u.business_constitution AS u_business_constitution, u.business_vintage AS u_business_vintage,
+        u.industry_sector AS u_industry_sector, u.annual_turnover AS u_annual_turnover,
+        u.is_gst_registered AS u_is_gst_registered, u.gstin AS u_gstin,
+        u.car_condition AS u_car_condition, u.car_make_model AS u_car_make_model, u.car_dealer_seller AS u_car_dealer_seller,
+        u.car_on_road_price AS u_car_on_road_price, u.car_fuel_type AS u_car_fuel_type, u.car_mfg_year AS u_car_mfg_year,
+        u.car_down_payment AS u_car_down_payment, u.property_type AS u_property_type, u.property_location AS u_property_location,
+        u.est_property_value AS u_est_property_value, u.market_valuation AS u_market_valuation,
+        u.property_ownership AS u_property_ownership, u.is_property_freehold AS u_is_property_freehold,
+        u.has_existing_loan_on_property AS u_has_existing_loan_on_property, u.lap_purpose AS u_lap_purpose,
+        u.land_holding_acres AS u_land_holding_acres, u.taluka_village AS u_taluka_village, u.gat_number AS u_gat_number,
+        u.irrigation_source AS u_irrigation_source, u.primary_crops AS u_primary_crops, u.has_kcc_card AS u_has_kcc_card,
+        u.farming_type AS u_farming_type, u.agri_loan_type AS u_agri_loan_type, u.social_category AS u_social_category,
+        u.enterprise_name AS u_enterprise_name, u.enterprise_activity AS u_enterprise_activity,
+        u.activity_sector AS u_activity_sector, u.business_premises AS u_business_premises,
+        u.has_udyam_number AS u_has_udyam_number, u.udyam_reg_number AS u_udyam_reg_number,
+        u.mudra_tier AS u_mudra_tier, u.mudra_card_required AS u_mudra_card_required,
+        u.study_destination AS u_study_destination, u.course_level AS u_course_level,
+        u.course_name AS u_course_name, u.institute_name AS u_institute_name,
+        u.course_duration AS u_course_duration, u.admission_status AS u_admission_status,
+        u.total_course_cost AS u_total_course_cost, u.co_applicant_relation AS u_co_applicant_relation,
+        u.co_applicant_name AS u_co_applicant_name, u.moratorium_period AS u_moratorium_period,
+        u.existing_emi AS u_existing_emi, u.loan_purpose AS u_loan_purpose,
+        u.is_kyc_completed AS u_is_kyc_completed, u.documents AS u_documents
+      FROM loan_applications la
+      LEFT JOIN users u ON la.mobile = u.mobile
+      WHERE la.id = ${id}
       LIMIT 1;
     `) as any[];
     if (!rows || rows.length === 0) return null;
@@ -29,9 +95,42 @@ export class LoanService {
   public async getAllApplications(): Promise<any[]> {
     const sql = getDb();
     const rows = (await sql`
-      SELECT id, applicant_name, mobile, loan_type, requested_amount, tenure_months, status, status_updated_at, remarks, next_action, data, created_at
-      FROM loan_applications
-      ORDER BY created_at DESC;
+      SELECT 
+        la.id, la.applicant_name, la.mobile, la.loan_type, la.requested_amount, la.tenure_months, 
+        la.status, la.status_updated_at, la.remarks, la.next_action, la.data, la.created_at,
+        u.id AS user_id, u.full_name AS u_full_name, u.email AS u_email, u.city AS u_city,
+        u.employment_type AS u_employment_type, u.monthly_income AS u_monthly_income,
+        u.referral_code AS u_referral_code, u.referred_by AS u_referred_by,
+        u.pan_number AS u_pan_number, u.aadhaar_number AS u_aadhaar_number, u.aadhaar_last_four AS u_aadhaar_last_four,
+        u.company_name AS u_company_name, u.work_experience AS u_work_experience, u.salary_bank AS u_salary_bank,
+        u.company_type AS u_company_type, u.has_credit_card AS u_has_credit_card, u.cibil_score_range AS u_cibil_score_range,
+        u.dob AS u_dob, u.business_location AS u_business_location, u.registered_business AS u_registered_business,
+        u.business_constitution AS u_business_constitution, u.business_vintage AS u_business_vintage,
+        u.industry_sector AS u_industry_sector, u.annual_turnover AS u_annual_turnover,
+        u.is_gst_registered AS u_is_gst_registered, u.gstin AS u_gstin,
+        u.car_condition AS u_car_condition, u.car_make_model AS u_car_make_model, u.car_dealer_seller AS u_car_dealer_seller,
+        u.car_on_road_price AS u_car_on_road_price, u.car_fuel_type AS u_car_fuel_type, u.car_mfg_year AS u_car_mfg_year,
+        u.car_down_payment AS u_car_down_payment, u.property_type AS u_property_type, u.property_location AS u_property_location,
+        u.est_property_value AS u_est_property_value, u.market_valuation AS u_market_valuation,
+        u.property_ownership AS u_property_ownership, u.is_property_freehold AS u_is_property_freehold,
+        u.has_existing_loan_on_property AS u_has_existing_loan_on_property, u.lap_purpose AS u_lap_purpose,
+        u.land_holding_acres AS u_land_holding_acres, u.taluka_village AS u_taluka_village, u.gat_number AS u_gat_number,
+        u.irrigation_source AS u_irrigation_source, u.primary_crops AS u_primary_crops, u.has_kcc_card AS u_has_kcc_card,
+        u.farming_type AS u_farming_type, u.agri_loan_type AS u_agri_loan_type, u.social_category AS u_social_category,
+        u.enterprise_name AS u_enterprise_name, u.enterprise_activity AS u_enterprise_activity,
+        u.activity_sector AS u_activity_sector, u.business_premises AS u_business_premises,
+        u.has_udyam_number AS u_has_udyam_number, u.udyam_reg_number AS u_udyam_reg_number,
+        u.mudra_tier AS u_mudra_tier, u.mudra_card_required AS u_mudra_card_required,
+        u.study_destination AS u_study_destination, u.course_level AS u_course_level,
+        u.course_name AS u_course_name, u.institute_name AS u_institute_name,
+        u.course_duration AS u_course_duration, u.admission_status AS u_admission_status,
+        u.total_course_cost AS u_total_course_cost, u.co_applicant_relation AS u_co_applicant_relation,
+        u.co_applicant_name AS u_co_applicant_name, u.moratorium_period AS u_moratorium_period,
+        u.existing_emi AS u_existing_emi, u.loan_purpose AS u_loan_purpose,
+        u.is_kyc_completed AS u_is_kyc_completed, u.documents AS u_documents
+      FROM loan_applications la
+      LEFT JOIN users u ON la.mobile = u.mobile
+      ORDER BY la.created_at DESC;
     `) as any[];
     return rows.map((r: any) => this.mapLoanRow(r));
   }
@@ -344,6 +443,87 @@ export class LoanService {
     };
     const detectedBank = parsedData.bankName || defaultBanks[r.loan_type] || 'State Bank of India';
 
+    const userDocs = typeof r.u_documents === 'string' ? JSON.parse(r.u_documents) : r.u_documents || [];
+    const loanDocs = parsedData.documents || [];
+    // Combine user profile documents and loan documents if loan documents are empty
+    const mergedDocs = (Array.isArray(loanDocs) && loanDocs.length > 0) ? loanDocs : userDocs;
+
+    const applicantProfile = r.user_id ? {
+      id: r.user_id,
+      name: r.u_full_name || r.applicant_name,
+      mobile: r.mobile,
+      email: r.u_email || '',
+      city: r.u_city || '',
+      employmentType: r.u_employment_type || 'Salaried',
+      monthlyIncome: Number(r.u_monthly_income) || 0,
+      referralCode: r.u_referral_code || '',
+      referredBy: r.u_referred_by || undefined,
+      panNumber: r.u_pan_number || undefined,
+      aadhaarNumber: r.u_aadhaar_number || undefined,
+      aadhaarLastFour: r.u_aadhaar_last_four || undefined,
+      companyName: r.u_company_name || undefined,
+      workExperience: r.u_work_experience || undefined,
+      salaryBank: r.u_salary_bank || undefined,
+      companyType: r.u_company_type || undefined,
+      hasCreditCard: r.u_has_credit_card || undefined,
+      cibilScoreRange: r.u_cibil_score_range || undefined,
+      dob: r.u_dob || undefined,
+      businessLocation: r.u_business_location || undefined,
+      registeredBusiness: r.u_registered_business || undefined,
+      businessConstitution: r.u_business_constitution || undefined,
+      businessVintage: r.u_business_vintage || undefined,
+      industrySector: r.u_industry_sector || undefined,
+      annualTurnover: r.u_annual_turnover || undefined,
+      isGstRegistered: r.u_is_gst_registered || undefined,
+      gstin: r.u_gstin || undefined,
+      carCondition: r.u_car_condition || undefined,
+      carMakeModel: r.u_car_make_model || undefined,
+      carDealerSeller: r.u_car_dealer_seller || undefined,
+      carOnRoadPrice: r.u_car_on_road_price || undefined,
+      carFuelType: r.u_car_fuel_type || undefined,
+      carMfgYear: r.u_car_mfg_year || undefined,
+      carDownPayment: r.u_car_down_payment || undefined,
+      propertyType: r.u_property_type || undefined,
+      propertyLocation: r.u_property_location || undefined,
+      estPropertyValue: r.u_est_property_value || undefined,
+      marketValuation: r.u_market_valuation || undefined,
+      propertyOwnership: r.u_property_ownership || undefined,
+      isPropertyFreehold: r.u_is_property_freehold || undefined,
+      hasExistingLoanOnProperty: r.u_has_existing_loan_on_property || undefined,
+      lapPurpose: r.u_lap_purpose || undefined,
+      landHoldingAcres: r.u_land_holding_acres || undefined,
+      talukaVillage: r.u_taluka_village || undefined,
+      gatNumber: r.u_gat_number || undefined,
+      irrigationSource: r.u_irrigation_source || undefined,
+      primaryCrops: r.u_primary_crops || undefined,
+      hasKccCard: r.u_has_kcc_card || undefined,
+      farmingType: r.u_farming_type || undefined,
+      agriLoanType: r.u_agri_loan_type || undefined,
+      socialCategory: r.u_social_category || undefined,
+      enterpriseName: r.u_enterprise_name || undefined,
+      enterpriseActivity: r.u_enterprise_activity || undefined,
+      activitySector: r.u_activity_sector || undefined,
+      businessPremises: r.u_business_premises || undefined,
+      hasUdyamNumber: r.u_has_udyam_number || undefined,
+      udyamRegNumber: r.u_udyam_reg_number || undefined,
+      mudraTier: r.u_mudra_tier || undefined,
+      mudraCardRequired: r.u_mudra_card_required || undefined,
+      studyDestination: r.u_study_destination || undefined,
+      courseLevel: r.u_course_level || undefined,
+      courseName: r.u_course_name || undefined,
+      instituteName: r.u_institute_name || undefined,
+      courseDuration: r.u_course_duration || undefined,
+      admissionStatus: r.u_admission_status || undefined,
+      totalCourseCost: r.u_total_course_cost || undefined,
+      coApplicantRelation: r.u_co_applicant_relation || undefined,
+      coApplicantName: r.u_co_applicant_name || undefined,
+      moratoriumPeriod: r.u_moratorium_period || undefined,
+      existingEmi: r.u_existing_emi || undefined,
+      loanPurpose: r.u_loan_purpose || undefined,
+      isKycCompleted: Boolean(r.u_is_kyc_completed),
+      documents: userDocs,
+    } : undefined;
+
     return {
       id: r.id,
       loanType: r.loan_type,
@@ -361,7 +541,8 @@ export class LoanService {
       applicantName: r.applicant_name,
       applicantMobile: r.mobile,
       bankName: detectedBank,
-      documents: parsedData.documents || [],
+      documents: mergedDocs,
+      applicantProfile,
     };
   }
 }

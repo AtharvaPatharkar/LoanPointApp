@@ -77,6 +77,7 @@ export interface LoanApplication {
   rejectedOn?: string;
   nextStepText?: string;
   reapplyDate?: string;
+  applicantProfile?: Partial<UserProfile>;
 }
 
 export interface UserProfile {
@@ -90,6 +91,7 @@ export interface UserProfile {
   monthlyIncome: number;
   panNumber?: string;
   aadhaarNumber?: string;
+  aadhaarLastFour?: string;
   aadhaarLinked: boolean;
   companyName?: string;
   workExperience?: string;

@@ -114,6 +114,8 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
 
   // Status Update Modal State for Loans
   const [editingApp, setEditingApp] = useState<LoanApplication | null>(null);
+  const [viewingLoanDetail, setViewingLoanDetail] = useState<LoanApplication | null>(null);
+  const [activeLoanDetailTab, setActiveLoanDetailTab] = useState<'loan' | 'user' | 'property_asset' | 'documents'>('loan');
   const [newStatus, setNewStatus] = useState<ApplicationStatus>('Enquiry Received');
   const [adminRemarks, setAdminRemarks] = useState<string>('');
   const [nextActionNote, setNextActionNote] = useState<string>('');
@@ -1044,7 +1046,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                       onPress={() => handleCallApplicant(app.applicantMobile)}
                       activeOpacity={0.7}
                     >
-                      <Ionicons name="call-outline" size={14} color="#059669" />
+                      <Ionicons name="call-outline" size={13} color="#059669" />
                       <Text style={styles.contactBtnText}>Call</Text>
                     </TouchableOpacity>
 
@@ -1053,8 +1055,20 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                       onPress={() => handleWhatsAppApplicant(app)}
                       activeOpacity={0.7}
                     >
-                      <Ionicons name="logo-whatsapp" size={14} color="#16a34a" />
+                      <Ionicons name="logo-whatsapp" size={13} color="#16a34a" />
                       <Text style={styles.contactBtnText}>WhatsApp</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.loanDetailViewBtn}
+                      onPress={() => {
+                        setViewingLoanDetail(app);
+                        setActiveLoanDetailTab('loan');
+                      }}
+                      activeOpacity={0.75}
+                    >
+                      <Ionicons name="information-circle-outline" size={14} color="#002e75" />
+                      <Text style={styles.loanDetailViewBtnText}>Full Details</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -1062,8 +1076,8 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                       onPress={() => handleViewApplicantDocs(app.applicantName, app.applicantMobile, app.documents)}
                       activeOpacity={0.75}
                     >
-                      <Ionicons name="document-text-outline" size={14} color="#0284c7" />
-                      <Text style={styles.viewDocsBtnText}>View Docs</Text>
+                      <Ionicons name="document-text-outline" size={13} color="#0284c7" />
+                      <Text style={styles.viewDocsBtnText}>Docs</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -1071,7 +1085,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                       onPress={() => handleOpenEdit(app)}
                       activeOpacity={0.8}
                     >
-                      <Ionicons name="create-outline" size={15} color="#ffffff" />
+                      <Ionicons name="create-outline" size={13} color="#ffffff" />
                       <Text style={styles.manageBtnText}>Update</Text>
                     </TouchableOpacity>
                   </View>
@@ -1484,6 +1498,520 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                       <Text style={styles.modalSaveText}>Save Changes</Text>
                     </>
                   )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* ---------------- COMPREHENSIVE LOAN & USER PROFILE DETAILS MODAL ---------------- */}
+      {viewingLoanDetail && (
+        <Modal
+          visible={true}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setViewingLoanDetail(null)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalCard, { maxHeight: '92%', height: '92%' }]}>
+              {/* Modal Header */}
+              <View style={styles.modalHeader}>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <View style={styles.loanDetailTypeIcon}>
+                      <Ionicons name="document-text" size={16} color="#002e75" />
+                    </View>
+                    <Text style={styles.modalTitle} numberOfLines={1}>
+                      {viewingLoanDetail.loanTypeName}
+                    </Text>
+                  </View>
+                  <Text style={styles.modalSub} numberOfLines={1}>
+                    ID: {viewingLoanDetail.id} • {viewingLoanDetail.applicantName || 'Applicant'}
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  onPress={() => setViewingLoanDetail(null)}
+                  style={styles.closeBtn}
+                >
+                  <Ionicons name="close" size={22} color="#64748b" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Segmented Detail Tabs */}
+              <View style={styles.modalSubTabsRow}>
+                <TouchableOpacity
+                  style={[styles.modalSubTabBtn, activeLoanDetailTab === 'loan' && styles.modalSubTabBtnActive]}
+                  onPress={() => setActiveLoanDetailTab('loan')}
+                >
+                  <Ionicons name="cash-outline" size={13} color={activeLoanDetailTab === 'loan' ? '#002e75' : '#64748b'} />
+                  <Text style={[styles.modalSubTabText, activeLoanDetailTab === 'loan' && styles.modalSubTabTextActive]}>
+                    Loan Summary
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modalSubTabBtn, activeLoanDetailTab === 'user' && styles.modalSubTabBtnActive]}
+                  onPress={() => setActiveLoanDetailTab('user')}
+                >
+                  <Ionicons name="person-outline" size={13} color={activeLoanDetailTab === 'user' ? '#002e75' : '#64748b'} />
+                  <Text style={[styles.modalSubTabText, activeLoanDetailTab === 'user' && styles.modalSubTabTextActive]}>
+                    User Profile ({viewingLoanDetail.applicantProfile ? 'Live DB' : 'Basic'})
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modalSubTabBtn, activeLoanDetailTab === 'property_asset' && styles.modalSubTabBtnActive]}
+                  onPress={() => setActiveLoanDetailTab('property_asset')}
+                >
+                  <Ionicons name="layers-outline" size={13} color={activeLoanDetailTab === 'property_asset' ? '#002e75' : '#64748b'} />
+                  <Text style={[styles.modalSubTabText, activeLoanDetailTab === 'property_asset' && styles.modalSubTabTextActive]}>
+                    Asset / Collateral
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modalSubTabBtn, activeLoanDetailTab === 'documents' && styles.modalSubTabBtnActive]}
+                  onPress={() => setActiveLoanDetailTab('documents')}
+                >
+                  <Ionicons name="folder-open-outline" size={13} color={activeLoanDetailTab === 'documents' ? '#002e75' : '#64748b'} />
+                  <Text style={[styles.modalSubTabText, activeLoanDetailTab === 'documents' && styles.modalSubTabTextActive]}>
+                    Docs ({viewingLoanDetail.documents?.length || 0})
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Scrollable Content Body */}
+              <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, paddingVertical: 10 }}>
+                {/* 1. LOAN APPLICATION TAB */}
+                {activeLoanDetailTab === 'loan' && (
+                  <View style={{ gap: 10 }}>
+                    <View style={styles.detailSectionBox}>
+                      <Text style={styles.detailSectionHeader}>Application Details</Text>
+                      <View style={styles.detailGridTwoCol}>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Requested Amount</Text>
+                          <Text style={styles.detailGridFieldValueHighlight}>
+                            ₹{viewingLoanDetail.requestedAmount?.toLocaleString('en-IN')}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Tenure</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.tenureMonths} Months
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Application Status</Text>
+                          <View style={{ alignSelf: 'flex-start', marginTop: 3 }}>
+                            <View style={[styles.statusBadge, {
+                              backgroundColor: getStatusBadgeStyle(viewingLoanDetail.status).bg,
+                              borderColor: getStatusBadgeStyle(viewingLoanDetail.status).border,
+                            }]}>
+                              <Text style={[styles.statusBadgeText, { color: getStatusBadgeStyle(viewingLoanDetail.status).text }]}>
+                                {viewingLoanDetail.status}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Submission Date</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.submissionDate || 'Recently'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Assigned Bank</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.bankName || 'State Bank of India'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Last Status Update</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.statusUpdatedDate || 'Recently'}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Next Action & Admin Notes Box */}
+                    <View style={styles.detailSectionBox}>
+                      <Text style={styles.detailSectionHeader}>Underwriting & Next Steps</Text>
+                      <View style={{ gap: 6 }}>
+                        <Text style={styles.detailGridFieldLabel}>Customer Next Action Instruction:</Text>
+                        <Text style={styles.detailBoxNoteText}>
+                          {viewingLoanDetail.nextAction || 'Under Review by Admin Team'}
+                        </Text>
+                        <Text style={[styles.detailGridFieldLabel, { marginTop: 4 }]}>Admin Remarks:</Text>
+                        <Text style={styles.detailBoxNoteText}>
+                          {viewingLoanDetail.remarks || 'No specific underwriting remarks recorded.'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Quick Call / WhatsApp / Update Action Banner */}
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+                      <TouchableOpacity
+                        style={[styles.contactBtn, { flex: 1, justifyContent: 'center' }]}
+                        onPress={() => handleCallApplicant(viewingLoanDetail.applicantMobile)}
+                      >
+                        <Ionicons name="call" size={14} color="#059669" />
+                        <Text style={styles.contactBtnText}>Call</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.contactBtn, { flex: 1, justifyContent: 'center' }]}
+                        onPress={() => handleWhatsAppApplicant(viewingLoanDetail)}
+                      >
+                        <Ionicons name="logo-whatsapp" size={14} color="#16a34a" />
+                        <Text style={styles.contactBtnText}>WhatsApp</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.manageBtn, { flex: 1 }]}
+                        onPress={() => {
+                          const appToEdit = viewingLoanDetail;
+                          setViewingLoanDetail(null);
+                          handleOpenEdit(appToEdit);
+                        }}
+                      >
+                        <Ionicons name="create" size={14} color="#ffffff" />
+                        <Text style={styles.manageBtnText}>Update</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+
+                {/* 2. USER PROFILE TAB (FROM DATABASE USERS TABLE) */}
+                {activeLoanDetailTab === 'user' && (
+                  <View style={{ gap: 10 }}>
+                    {/* Basic Identity & Contact */}
+                    <View style={styles.detailSectionBox}>
+                      <Text style={styles.detailSectionHeader}>Personal & Identity (Users DB)</Text>
+                      <View style={styles.detailGridTwoCol}>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Full Name</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.applicantProfile?.name || viewingLoanDetail.applicantName || '—'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Mobile Number</Text>
+                          <Text style={styles.detailGridFieldValueHighlight}>
+                            +91 {viewingLoanDetail.applicantProfile?.mobile || viewingLoanDetail.applicantMobile || '—'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Email Address</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.applicantProfile?.email || 'Not Provided'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>City / Location</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.applicantProfile?.city || '—'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Date of Birth (DOB)</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.applicantProfile?.dob || '—'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>KYC Status</Text>
+                          <Text style={[styles.detailGridFieldValue, { color: viewingLoanDetail.applicantProfile?.isKycCompleted ? '#16a34a' : '#d97706', fontWeight: '800' }]}>
+                            {viewingLoanDetail.applicantProfile?.isKycCompleted ? '✓ KYC Completed' : 'Pending Verification'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>PAN Number</Text>
+                          <Text style={[styles.detailGridFieldValue, { letterSpacing: 1 }]}>
+                            {viewingLoanDetail.applicantProfile?.panNumber || '—'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Aadhaar Number</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.applicantProfile?.aadhaarNumber
+                              ? `XXXX-XXXX-${viewingLoanDetail.applicantProfile.aadhaarNumber.slice(-4)}`
+                              : viewingLoanDetail.applicantProfile?.aadhaarLastFour
+                              ? `XXXX-XXXX-${viewingLoanDetail.applicantProfile.aadhaarLastFour}`
+                              : '—'}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Employment & Financials */}
+                    <View style={styles.detailSectionBox}>
+                      <Text style={styles.detailSectionHeader}>Employment & Income Profile</Text>
+                      <View style={styles.detailGridTwoCol}>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Employment Type</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.applicantProfile?.employmentType || 'Salaried'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Monthly Income</Text>
+                          <Text style={styles.detailGridFieldValueHighlight}>
+                            {viewingLoanDetail.applicantProfile?.monthlyIncome
+                              ? `₹${Number(viewingLoanDetail.applicantProfile.monthlyIncome).toLocaleString('en-IN')}`
+                              : '—'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Company / Employer</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.applicantProfile?.companyName || '—'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Work Experience</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.applicantProfile?.workExperience || '—'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Salary Bank</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.applicantProfile?.salaryBank || '—'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>CIBIL Score Band</Text>
+                          <Text style={[styles.detailGridFieldValue, { color: '#0284c7' }]}>
+                            {viewingLoanDetail.applicantProfile?.cibilScoreRange || '750+ (Good)'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Credit Card Holder</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.applicantProfile?.hasCreditCard || 'No'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Existing Total EMIs</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.applicantProfile?.existingEmi ? `₹${viewingLoanDetail.applicantProfile.existingEmi}` : 'None reported'}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Referral Tracking */}
+                    <View style={styles.detailSectionBox}>
+                      <Text style={styles.detailSectionHeader}>Referral & Network Attribution</Text>
+                      <View style={styles.detailGridTwoCol}>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>User's Referral Code</Text>
+                          <Text style={[styles.detailGridFieldValueHighlight, { color: '#78350f' }]}>
+                            {viewingLoanDetail.applicantProfile?.referralCode || '—'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Referred By Code</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.applicantProfile?.referredBy || 'Organic (Direct Sign-up)'}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                )}
+
+                {/* 3. ASSET / COLLATERAL / PRODUCT SPECIFIC TAB */}
+                {activeLoanDetailTab === 'property_asset' && (
+                  <View style={{ gap: 10 }}>
+                    {/* Business Profile */}
+                    <View style={styles.detailSectionBox}>
+                      <Text style={styles.detailSectionHeader}>Business / MSME Profile</Text>
+                      <View style={styles.detailGridTwoCol}>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Business Constitution</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.applicantProfile?.businessConstitution || '—'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Annual Turnover</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.applicantProfile?.annualTurnover ? `₹${viewingLoanDetail.applicantProfile.annualTurnover}` : '—'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>GST Registered</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.applicantProfile?.isGstRegistered || 'No'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>GSTIN</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.applicantProfile?.gstin || '—'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Udyam Number</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.applicantProfile?.udyamRegNumber || '—'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Business Vintage</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.applicantProfile?.businessVintage || '—'}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Property / LAP Profile */}
+                    <View style={styles.detailSectionBox}>
+                      <Text style={styles.detailSectionHeader}>Property / Real Estate Collateral</Text>
+                      <View style={styles.detailGridTwoCol}>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Property Type</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.applicantProfile?.propertyType || '—'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Estimated Valuation</Text>
+                          <Text style={styles.detailGridFieldValueHighlight}>
+                            {viewingLoanDetail.applicantProfile?.marketValuation || viewingLoanDetail.applicantProfile?.estPropertyValue ? `₹${viewingLoanDetail.applicantProfile.marketValuation || viewingLoanDetail.applicantProfile.estPropertyValue}` : '—'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Property Location</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.applicantProfile?.propertyLocation || '—'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Existing Loan on Property</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.applicantProfile?.hasExistingLoanOnProperty || 'No'}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Vehicle / Car Loan Profile */}
+                    <View style={styles.detailSectionBox}>
+                      <Text style={styles.detailSectionHeader}>Vehicle / Car Loan Profile</Text>
+                      <View style={styles.detailGridTwoCol}>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Make & Model</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.applicantProfile?.carMakeModel || '—'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Condition</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.applicantProfile?.carCondition || '—'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>On-Road Price</Text>
+                          <Text style={styles.detailGridFieldValueHighlight}>
+                            {viewingLoanDetail.applicantProfile?.carOnRoadPrice ? `₹${viewingLoanDetail.applicantProfile.carOnRoadPrice}` : '—'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Down Payment</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.applicantProfile?.carDownPayment ? `₹${viewingLoanDetail.applicantProfile.carDownPayment}` : '—'}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Agriculture & Education Profile */}
+                    <View style={styles.detailSectionBox}>
+                      <Text style={styles.detailSectionHeader}>Agriculture & Education Extra Data</Text>
+                      <View style={styles.detailGridTwoCol}>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Agri Land (Acres)</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.applicantProfile?.landHoldingAcres || '—'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>KCC Card Holder</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.applicantProfile?.hasKccCard || 'No'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Education Destination</Text>
+                          <Text style={styles.detailGridFieldValue}>
+                            {viewingLoanDetail.applicantProfile?.studyDestination || '—'}
+                          </Text>
+                        </View>
+                        <View style={styles.detailGridField}>
+                          <Text style={styles.detailGridFieldLabel}>Total Course Cost</Text>
+                          <Text style={styles.detailGridFieldValueHighlight}>
+                            {viewingLoanDetail.applicantProfile?.totalCourseCost ? `₹${viewingLoanDetail.applicantProfile.totalCourseCost}` : '—'}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                )}
+
+                {/* 4. DOCUMENTS TAB */}
+                {activeLoanDetailTab === 'documents' && (
+                  <View style={{ gap: 10 }}>
+                    <View style={styles.detailSectionBox}>
+                      <Text style={styles.detailSectionHeader}>Applicant Uploaded Documents</Text>
+                      {(!viewingLoanDetail.documents || viewingLoanDetail.documents.length === 0) ? (
+                        <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                          <Ionicons name="folder-open-outline" size={36} color="#94a3b8" />
+                          <Text style={{ fontSize: 13, color: '#64748b', marginTop: 6, fontWeight: '600' }}>
+                            No documents attached to this profile or application.
+                          </Text>
+                        </View>
+                      ) : (
+                        <View style={{ gap: 8, marginTop: 4 }}>
+                          {viewingLoanDetail.documents.map((doc, idx) => (
+                            <TouchableOpacity
+                              key={doc.id || idx}
+                              style={styles.docViewerRow}
+                              onPress={() => handleOpenDocFile(doc)}
+                              activeOpacity={0.75}
+                            >
+                              <View style={styles.docViewerIconBadge}>
+                                <Ionicons name="document-text" size={18} color="#002e75" />
+                              </View>
+                              <View style={{ flex: 1, minWidth: 0 }}>
+                                <Text style={styles.docViewerTitle} numberOfLines={1}>
+                                  {doc.name || `Document #${idx + 1}`}
+                                </Text>
+                                <Text style={styles.docViewerSub}>
+                                  {doc.uploadDate || 'Uploaded'} • {doc.status || 'Submitted'}
+                                </Text>
+                              </View>
+                              <Ionicons name="eye-outline" size={20} color="#0284c7" />
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                )}
+              </ScrollView>
+
+              {/* Modal Footer Close Button */}
+              <View style={{ paddingTop: 10, borderTopWidth: 1, borderColor: '#e2e8f0' }}>
+                <TouchableOpacity
+                  style={[styles.modalCancelBtn, { width: '100%' }]}
+                  onPress={() => setViewingLoanDetail(null)}
+                >
+                  <Text style={styles.modalCancelText}>Close Details</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -2814,6 +3342,7 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 6,
   },
   contactBtn: {
@@ -2823,14 +3352,32 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#cbd5e1',
     paddingVertical: 7,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    gap: 3,
+    flexShrink: 0,
+  },
+  contactBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  loanDetailViewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    paddingVertical: 7,
     paddingHorizontal: 9,
     borderRadius: 8,
     gap: 4,
+    flexShrink: 0,
   },
-  contactBtnText: {
-    fontSize: 11.5,
-    fontWeight: '700',
-    color: '#334155',
+  loanDetailViewBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#002e75',
   },
   viewDocsBtn: {
     flexDirection: 'row',
@@ -2839,29 +3386,157 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#bae6fd',
     paddingVertical: 7,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     borderRadius: 8,
-    gap: 4,
+    gap: 3,
+    flexShrink: 0,
   },
   viewDocsBtnText: {
-    fontSize: 11.5,
+    fontSize: 11,
     fontWeight: '800',
     color: '#0284c7',
   },
   manageBtn: {
     flex: 1,
+    minWidth: 80,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#003399',
-    paddingVertical: 8,
+    backgroundColor: '#002e75',
+    paddingVertical: 7.5,
     borderRadius: 8,
-    gap: 5,
+    gap: 4,
   },
   manageBtnText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '800',
     color: '#ffffff',
+  },
+
+  // Full Details Modal Tabs & Styles
+  loanDetailTypeIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#e0f2fe',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalSubTabsRow: {
+    flexDirection: 'row',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 10,
+    padding: 3,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  modalSubTabBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
+  },
+  modalSubTabBtnActive: {
+    backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  modalSubTabText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#64748b',
+  },
+  modalSubTabTextActive: {
+    color: '#002e75',
+    fontWeight: '900',
+  },
+  detailSectionBox: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    padding: 12,
+    marginBottom: 4,
+  },
+  detailSectionHeader: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#002e75',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    paddingBottom: 6,
+    marginBottom: 8,
+    letterSpacing: 0.3,
+  },
+  detailGridTwoCol: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  detailGridField: {
+    width: '48%',
+    marginBottom: 6,
+  },
+  detailGridFieldLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748b',
+  },
+  detailGridFieldValue: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#0f172a',
+    marginTop: 2,
+  },
+  detailGridFieldValueHighlight: {
+    fontSize: 12.5,
+    fontWeight: '900',
+    color: '#002e75',
+    marginTop: 2,
+  },
+  detailBoxNoteText: {
+    fontSize: 11.5,
+    color: '#334155',
+    backgroundColor: '#f8fafc',
+    padding: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    lineHeight: 16,
+  },
+  docViewerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderRadius: 10,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    gap: 8,
+  },
+  docViewerIconBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#e0f2fe',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  docViewerTitle: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  docViewerSub: {
+    fontSize: 10,
+    color: '#64748b',
+    marginTop: 1,
   },
   userCardName: {
     fontSize: 15,
