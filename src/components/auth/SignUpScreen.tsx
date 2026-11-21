@@ -20,6 +20,7 @@ import {
   validateMonthlyIncome,
   validateEmail,
   getEmailDomainSuggestions,
+  validateReferralCodeFormat,
 } from '../../utils/calculator';
 
 interface SignUpScreenProps {
@@ -61,6 +62,15 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
     if (!code) {
       setReferralStatus('idle');
       setReferralFeedback('');
+      return;
+    }
+
+    // Instant format validation (8 characters, starting with LP and alphanumeric)
+    const formatValidation = validateReferralCodeFormat(code);
+    if (!formatValidation.isValid) {
+      setReferralStatus('invalid');
+      setReferrerName('');
+      setReferralFeedback(formatValidation.error || 'Referral code must be 8 characters starting with LP');
       return;
     }
 
@@ -585,9 +595,10 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                 placeholder="e.g. LP8X2K9M"
                 placeholderTextColor="#94a3b8"
                 autoCapitalize="characters"
+                maxLength={8}
                 value={referredByCode}
                 onChangeText={(t) => {
-                  const upper = t.toUpperCase().replace(/\s/g, '');
+                  const upper = t.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
                   setReferredByCode(upper);
                   if (upper.length === 0) {
                     setReferralStatus('idle');
@@ -601,7 +612,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
               />
 
               {/* Verify Action Button / Status Badge */}
-              {referredByCode.trim().length >= 4 && (
+              {referredByCode.trim().length === 8 && (
                 <TouchableOpacity
                   style={[
                     styles.verifyReferralBtn,

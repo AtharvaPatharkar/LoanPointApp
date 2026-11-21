@@ -296,6 +296,25 @@ export function generateRandomCustomerCode(): string {
   return res;
 }
 
+export function validateReferralCodeFormat(code: string): { isValid: boolean; error?: string } {
+  const clean = (code || '').trim().toUpperCase();
+  if (!clean) {
+    return { isValid: false, error: 'Please enter a referral code' };
+  }
+  if (clean.length !== 8) {
+    return { isValid: false, error: 'Referral code must be exactly 8 characters' };
+  }
+  if (!clean.startsWith('LP')) {
+    return { isValid: false, error: 'Referral code must start with LP' };
+  }
+  // 8 characters, starts with LP, followed by 6 alphanumeric uppercase characters
+  const pattern = /^LP[A-Z0-9]{6}$/;
+  if (!pattern.test(clean)) {
+    return { isValid: false, error: 'Referral code must start with LP followed by 6 uppercase letters/numbers' };
+  }
+  return { isValid: true };
+}
+
 /**
  * Generate 100% collision-free referral code (PhonePe hybrid style)
  * Formula: FIRST_NAME (clean uppercase) + LAST_4_OF_MOBILE (e.g., "RAHUL" + "5999" -> "RAHUL5999")

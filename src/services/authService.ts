@@ -1,6 +1,6 @@
 import { UserProfile } from '../types';
 import { INITIAL_USER } from '../data/mockData';
-import { validateMobileNumber, generateRandomCustomerCode, generateRandomCustomerId } from '../utils/calculator';
+import { validateMobileNumber, generateRandomCustomerCode, generateRandomCustomerId, validateReferralCodeFormat } from '../utils/calculator';
 import { crmService } from './crmService';
 import { whatsAppService } from './whatsAppService';
 import { referralService } from './referralService';
@@ -49,6 +49,12 @@ class AuthService {
       return { valid: false, message: 'Please enter a referral code' };
     }
 
+    // Fast local format validation: 8 chars, starts with LP + uppercase alphanumeric
+    const formatCheck = validateReferralCodeFormat(cleanCode);
+    if (!formatCheck.isValid) {
+      return { valid: false, message: formatCheck.error || 'Invalid referral code format' };
+    }
+
     try {
       const res = await apiRequest('/auth/validate-referral', {
         method: 'POST',
@@ -63,9 +69,22 @@ class AuthService {
         message: res?.message || 'Referral code verified successfully',
       };
     } catch (err: any) {
+      const rawMsg: string = err?.message || '';
+      // Filter out technical backend/HTTP messages (e.g. "Endpoint POST /api/v1/auth/validate-referral not found")
+      let userFriendlyMsg = 'Invalid referral code';
+      if (rawMsg.includes('not found') || rawMsg.includes('Endpoint') || rawMsg.includes('404')) {
+        userFriendlyMsg = 'Referral code not found';
+      } else if (rawMsg.includes('own referral') || rawMsg.includes('cannot use')) {
+        userFriendlyMsg = 'You cannot use your own referral code';
+      } else if (rawMsg.includes('Network') || rawMsg.includes('fetch')) {
+        userFriendlyMsg = 'Unable to verify referral code right now. Please check your internet connection.';
+      } else if (rawMsg && !rawMsg.includes('/') && !rawMsg.includes('status')) {
+        userFriendlyMsg = rawMsg;
+      }
+
       return {
         valid: false,
-        message: err.message || 'Invalid referral code',
+        message: userFriendlyMsg,
       };
     }
   }
