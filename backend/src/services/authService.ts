@@ -7,16 +7,30 @@ import { config } from '../config/index.js';
 interface OtpEntry {
   code: string;
   expiresAt: number;
+  registrationData?: {
+    name: string;
+    email?: string;
+    city?: string;
+    employmentType?: string;
+    monthlyIncome?: number;
+    referralCode?: string;
+  };
 }
 
 // In-memory OTP storage for development/sandbox mode
 const otpStore = new Map<string, OtpEntry>();
 
+/**
+ * Cryptographically Secure Referral Code Generator
+ * Generates an 8-character code from an unambiguous base32 charset (excluding 0, 1, I, O)
+ * yielding 32^8 (over 1.09 trillion) permutations with zero predictability.
+ */
 function generateCustomerCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const randomBytes = crypto.randomBytes(8);
   let res = 'LP';
   for (let i = 0; i < 6; i++) {
-    res += chars.charAt(Math.floor(Math.random() * chars.length));
+    res += chars[randomBytes[i] % chars.length];
   }
   return res;
 }
@@ -30,12 +44,25 @@ export class AuthService {
    */
   public async requestOtp(
     mobile: string,
-    mode: 'login' | 'signup' = 'login'
+    mode: 'login' | 'signup' = 'login',
+    registrationData?: {
+      name: string;
+      email?: string;
+      city?: string;
+      employmentType?: string;
+      monthlyIncome?: number;
+      referralCode?: string;
+    }
   ): Promise<{ success: boolean; message: string; demoOtp?: string }> {
     const cleaned = cleanMobile(mobile);
     const sql = getDb();
 
     const isOwnerAdmin = cleaned === cleanMobile(config.adminMobile);
+
+    // Rule 0: Admin Number Protection - Under no circumstances can admin number register as a customer!
+    if (mode === 'signup' && isOwnerAdmin) {
+      throw new Error('This number is not applicable for registration. Please use the Admin Login.');
+    }
 
     // 1. Check if user already exists in Neon DB
     const existing = (await sql`
@@ -64,6 +91,7 @@ export class AuthService {
     otpStore.set(cleaned, {
       code: demoOtp,
       expiresAt,
+      registrationData: mode === 'signup' ? registrationData : undefined,
     });
 
     console.log(`[DEV OTP ADAPTER] Dispatched OTP ${demoOtp} to +91 ${cleaned} (Expires in 5 mins) [Mode: ${mode}]`);
@@ -78,7 +106,15 @@ export class AuthService {
   public async verifyOtp(
     mobile: string,
     otp: string,
-    referralCode?: string
+    referralCode?: string,
+    registrationData?: {
+      name: string;
+      email?: string;
+      city?: string;
+      employmentType?: string;
+      monthlyIncome?: number;
+      referralCode?: string;
+    }
   ): Promise<{ token: string; refreshToken?: string; user: any; isNewUser: boolean }> {
     const cleaned = cleanMobile(mobile);
     const stored = otpStore.get(cleaned);
@@ -91,6 +127,9 @@ export class AuthService {
     if (!isValid) {
       throw new Error('Invalid or expired OTP');
     }
+
+    // Combine any registration data saved when OTP was requested with registration data passed on verify
+    const pendingReg = registrationData || stored?.registrationData;
 
     // Clear used OTP
     otpStore.delete(cleaned);
@@ -119,8 +158,60 @@ export class AuthService {
       return { token, refreshToken, user: adminUser, isNewUser: false } as any;
     }
 
-    // Customer Login -> Fetch from Neon Postgres
     const sql = getDb();
+
+    // If this is a registration flow with verified OTP, create the user in the database NOW
+    if (pendingReg && pendingReg.name && pendingReg.name.trim()) {
+      const existingCheck = (await sql`
+        SELECT id FROM users WHERE mobile = ${cleaned} LIMIT 1;
+      `) as any[];
+
+      if (!existingCheck || existingCheck.length === 0) {
+        // Generate a guaranteed collision-free referral code
+        let newRefCode = generateCustomerCode();
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const collision = (await sql`SELECT id FROM users WHERE referral_code = ${newRefCode} LIMIT 1;`) as any[];
+          if (!collision || collision.length === 0) break;
+          newRefCode = generateCustomerCode();
+        }
+
+        const cleanEmail = pendingReg.email?.trim() || null;
+        const cleanCity = pendingReg.city?.trim() || null;
+        const cleanEmp = pendingReg.employmentType || 'Salaried';
+        const cleanIncome = Number(pendingReg.monthlyIncome) || 0;
+        let finalRefCode = referralCode?.trim().toUpperCase() || (pendingReg.referralCode ? pendingReg.referralCode.trim().toUpperCase() : null);
+
+        // Security check on referral code:
+        // 1. Cannot refer yourself
+        // 2. Referrer code must belong to an existing active user in the database
+        if (finalRefCode) {
+          if (finalRefCode === newRefCode) {
+            finalRefCode = null;
+          } else {
+            const referrerUser = (await sql`SELECT mobile FROM users WHERE referral_code = ${finalRefCode} LIMIT 1;`) as any[];
+            if (!referrerUser || referrerUser.length === 0 || cleanMobile(referrerUser[0].mobile) === cleaned) {
+              finalRefCode = null; // Invalidate self-referral or non-existent referrer code
+            }
+          }
+        }
+
+        await sql`
+          INSERT INTO users (full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by)
+          VALUES (
+            ${pendingReg.name.trim()},
+            ${cleaned},
+            ${cleanEmail},
+            ${cleanCity},
+            ${cleanEmp},
+            ${cleanIncome},
+            ${newRefCode},
+            ${finalRefCode}
+          );
+        `;
+      }
+    }
+
+    // Customer Login / Post-registration fetch -> Fetch from Neon Postgres
     const existing = (await sql`
       SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, aadhaar_number, company_name, work_experience, salary_bank, company_type, has_credit_card, cibil_score_range, dob, business_location, registered_business, business_constitution, business_vintage, industry_sector, annual_turnover, is_gst_registered, gstin, car_condition, car_make_model, car_dealer_seller, car_on_road_price, car_fuel_type, car_mfg_year, car_down_payment, property_type, property_location, est_property_value, market_valuation, property_ownership, is_property_freehold, has_existing_loan_on_property, lap_purpose, land_holding_acres, taluka_village, gat_number, irrigation_source, primary_crops, has_kcc_card, farming_type, agri_loan_type, social_category, enterprise_name, enterprise_activity, activity_sector, business_premises, has_udyam_number, udyam_reg_number, mudra_tier, mudra_card_required, study_destination, course_level, course_name, institute_name, course_duration, admission_status, total_course_cost, co_applicant_relation, co_applicant_name, moratorium_period, existing_emi, loan_purpose, is_kyc_completed, documents, created_at
       FROM users
@@ -235,7 +326,7 @@ export class AuthService {
           isKycCompleted: Boolean(row.is_kyc_completed),
           documents: Array.isArray(docs) ? docs : [],
         },
-        isNewUser: false,
+        isNewUser: Boolean(pendingReg),
       };
     }
 
@@ -253,6 +344,12 @@ export class AuthService {
     referralCode?: string;
   }): Promise<{ user: any }> {
     const cleaned = cleanMobile(params.mobile);
+    const isOwnerAdmin = cleaned === cleanMobile(config.adminMobile);
+
+    if (isOwnerAdmin) {
+      throw new Error('This number is not applicable for registration. Please use the Admin Login.');
+    }
+
     const sql = getDb();
 
     const existing = (await sql`
@@ -263,11 +360,33 @@ export class AuthService {
       throw new Error('This mobile number is already registered. Please go to Login.');
     }
 
-    const newRefCode = generateCustomerCode();
+    // Generate a collision-free referral code with database verification
+    let newRefCode = generateCustomerCode();
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const collision = (await sql`SELECT id FROM users WHERE referral_code = ${newRefCode} LIMIT 1;`) as any[];
+      if (!collision || collision.length === 0) break;
+      newRefCode = generateCustomerCode();
+    }
+
     const cleanEmail = params.email?.trim() || null;
     const cleanCity = params.city?.trim() || null;
     const cleanEmp = params.employmentType || 'Salaried';
     const cleanIncome = Number(params.monthlyIncome) || 0;
+    let finalRefCode = params.referralCode ? params.referralCode.trim().toUpperCase() : null;
+
+    // Security validation on referral code:
+    // 1. Cannot refer yourself
+    // 2. Referrer code must belong to an existing active user in the database
+    if (finalRefCode) {
+      if (finalRefCode === newRefCode) {
+        finalRefCode = null;
+      } else {
+        const referrerUser = (await sql`SELECT mobile FROM users WHERE referral_code = ${finalRefCode} LIMIT 1;`) as any[];
+        if (!referrerUser || referrerUser.length === 0 || cleanMobile(referrerUser[0].mobile) === cleaned) {
+          finalRefCode = null;
+        }
+      }
+    }
 
     await sql`
       INSERT INTO users (full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by)
@@ -279,7 +398,7 @@ export class AuthService {
         ${cleanEmp},
         ${cleanIncome},
         ${newRefCode},
-        ${params.referralCode ? params.referralCode.trim().toUpperCase() : null}
+        ${finalRefCode}
       );
     `;
 

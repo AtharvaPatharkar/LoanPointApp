@@ -96,10 +96,24 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
       return;
     }
 
+    const cleanMob = mobileNumber.replace(/\D/g, '').slice(-10);
+
+    // Security check: Admin mobile number cannot be registered as a normal customer
+    if (cleanMob === '9545555999') {
+      setErrorMessage('This number is not applicable for registration. Please use the Admin Login.');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // Send verification OTP with mode="signup" to ensure number is not already registered
-      await authService.requestOtp(mobileNumber, referralCode, 'signup');
+      // Send verification OTP with mode="signup" and pass registration data to be created ONLY AFTER OTP verification
+      await authService.requestOtp(cleanMob, referralCode, 'signup', {
+        name: fullName.trim(),
+        email: emailAddress.trim() || undefined,
+        employmentType,
+        monthlyIncome: incomeValidation.value || 0,
+        referralCode: referralCode.trim() || undefined,
+      });
       setIsOtpStep(true);
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : 'Failed to send OTP');
@@ -113,21 +127,20 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
     setIsLoading(true);
 
     try {
-      // 1. First register user into the database
-      const reg = await authService.registerUser({
+      const cleanMob = mobileNumber.replace(/\D/g, '').slice(-10);
+      const regPayload = {
         name: fullName.trim(),
-        mobile: mobileNumber.replace(/\D/g, '').slice(-10),
         email: emailAddress.trim() || undefined,
         employmentType,
         monthlyIncome: incomeValidation.value || 0,
         referralCode: referralCode.trim() || undefined,
-      });
+      };
 
-      // 2. Then verify OTP now that user record is created
-      await authService.verifyOtp(otpCode, referralCode);
+      // Verify OTP and create database account atomically only upon valid OTP
+      const res = await authService.verifyOtp(otpCode, referralCode, regPayload);
 
       // Show immediate celebration / successful registration card
-      setRegistrationSuccessUser(reg.user);
+      setRegistrationSuccessUser(res.user);
     } catch (err: unknown) {
       setErrorMessage(err instanceof Error ? err.message : 'Registration failed');
     } finally {

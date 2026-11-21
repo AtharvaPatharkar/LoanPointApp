@@ -12,6 +12,14 @@ export interface AuthState {
   pendingMobile?: string;
   pendingOtpCode?: string;
   pendingReferralCode?: string;
+  pendingRegistrationData?: {
+    name: string;
+    email?: string;
+    city?: string;
+    employmentType?: 'Salaried' | 'Self Employed' | 'Business Owner' | 'Agriculturist' | 'Others';
+    monthlyIncome?: number;
+    referralCode?: string;
+  };
   otpExpiresAt?: number;
 }
 
@@ -102,19 +110,37 @@ class AuthService {
   public async requestOtp(
     mobile: string,
     referralCode?: string,
-    mode: 'login' | 'signup' = 'login'
+    mode: 'login' | 'signup' = 'login',
+    registrationData?: {
+      name: string;
+      email?: string;
+      city?: string;
+      employmentType?: 'Salaried' | 'Self Employed' | 'Business Owner' | 'Agriculturist' | 'Others';
+      monthlyIncome?: number;
+      referralCode?: string;
+    }
   ): Promise<{ success: boolean; message: string; demoOtp: string }> {
     if (!validateMobileNumber(mobile)) {
       throw new Error('Please enter a valid 10-digit Indian mobile number');
     }
 
     const cleanMobile = mobile.replace(/\D/g, '').slice(-10);
+
+    // Security check: Admin mobile number is reserved exclusively for admin login
+    if (mode === 'signup' && cleanMobile === '9545555999') {
+      throw new Error('This number is not applicable for registration. Please use the Admin Login.');
+    }
+
     let demoOtp = '123456';
 
     try {
       const res = await apiRequest('/auth/request-otp', {
         method: 'POST',
-        body: { mobile: cleanMobile, mode },
+        body: {
+          mobile: cleanMobile,
+          mode,
+          registrationData,
+        },
       });
       if (res.demoOtp) {
         demoOtp = res.demoOtp;
@@ -128,6 +154,7 @@ class AuthService {
     this.state.pendingMobile = cleanMobile;
     this.state.pendingOtpCode = demoOtp;
     this.state.pendingReferralCode = referralCode ? referralCode.trim().toUpperCase() : undefined;
+    this.state.pendingRegistrationData = registrationData;
     this.state.otpExpiresAt = expiresAt;
 
     await whatsAppService.sendOtpViaWhatsApp(cleanMobile, demoOtp);
@@ -139,7 +166,18 @@ class AuthService {
     };
   }
 
-  public async verifyOtp(code: string, referralCodeOverride?: string): Promise<{ success: boolean; isExistingUser: boolean; user: UserProfile }> {
+  public async verifyOtp(
+    code: string,
+    referralCodeOverride?: string,
+    registrationDataOverride?: {
+      name: string;
+      email?: string;
+      city?: string;
+      employmentType?: 'Salaried' | 'Self Employed' | 'Business Owner' | 'Agriculturist' | 'Others';
+      monthlyIncome?: number;
+      referralCode?: string;
+    }
+  ): Promise<{ success: boolean; isExistingUser: boolean; user: UserProfile }> {
     const enteredCode = (code || '').trim();
     if (!enteredCode) {
       throw new Error('Please enter the OTP code');
@@ -147,6 +185,7 @@ class AuthService {
 
     const cleanMobile = (this.state.pendingMobile || '').replace(/\D/g, '').slice(-10);
     const refCode = referralCodeOverride?.trim().toUpperCase() || this.state.pendingReferralCode;
+    const regData = registrationDataOverride || this.state.pendingRegistrationData;
 
     // All authentication is verified by the backend API
     const res = await apiRequest('/auth/verify-otp', {
@@ -155,6 +194,7 @@ class AuthService {
         mobile: cleanMobile,
         otp: enteredCode,
         referralCode: refCode,
+        registrationData: regData,
       },
     });
 
@@ -182,6 +222,7 @@ class AuthService {
     this.state.pendingMobile = undefined;
     this.state.pendingOtpCode = undefined;
     this.state.pendingReferralCode = undefined;
+    this.state.pendingRegistrationData = undefined;
 
     if (refCode) {
       referralService.registerNewReferral(verifiedUser.name, refCode);

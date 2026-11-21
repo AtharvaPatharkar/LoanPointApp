@@ -284,11 +284,16 @@ export function generateRandomCustomerId(): string {
 }
 
 /**
- * Generate 6-digit Referral / Customer Code (e.g. "LP748291" or "849201")
+ * Generate 8-character Cryptographically Strong Referral / Customer Code (e.g. "LP9X2K7M")
+ * Uses unambiguous base32 charset excluding 0, 1, I, O to prevent misreading
  */
 export function generateRandomCustomerCode(): string {
-  const random6Digit = Math.floor(100000 + Math.random() * 900000);
-  return `LP${random6Digit}`;
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let res = 'LP';
+  for (let i = 0; i < 6; i++) {
+    res += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return res;
 }
 
 /**

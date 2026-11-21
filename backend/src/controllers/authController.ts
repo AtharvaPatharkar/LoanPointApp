@@ -22,7 +22,12 @@ export async function handleRequestOtp(req: AuthenticatedRequest, res: ServerRes
   }
 
   try {
-    const result = await authService.requestOtp(mobile, mode === 'signup' ? 'signup' : 'login');
+    const { registrationData } = req.parsedBody || {};
+    const result = await authService.requestOtp(
+      mobile,
+      mode === 'signup' ? 'signup' : 'login',
+      mode === 'signup' ? registrationData : undefined
+    );
     return sendSuccess(res, result, 'OTP dispatched successfully');
   } catch (err: any) {
     return sendError(res, 400, err.message || 'Failed to dispatch OTP');
@@ -30,7 +35,7 @@ export async function handleRequestOtp(req: AuthenticatedRequest, res: ServerRes
 }
 
 export async function handleVerifyOtp(req: AuthenticatedRequest, res: ServerResponse) {
-  const { mobile, otp, referralCode } = req.parsedBody || {};
+  const { mobile, otp, referralCode, registrationData } = req.parsedBody || {};
   if (!mobile || !validateIndianMobile(mobile)) {
     return sendError(res, 400, 'Please provide a valid 10-digit Indian mobile number');
   }
@@ -53,7 +58,7 @@ export async function handleVerifyOtp(req: AuthenticatedRequest, res: ServerResp
   }
 
   try {
-    const result = await authService.verifyOtp(mobile, otp, referralCode);
+    const result = await authService.verifyOtp(mobile, otp, referralCode, registrationData);
     await rateLimiter.clearFailures(lockoutKey);
     return sendSuccess(res, result, 'OTP verified successfully');
   } catch (err: any) {
