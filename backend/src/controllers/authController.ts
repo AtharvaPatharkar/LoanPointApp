@@ -5,6 +5,23 @@ import { authService } from '../services/authService.js';
 import { validateIndianMobile, cleanMobile } from '../validators/index.js';
 import { rateLimiter, getClientIp } from '../middleware/rateLimiter.js';
 
+export async function handleValidateReferral(req: AuthenticatedRequest, res: ServerResponse) {
+  const { referralCode, mobile } = req.parsedBody || {};
+  if (!referralCode || !referralCode.trim()) {
+    return sendError(res, 400, 'Referral code is required');
+  }
+
+  try {
+    const result = await authService.validateReferralCode(referralCode, mobile);
+    if (!result.valid) {
+      return sendError(res, 400, result.message || 'Invalid referral code');
+    }
+    return sendSuccess(res, result, result.message || 'Referral code is valid');
+  } catch (err: any) {
+    return sendError(res, 500, err.message || 'Failed to validate referral code');
+  }
+}
+
 export async function handleRequestOtp(req: AuthenticatedRequest, res: ServerResponse) {
   const { mobile, mode } = req.parsedBody || {};
   if (!mobile || !validateIndianMobile(mobile)) {

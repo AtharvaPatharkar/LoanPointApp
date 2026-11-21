@@ -37,6 +37,39 @@ class AuthService {
     return this.state.user;
   }
 
+  /**
+   * Verify if a Referral Code exists and is valid in the Neon database
+   */
+  public async verifyReferralCode(
+    referralCode: string,
+    userMobile?: string
+  ): Promise<{ valid: boolean; referrerName?: string; message?: string }> {
+    const cleanCode = (referralCode || '').trim().toUpperCase();
+    if (!cleanCode) {
+      return { valid: false, message: 'Please enter a referral code' };
+    }
+
+    try {
+      const res = await apiRequest('/auth/validate-referral', {
+        method: 'POST',
+        body: {
+          referralCode: cleanCode,
+          mobile: userMobile,
+        },
+      });
+      return {
+        valid: Boolean(res && res.valid),
+        referrerName: res?.referrerName,
+        message: res?.message || 'Referral code verified successfully',
+      };
+    } catch (err: any) {
+      return {
+        valid: false,
+        message: err.message || 'Invalid referral code',
+      };
+    }
+  }
+
   public async registerUser(params: {
     name: string;
     mobile: string;

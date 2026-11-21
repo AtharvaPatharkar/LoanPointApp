@@ -103,6 +103,42 @@ export class AuthService {
     };
   }
 
+  /**
+   * Validate Referral Code existence & eligibility
+   */
+  public async validateReferralCode(
+    referralCode: string,
+    currentMobile?: string
+  ): Promise<{ valid: boolean; referrerName?: string; message?: string }> {
+    const code = (referralCode || '').trim().toUpperCase();
+    if (!code) {
+      return { valid: false, message: 'Please enter a referral code' };
+    }
+
+    const sql = getDb();
+    const rows = (await sql`
+      SELECT id, full_name, mobile, referral_code
+      FROM users
+      WHERE referral_code = ${code}
+      LIMIT 1;
+    `) as any[];
+
+    if (!rows || rows.length === 0) {
+      return { valid: false, message: 'Invalid referral code. No user found.' };
+    }
+
+    const referrer = rows[0];
+    if (currentMobile && cleanMobile(currentMobile) === cleanMobile(referrer.mobile)) {
+      return { valid: false, message: 'You cannot use your own referral code.' };
+    }
+
+    return {
+      valid: true,
+      referrerName: referrer.full_name,
+      message: `Verified: Referred by ${referrer.full_name}`,
+    };
+  }
+
   public async verifyOtp(
     mobile: string,
     otp: string,

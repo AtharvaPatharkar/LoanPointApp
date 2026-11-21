@@ -92,6 +92,7 @@ export function buildAppRouter(): Router {
   });
 
   // Auth Routes
+  router.register('POST', '/api/v1/auth/validate-referral', authController.handleValidateReferral);
   router.register('POST', '/api/v1/auth/request-otp', authController.handleRequestOtp);
   router.register('POST', '/api/v1/auth/verify-otp', authController.handleVerifyOtp);
   router.register('POST', '/api/v1/auth/register', authController.handleRegister);

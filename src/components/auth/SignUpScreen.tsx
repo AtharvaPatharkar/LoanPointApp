@@ -41,9 +41,50 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
   const [emailAddress, setEmailAddress] = useState<string>('');
   const [employmentType, setEmploymentType] = useState<'Salaried' | 'Self Employed' | 'Business Owner' | 'Agriculturist' | 'Others'>('Salaried');
   const [monthlyIncome, setMonthlyIncome] = useState<string>('');
-  const [referralCode, setReferralCode] = useState<string>(initialReferralCode);
+  const [referredByCode, setReferredByCode] = useState<string>(initialReferralCode);
+  const [isVerifyingReferral, setIsVerifyingReferral] = useState<boolean>(false);
+  const [referralStatus, setReferralStatus] = useState<'idle' | 'verified' | 'invalid'>('idle');
+  const [referrerName, setReferrerName] = useState<string>('');
+  const [referralFeedback, setReferralFeedback] = useState<string>('');
   const [agreeToTerms, setAgreeToTerms] = useState<boolean>(true);
   const [showEmploymentDropdown, setShowEmploymentDropdown] = useState<boolean>(false);
+
+  // Auto-verify initial referral code if supplied via link/prop
+  useEffect(() => {
+    if (initialReferralCode && initialReferralCode.trim().length >= 4) {
+      handleCheckReferralCode(initialReferralCode.trim());
+    }
+  }, [initialReferralCode]);
+
+  const handleCheckReferralCode = async (codeToCheck?: string) => {
+    const code = (codeToCheck || referredByCode).trim().toUpperCase();
+    if (!code) {
+      setReferralStatus('idle');
+      setReferralFeedback('');
+      return;
+    }
+
+    setIsVerifyingReferral(true);
+    setReferralFeedback('');
+    try {
+      const cleanMob = mobileNumber.replace(/\D/g, '').slice(-10);
+      const res = await authService.verifyReferralCode(code, cleanMob);
+      if (res.valid) {
+        setReferralStatus('verified');
+        setReferrerName(res.referrerName || '');
+        setReferralFeedback(res.message || `Referred by ${res.referrerName}`);
+      } else {
+        setReferralStatus('invalid');
+        setReferrerName('');
+        setReferralFeedback(res.message || 'Invalid referral code');
+      }
+    } catch {
+      setReferralStatus('invalid');
+      setReferralFeedback('Could not verify referral code');
+    } finally {
+      setIsVerifyingReferral(false);
+    }
+  };
 
   // OTP Verification state after form entry
   const [isOtpStep, setIsOtpStep] = useState<boolean>(false);
@@ -62,6 +103,10 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
   const incomeValidation = validateMonthlyIncome(monthlyIncome);
   const isIncomeValid = incomeValidation.isValid;
 
+  // Referral code check: if user entered a referral code, it must be verified before proceeding
+  const isReferralValidOrEmpty =
+    !referredByCode.trim() || referralStatus === 'verified';
+
   // Form validity checks
   const isNameValid = fullName.trim().length >= 2;
   const isMobileValid = mobileNumber.replace(/\D/g, '').length === 10;
@@ -70,7 +115,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
     isMobileValid &&
     isEmailValid &&
     isIncomeValid &&
-    agreeToTerms;
+    agreeToTerms &&
+    isReferralValidOrEmpty;
 
   const handleInitiateSignUp = async () => {
     setErrorMessage(null);
@@ -91,6 +137,10 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
       setErrorMessage(incomeValidation.error || 'Please enter a valid monthly net income');
       return;
     }
+    if (referredByCode.trim() && referralStatus !== 'verified') {
+      setErrorMessage('Please verify your Referred By code or clear it before continuing');
+      return;
+    }
     if (!agreeToTerms) {
       setErrorMessage('Please agree to terms and privacy policy');
       return;
@@ -106,13 +156,14 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
 
     setIsLoading(true);
     try {
+      const verifiedRefBy = referralStatus === 'verified' ? referredByCode.trim().toUpperCase() : undefined;
       // Send verification OTP with mode="signup" and pass registration data to be created ONLY AFTER OTP verification
-      await authService.requestOtp(cleanMob, referralCode, 'signup', {
+      await authService.requestOtp(cleanMob, verifiedRefBy, 'signup', {
         name: fullName.trim(),
         email: emailAddress.trim() || undefined,
         employmentType,
         monthlyIncome: incomeValidation.value || 0,
-        referralCode: referralCode.trim() || undefined,
+        referralCode: verifiedRefBy,
       });
       setIsOtpStep(true);
     } catch (err: unknown) {
@@ -128,16 +179,17 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
 
     try {
       const cleanMob = mobileNumber.replace(/\D/g, '').slice(-10);
+      const verifiedRefBy = referralStatus === 'verified' ? referredByCode.trim().toUpperCase() : undefined;
       const regPayload = {
         name: fullName.trim(),
         email: emailAddress.trim() || undefined,
         employmentType,
         monthlyIncome: incomeValidation.value || 0,
-        referralCode: referralCode.trim() || undefined,
+        referralCode: verifiedRefBy,
       };
 
       // Verify OTP and create database account atomically only upon valid OTP
-      const res = await authService.verifyOtp(otpCode, referralCode, regPayload);
+      const res = await authService.verifyOtp(otpCode, verifiedRefBy, regPayload);
 
       // Show immediate celebration / successful registration card
       setRegistrationSuccessUser(res.user);
@@ -498,28 +550,109 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
             )}
           </View>
 
-          {/* Referral Code */}
+          {/* Referred By Code Field with Real-Time Validation */}
           <View style={styles.inputGroup}>
             <View style={styles.labelRow}>
-              <Text style={styles.inputLabel}>Referral Code</Text>
-              <Text style={styles.optionalTag}>Optional (Get ₹500 reward)</Text>
+              <Text style={styles.inputLabel}>Referred By</Text>
+              <Text style={styles.optionalTag}>Optional (Friend's referral code)</Text>
             </View>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="gift-outline" size={18} color="#94a3b8" style={styles.inputIcon} />
+            <View
+              style={[
+                styles.inputWrapper,
+                referralStatus === 'verified' && styles.referralInputVerified,
+                referralStatus === 'invalid' && styles.referralInputInvalid,
+              ]}
+            >
+              <Ionicons
+                name="gift-outline"
+                size={18}
+                color={
+                  referralStatus === 'verified'
+                    ? '#16a34a'
+                    : referralStatus === 'invalid'
+                    ? '#dc2626'
+                    : '#94a3b8'
+                }
+                style={styles.inputIcon}
+              />
               <TextInput
-                style={[styles.textInput, { fontWeight: '700', letterSpacing: 1 }]}
-                placeholder="e.g. ARVIND5999"
+                style={[
+                  styles.textInput,
+                  { fontWeight: '700', letterSpacing: 1 },
+                  referralStatus === 'verified' && { color: '#15803d' },
+                  referralStatus === 'invalid' && { color: '#dc2626' },
+                ]}
+                placeholder="e.g. LP8X2K9M"
                 placeholderTextColor="#94a3b8"
                 autoCapitalize="characters"
-                value={referralCode}
-                onChangeText={(t) => setReferralCode(t.toUpperCase())}
+                value={referredByCode}
+                onChangeText={(t) => {
+                  const upper = t.toUpperCase().replace(/\s/g, '');
+                  setReferredByCode(upper);
+                  if (upper.length === 0) {
+                    setReferralStatus('idle');
+                    setReferralFeedback('');
+                    setReferrerName('');
+                  } else if (referralStatus !== 'idle') {
+                    setReferralStatus('idle');
+                    setReferralFeedback('');
+                  }
+                }}
               />
-              {referralCode.length >= 4 && (
-                <View style={styles.appliedPill}>
-                  <Text style={styles.appliedPillText}>APPLIED</Text>
-                </View>
+
+              {/* Verify Action Button / Status Badge */}
+              {referredByCode.trim().length >= 4 && (
+                <TouchableOpacity
+                  style={[
+                    styles.verifyReferralBtn,
+                    referralStatus === 'verified' && styles.verifyReferralBtnSuccess,
+                    referralStatus === 'invalid' && styles.verifyReferralBtnError,
+                  ]}
+                  onPress={() => handleCheckReferralCode()}
+                  disabled={isVerifyingReferral || referralStatus === 'verified'}
+                  activeOpacity={0.8}
+                >
+                  {isVerifyingReferral ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : referralStatus === 'verified' ? (
+                    <View style={styles.verifiedRowBadge}>
+                      <Ionicons name="checkmark-circle" size={14} color="#ffffff" />
+                      <Text style={styles.verifyReferralBtnText}>VERIFIED</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.verifyReferralBtnText}>Check Code</Text>
+                  )}
+                </TouchableOpacity>
               )}
             </View>
+
+            {/* Live Feedback Banner */}
+            {referralFeedback ? (
+              <View
+                style={[
+                  styles.referralFeedbackBanner,
+                  referralStatus === 'verified'
+                    ? styles.referralFeedbackSuccess
+                    : styles.referralFeedbackError,
+                ]}
+              >
+                <Ionicons
+                  name={referralStatus === 'verified' ? 'checkmark-circle' : 'alert-circle'}
+                  size={14}
+                  color={referralStatus === 'verified' ? '#16a34a' : '#dc2626'}
+                />
+                <Text
+                  style={[
+                    styles.referralFeedbackText,
+                    referralStatus === 'verified'
+                      ? styles.referralFeedbackTextSuccess
+                      : styles.referralFeedbackTextError,
+                  ]}
+                >
+                  {referralFeedback}
+                </Text>
+              </View>
+            ) : null}
           </View>
 
           {/* Terms & Conditions Checkbox */}
@@ -1340,6 +1473,68 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#1d4ed8',
+  },
+  referralInputVerified: {
+    borderColor: '#16a34a',
+    backgroundColor: '#f0fdf4',
+  },
+  referralInputInvalid: {
+    borderColor: '#dc2626',
+    backgroundColor: '#fef2f2',
+  },
+  verifyReferralBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verifyReferralBtnSuccess: {
+    backgroundColor: '#16a34a',
+  },
+  verifyReferralBtnError: {
+    backgroundColor: '#dc2626',
+  },
+  verifyReferralBtnText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  verifiedRowBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  referralFeedbackBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+  },
+  referralFeedbackSuccess: {
+    backgroundColor: '#ecfdf5',
+    borderColor: '#bbf7d0',
+    borderWidth: 1,
+  },
+  referralFeedbackError: {
+    backgroundColor: '#fef2f2',
+    borderColor: '#fecaca',
+    borderWidth: 1,
+  },
+  referralFeedbackText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  referralFeedbackTextSuccess: {
+    color: '#15803d',
+  },
+  referralFeedbackTextError: {
+    color: '#b91c1c',
   },
 });
 
