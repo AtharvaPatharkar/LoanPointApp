@@ -70,10 +70,14 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
   // Screen mode: 'form' | 'submitted_success' | 'view_my_referrals'
   const [screenMode, setScreenMode] = useState<'form' | 'submitted_success' | 'view_my_referrals'>('form');
 
+  // Selected Referral Lead for detailed sheet/modal
+  const [selectedReferralItem, setSelectedReferralItem] = useState<ReferralItem | null>(null);
+
   // Customer self-fill referral lead form state
   const [friendName, setFriendName] = useState<string>('');
   const [friendMobile, setFriendMobile] = useState<string>('');
   const [selectedLoan, setSelectedLoan] = useState<string>('Home Loan');
+  const [friendLoanAmount, setFriendLoanAmount] = useState<string>('');
   const [friendCity, setFriendCity] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
@@ -142,7 +146,7 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
         mobileNumber: `+91 ${d.friendMobile}`,
         city: d.city,
         loanProduct: (d.loanProduct as any) || 'Home Loan',
-        loanAmount: d.loanAmount ? `₹${d.loanAmount.toLocaleString('en-IN')}` : '₹25,00,000',
+        loanAmount: d.loanAmount && d.loanAmount > 0 ? `₹${d.loanAmount.toLocaleString('en-IN')}` : 'To be evaluated',
         status: displayStatus,
         earning: d.payoutAmount > 0 ? `₹${d.payoutAmount.toLocaleString('en-IN')}` : '—',
         earningRate: isDisbursed ? 'Credited' : undefined,
@@ -257,16 +261,33 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
     setIsSubmitting(true);
     try {
       const cleanFriendMobile = friendMobile.replace(/\D/g, '').slice(-10);
-      const referrerPhone = user?.mobile || '9545555999';
+      const referrerPhone = (user?.mobile || '').replace(/\D/g, '').slice(-10);
+
+      // Check self-referral
+      if (referrerPhone && cleanFriendMobile === referrerPhone) {
+        Alert.alert('Invalid Referral', 'You cannot refer your own mobile number.');
+        return;
+      }
+
+      // Quick local check against already loaded referrals
+      const alreadyReferredInList = dbReferrals.some(
+        (r) => (r.friendMobile || '').replace(/\D/g, '').slice(-10) === cleanFriendMobile
+      );
+      if (alreadyReferredInList) {
+        Alert.alert('User are present', 'This mobile number has already been referred.');
+        return;
+      }
+
+      const cleanAmt = parseFloat(friendLoanAmount.replace(/[^0-9]/g, '')) || 0;
 
       const savedLead = await dbSyncService.createReferralLead({
-        referrerMobile: referrerPhone,
+        referrerMobile: referrerPhone || '9545555999',
         referrerUserId: user?.id,
         friendName: friendName.trim(),
         friendMobile: cleanFriendMobile,
         loanProduct: selectedLoan,
         city: friendCity.trim(),
-        loanAmount: 2500000,
+        loanAmount: cleanAmt,
       });
 
       const now = new Date();
@@ -295,7 +316,7 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
         mobileNumber: `+91 ${savedLead.friendMobile}`,
         city: savedLead.city,
         loanProduct: (savedLead.loanProduct as any) || 'Home Loan',
-        loanAmount: '₹25,00,000',
+        loanAmount: cleanAmt > 0 ? `₹${cleanAmt.toLocaleString('en-IN')}` : 'To be evaluated',
         status: 'In Process',
         earning: '—',
         date: 'Today',
@@ -307,13 +328,21 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
 
       setFriendName('');
       setFriendMobile('');
+      setFriendLoanAmount('');
       setFriendCity('');
 
       // Open Referral Submitted Successfully view
       setScreenMode('submitted_success');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error submitting referral lead:', err);
-      Alert.alert('Error', 'Failed to submit referral lead. Please try again.');
+      const msg = err?.message || '';
+      if (msg.includes('User are present')) {
+        Alert.alert('User are present', 'This user is already registered or referred in Loan Point.');
+      } else if (msg.includes('own mobile')) {
+        Alert.alert('Invalid Referral', 'You cannot refer your own mobile number.');
+      } else {
+        Alert.alert('Error', msg || 'Failed to submit referral lead. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -389,57 +418,57 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
             </TouchableOpacity>
           </View>
 
-          {/* 5 Metrics Summary Cards Row: Total Referrals | Apps Login | Loans Approved | Loans Disbursed | Total Earnings */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.metricsCardsScroll}
-          >
-            {/* Card 1: Total Referrals */}
-            <View style={styles.metricCard}>
-              <View style={styles.metricIconWrapBlue}>
-                <Ionicons name="people-outline" size={22} color="#004aad" />
+          {/* 5 Metrics Summary Cards in Responsive Grid */}
+          <View style={styles.metricsGridContainer}>
+            <View style={styles.metricsGridRow}>
+              {/* Card 1: Total Referrals */}
+              <View style={styles.metricCardGridItem}>
+                <View style={styles.metricIconWrapBlue}>
+                  <Ionicons name="people-outline" size={18} color="#004aad" />
+                </View>
+                <Text style={styles.metricCardLabel} numberOfLines={2}>Total Referrals</Text>
+                <Text style={styles.metricCardValue}>{statsTotalReferrals}</Text>
               </View>
-              <Text style={styles.metricCardLabel}>Total Referrals</Text>
-              <Text style={styles.metricCardValue}>{statsTotalReferrals}</Text>
+
+              {/* Card 2: Applications Login */}
+              <View style={styles.metricCardGridItem}>
+                <View style={styles.metricIconWrapGreen}>
+                  <Ionicons name="document-text-outline" size={18} color="#16a34a" />
+                </View>
+                <Text style={styles.metricCardLabel} numberOfLines={2}>Apps Login</Text>
+                <Text style={styles.metricCardValue}>{statsApplicationsLogin}</Text>
+              </View>
+
+              {/* Card 3: Loans Approved */}
+              <View style={styles.metricCardGridItem}>
+                <View style={styles.metricIconWrapOrange}>
+                  <Ionicons name="thumbs-up-outline" size={18} color="#d97706" />
+                </View>
+                <Text style={styles.metricCardLabel} numberOfLines={2}>Loans Approved</Text>
+                <Text style={styles.metricCardValue}>{statsLoansApproved}</Text>
+              </View>
             </View>
 
-            {/* Card 2: Applications Login */}
-            <View style={styles.metricCard}>
-              <View style={styles.metricIconWrapGreen}>
-                <Ionicons name="document-text-outline" size={22} color="#16a34a" />
+            <View style={styles.metricsGridRow}>
+              {/* Card 4: Loans Disbursed */}
+              <View style={styles.metricCardGridItem}>
+                <View style={styles.metricIconWrapPurple}>
+                  <MaterialCommunityIcons name="sack" size={18} color="#7c3aed" />
+                </View>
+                <Text style={styles.metricCardLabel} numberOfLines={2}>Loans Disbursed</Text>
+                <Text style={styles.metricCardValue}>{statsLoansDisbursed}</Text>
               </View>
-              <Text style={styles.metricCardLabel}>Applications{'\n'}Login</Text>
-              <Text style={styles.metricCardValue}>{statsApplicationsLogin}</Text>
-            </View>
 
-            {/* Card 3: Loans Approved */}
-            <View style={styles.metricCard}>
-              <View style={styles.metricIconWrapOrange}>
-                <Ionicons name="thumbs-up-outline" size={22} color="#d97706" />
+              {/* Card 5: Total Earnings (Highlighted Gold Card) */}
+              <View style={[styles.metricCardGridItem, styles.metricCardGoldGridItem]}>
+                <View style={styles.metricIconWrapRed}>
+                  <Ionicons name="gift" size={18} color="#dc2626" />
+                </View>
+                <Text style={styles.metricCardLabelGold} numberOfLines={2}>Total Earnings</Text>
+                <Text style={styles.metricCardValueGold}>{statsTotalEarnings}</Text>
               </View>
-              <Text style={styles.metricCardLabel}>Loans{'\n'}Approved</Text>
-              <Text style={styles.metricCardValue}>{statsLoansApproved}</Text>
             </View>
-
-            {/* Card 4: Loans Disbursed */}
-            <View style={styles.metricCard}>
-              <View style={styles.metricIconWrapPurple}>
-                <MaterialCommunityIcons name="sack" size={22} color="#7c3aed" />
-              </View>
-              <Text style={styles.metricCardLabel}>Loans{'\n'}Disbursed</Text>
-              <Text style={styles.metricCardValue}>{statsLoansDisbursed}</Text>
-            </View>
-
-            {/* Card 5: Total Earnings (Highlighted Gold Card) */}
-            <View style={styles.metricCardGold}>
-              <View style={styles.metricIconWrapRed}>
-                <Ionicons name="gift" size={22} color="#dc2626" />
-              </View>
-              <Text style={styles.metricCardLabelGold}>Total Earnings</Text>
-              <Text style={styles.metricCardValueGold}>{statsTotalEarnings}</Text>
-            </View>
-          </ScrollView>
+          </View>
 
           {/* Golden Ribbon Banner: Earn up to 1.5% of Disbursal Amount* + Recurring Income */}
           <View style={styles.bannerPotentialCard}>
@@ -599,7 +628,12 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
           {filteredReferrals.map((item, index) => {
             const avatar = getAvatarBg(index);
             return (
-              <View key={item.id} style={styles.referralTableRow}>
+              <TouchableOpacity
+                key={item.id}
+                style={styles.referralTableRow}
+                onPress={() => setSelectedReferralItem(item)}
+                activeOpacity={0.82}
+              >
                 {/* Col 1: Referral Details (Avatar, Name, Phone, City) */}
                 <View style={styles.tableColDetails}>
                   <View style={[styles.userAvatarCircle, { backgroundColor: avatar.bg }]}>
@@ -688,7 +722,7 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
 
                 {/* Right Arrow Chevron */}
                 <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
-              </View>
+              </TouchableOpacity>
             );
           })}
 
@@ -837,6 +871,112 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
                   • <Text style={{ fontWeight: '700' }}>Payout Cycle:</Text> Commissions are settled on the 10th and 25th of every month directly to your verified bank account.
                 </Text>
               </ScrollView>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+
+        {/* Selected Referral Record Detail Modal */}
+        <Modal
+          visible={!!selectedReferralItem}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setSelectedReferralItem(null)}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setSelectedReferralItem(null)}
+          >
+            <View style={styles.recordDetailCard} onStartShouldSetResponder={() => true}>
+              <View style={styles.modalHeaderRow}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={styles.recordDetailIconBadge}>
+                    <Ionicons name="person" size={20} color="#002e75" />
+                  </View>
+                  <Text style={styles.modalTitle}>Referral Details</Text>
+                </View>
+                <TouchableOpacity onPress={() => setSelectedReferralItem(null)}>
+                  <Ionicons name="close-circle" size={26} color="#64748b" />
+                </TouchableOpacity>
+              </View>
+
+              {selectedReferralItem && (
+                <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
+                  {/* Lead Header Highlight */}
+                  <View style={styles.recordLeadHighlightBox}>
+                    <Text style={styles.recordDetailName}>{selectedReferralItem.fullName}</Text>
+                    <View style={styles.recordStatusBadgeRow}>
+                      <View style={[
+                        styles.statusBadgeSmall,
+                        selectedReferralItem.status === 'Disbursed'
+                          ? styles.statusBadgeGreen
+                          : selectedReferralItem.status === 'Approved'
+                          ? styles.statusBadgeOrange
+                          : styles.statusBadgeBlue
+                      ]}>
+                        <Text style={styles.statusBadgeSmallText}>{selectedReferralItem.status}</Text>
+                      </View>
+                      <Text style={styles.recordDetailDate}>Date: {selectedReferralItem.date}</Text>
+                    </View>
+                  </View>
+
+                  {/* Information Rows */}
+                  <View style={styles.recordInfoRow}>
+                    <Text style={styles.recordInfoLabel}>Mobile Number</Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        const cleanPhone = selectedReferralItem.mobileNumber.replace(/\D/g, '');
+                        if (cleanPhone) Linking.openURL(`tel:${cleanPhone}`);
+                      }}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                    >
+                      <Ionicons name="call" size={14} color="#004aad" />
+                      <Text style={[styles.recordInfoValue, { color: '#004aad', fontWeight: '800' }]}>
+                        {selectedReferralItem.mobileNumber}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.recordInfoRow}>
+                    <Text style={styles.recordInfoLabel}>City / Location</Text>
+                    <Text style={styles.recordInfoValue}>{selectedReferralItem.city}</Text>
+                  </View>
+
+                  <View style={styles.recordInfoRow}>
+                    <Text style={styles.recordInfoLabel}>Loan Product</Text>
+                    <Text style={styles.recordInfoValue}>{selectedReferralItem.loanProduct}</Text>
+                  </View>
+
+                  <View style={styles.recordInfoRow}>
+                    <Text style={styles.recordInfoLabel}>Requested Amount</Text>
+                    <Text style={styles.recordInfoValue}>{selectedReferralItem.loanAmount}</Text>
+                  </View>
+
+                  <View style={styles.recordInfoRow}>
+                    <Text style={styles.recordInfoLabel}>Commission / Earning</Text>
+                    <Text style={[styles.recordInfoValue, { color: '#b45309', fontWeight: '900' }]}>
+                      {selectedReferralItem.earning !== '—' ? selectedReferralItem.earning : 'Up to 1.5% on disbursal'}
+                    </Text>
+                  </View>
+
+                  {/* RM Assistance Note */}
+                  <View style={styles.rmAssistBox}>
+                    <Ionicons name="shield-checkmark" size={18} color="#059669" />
+                    <Text style={styles.rmAssistText}>
+                      Loan Point CRM automatically tracks this lead until disbursal. Commission will be credited directly to your account.
+                    </Text>
+                  </View>
+
+                  {/* Close button */}
+                  <TouchableOpacity
+                    style={styles.closeRecordModalBtn}
+                    onPress={() => setSelectedReferralItem(null)}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.closeRecordModalBtnText}>Close Details</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              )}
             </View>
           </TouchableOpacity>
         </Modal>
@@ -1146,20 +1286,22 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
       >
         {/* Top Header Card Title with Megaphone Badge */}
         <View style={styles.headerTitleRow}>
-          <View style={styles.headerMegaphoneIconWrap}>
-            <MaterialCommunityIcons name="bullhorn" size={26} color="#ffd700" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitleText}>Refer & Earn</Text>
-            <Text style={styles.headerSubtitleText}>Earn in Lakhs & Recurring Income</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+            <View style={styles.headerMegaphoneIconWrap}>
+              <MaterialCommunityIcons name="bullhorn" size={20} color="#ffd700" />
+            </View>
+            <View style={styles.headerTitleTextWrap}>
+              <Text style={styles.headerTitleText} numberOfLines={1}>Refer & Earn</Text>
+              <Text style={styles.headerSubtitleText} numberOfLines={1}>Earn in Lakhs & Recurring</Text>
+            </View>
           </View>
           <TouchableOpacity
             style={styles.myReferralsQuickBtn}
             onPress={() => setScreenMode('view_my_referrals')}
             activeOpacity={0.8}
           >
-            <Ionicons name="people" size={16} color="#002e75" style={{ marginRight: 4 }} />
-            <Text style={styles.myReferralsQuickBtnText}>My Referrals ({statsTotalReferrals})</Text>
+            <Ionicons name="people" size={14} color="#002e75" style={{ marginRight: 4 }} />
+            <Text style={styles.myReferralsQuickBtnText} numberOfLines={1}>My Referrals ({statsTotalReferrals})</Text>
           </TouchableOpacity>
         </View>
 
@@ -1361,7 +1503,30 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
             </ScrollView>
           </View>
 
-          {/* Field 4: City / Location */}
+          {/* Field 4: Approximate Loan Amount (Optional) */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Expected Loan Amount (₹)</Text>
+            <View style={styles.inputBoxWrap}>
+              <MaterialCommunityIcons name="currency-inr" size={18} color="#64748b" style={styles.fieldIcon} />
+              <TextInput
+                style={styles.textInput}
+                placeholder="e.g. 5,00,000 (Optional)"
+                placeholderTextColor="#94a3b8"
+                keyboardType="numeric"
+                value={friendLoanAmount}
+                onChangeText={(t) => {
+                  const num = t.replace(/[^0-9]/g, '');
+                  if (!num) {
+                    setFriendLoanAmount('');
+                  } else {
+                    setFriendLoanAmount(parseInt(num, 10).toLocaleString('en-IN'));
+                  }
+                }}
+              />
+            </View>
+          </View>
+
+          {/* Field 5: City / Location */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>
               City / Location <Text style={{ color: '#dc2626' }}>*</Text>
@@ -1448,7 +1613,9 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
             </View>
             <View>
               <Text style={styles.openAllRefTitle}>View My Referrals Tracker</Text>
-              <Text style={styles.openAllRefSub}>26 Total Referrals • ₹1,24,500 Earned</Text>
+              <Text style={styles.openAllRefSub}>
+                {statsTotalReferrals} Total Referral{statsTotalReferrals === 1 ? '' : 's'} • {statsTotalEarnings} Earned
+              </Text>
             </View>
           </View>
           <Ionicons name="chevron-forward" size={22} color="#002e75" />
@@ -1515,10 +1682,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
+    borderRadius: 14,
+    overflow: 'hidden',
   },
   referBannerImage: {
-    width: SCREEN_WIDTH,
-    height: Math.round(SCREEN_WIDTH * (341 / 1024)),
+    width: '100%',
+    aspectRatio: 1024 / 341,
+    maxHeight: 140,
   },
 
   screenWrapper: {
@@ -1563,7 +1733,39 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
 
-  // ---------------- 5 METRICS CARDS ROW ----------------
+  // ---------------- 5 METRICS CARDS GRID ----------------
+  metricsGridContainer: {
+    marginBottom: 12,
+    gap: 8,
+  },
+  metricsGridRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  metricCardGridItem: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#cbd5e1',
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  metricCardGoldGridItem: {
+    flex: 1.4,
+    backgroundColor: '#fef3c7',
+    borderWidth: 2,
+    borderColor: '#f59e0b',
+    shadowColor: '#b45309',
+    shadowOpacity: 0.15,
+  },
   metricsCardsScroll: {
     flexDirection: 'row',
     gap: 8,
@@ -1587,48 +1789,48 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   metricIconWrapBlue: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: '#dbeafe',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 5,
+    marginBottom: 4,
   },
   metricIconWrapGreen: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: '#dcfce7',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 5,
+    marginBottom: 4,
   },
   metricIconWrapOrange: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: '#fef3c7',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 5,
+    marginBottom: 4,
   },
   metricIconWrapPurple: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: '#f3e8ff',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 5,
+    marginBottom: 4,
   },
   metricCardLabel: {
-    fontSize: 8.5,
+    fontSize: 9.5,
     fontWeight: '700',
     color: '#0f172a',
     textAlign: 'center',
-    lineHeight: 11,
-    minHeight: 22,
+    lineHeight: 12,
+    minHeight: 24,
   },
   metricCardValue: {
     fontSize: 18,
@@ -1653,20 +1855,20 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   metricIconWrapRed: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: '#fee2e2',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 5,
+    marginBottom: 4,
   },
   metricCardLabelGold: {
-    fontSize: 9.5,
+    fontSize: 10,
     fontWeight: '800',
     color: '#78350f',
     textAlign: 'center',
-    minHeight: 18,
+    minHeight: 24,
   },
   metricCardValueGold: {
     fontSize: 18,
@@ -2025,16 +2227,19 @@ const styles = StyleSheet.create({
   // ---------------- BOTTOM ACTIONS ROW ----------------
   bottomActionsRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
     marginTop: 6,
     marginBottom: 16,
+    width: '100%',
+    flexWrap: 'nowrap',
   },
   actionPillBtn: {
     flex: 1,
+    minWidth: 0,
     backgroundColor: '#ffffff',
-    borderRadius: 18,
+    borderRadius: 14,
     paddingVertical: 9,
-    paddingHorizontal: 6,
+    paddingHorizontal: 4,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -2047,7 +2252,7 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   actionPillBtnText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '800',
     color: '#002e75',
   },
@@ -2078,35 +2283,154 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 
+  // Record Detail Modal Styles
+  recordDetailCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 16,
+    width: '94%',
+    maxWidth: 400,
+    maxHeight: '85%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+    alignSelf: 'center',
+  },
+  recordDetailIconBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#dbeafe',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recordLeadHighlightBox: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  recordDetailName: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#002e75',
+    marginBottom: 4,
+  },
+  recordStatusBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  statusBadgeSmall: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  statusBadgeSmallText: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  recordDetailDate: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '600',
+  },
+  recordInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  recordInfoLabel: {
+    fontSize: 11.5,
+    color: '#64748b',
+    fontWeight: '600',
+  },
+  recordInfoValue: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#0f172a',
+    textAlign: 'right',
+    maxWidth: '55%',
+  },
+  rmAssistBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#ecfdf5',
+    borderRadius: 10,
+    padding: 9,
+    marginTop: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+  },
+  rmAssistText: {
+    flex: 1,
+    fontSize: 10.5,
+    color: '#065f46',
+    lineHeight: 14,
+    fontWeight: '500',
+  },
+  closeRecordModalBtn: {
+    backgroundColor: '#002e75',
+    borderRadius: 12,
+    paddingVertical: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+    marginBottom: 4,
+    width: '100%',
+  },
+  closeRecordModalBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+
   // ---------------- HEADER STYLES IN FORM ----------------
   headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginBottom: 14,
+    justifyContent: 'space-between',
+    marginBottom: 12,
     marginTop: 2,
+    width: '100%',
+    gap: 8,
   },
   headerMegaphoneIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     backgroundColor: '#002e75',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#002e75',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  headerTitleTextWrap: {
+    flex: 1,
+    minWidth: 0,
   },
   headerTitleText: {
-    fontSize: 26,
+    fontSize: 20,
     fontWeight: '900',
     color: '#002e75',
     letterSpacing: -0.3,
   },
   headerSubtitleText: {
-    fontSize: 12,
+    fontSize: 10.5,
     fontWeight: '600',
     color: '#0284c7',
     marginTop: 1,
@@ -2115,15 +2439,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fef3c7',
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 14,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 12,
     borderWidth: 1.5,
     borderColor: '#f59e0b',
+    flexShrink: 0,
+    alignSelf: 'center',
   },
   myReferralsQuickBtnText: {
-    fontSize: 11.5,
-    fontWeight: '900',
+    fontSize: 10.5,
+    fontWeight: '800',
     color: '#78350f',
   },
 

@@ -89,7 +89,9 @@ export async function handleCreateReferral(req: AuthenticatedRequest, res: Serve
     });
     return sendSuccess(res, { referral: lead }, 'Referral lead submitted successfully', 201);
   } catch (err: any) {
-    return sendError(res, 500, err.message || 'Failed to submit referral');
+    const errorMsg = err?.message || 'Failed to submit referral';
+    const statusCode = errorMsg === 'User are present' || errorMsg.includes('own mobile') ? 400 : 500;
+    return sendError(res, statusCode, errorMsg);
   }
 }
 

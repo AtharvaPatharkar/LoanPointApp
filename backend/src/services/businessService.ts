@@ -130,6 +130,28 @@ export class BusinessService {
     const sql = getDb();
     const cleanRefMobile = cleanMobile(lead.referrerMobile);
     const cleanFriendMobile = cleanMobile(lead.friendMobile);
+
+    // 1. Cannot refer oneself
+    if (cleanRefMobile === cleanFriendMobile) {
+      throw new Error('You cannot refer your own mobile number');
+    }
+
+    // 2. Check if user with this mobile already exists in the database
+    const existingUser = (await sql`
+      SELECT id, full_name, mobile FROM users WHERE mobile = ${cleanFriendMobile} LIMIT 1;
+    `) as any[];
+    if (existingUser && existingUser.length > 0) {
+      throw new Error('User are present');
+    }
+
+    // 3. Check if an active referral lead already exists for this mobile number
+    const existingLead = (await sql`
+      SELECT id, friend_name, friend_mobile FROM referral_leads WHERE friend_mobile = ${cleanFriendMobile} LIMIT 1;
+    `) as any[];
+    if (existingLead && existingLead.length > 0) {
+      throw new Error('User are present');
+    }
+
     const leadId = `REF-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
     const nowIso = new Date().toISOString();
     const initialStatus = 'Referral Submitted';

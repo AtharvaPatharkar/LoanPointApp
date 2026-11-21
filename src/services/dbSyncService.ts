@@ -330,8 +330,12 @@ export class DbSyncService {
         body: lead,
       });
       return res.referral;
-    } catch (err) {
+    } catch (err: any) {
       console.warn('API createReferralLead error:', err);
+      // If server returned a business validation error (e.g. "User are present"), propagate it
+      if (err?.message && (err.message.includes('User are present') || err.message.includes('own mobile'))) {
+        throw err;
+      }
       const leadId = `REF-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
       return {
         id: leadId,
