@@ -220,13 +220,20 @@ export class AuthService {
         // Security check on referral code:
         // 1. Cannot refer yourself
         // 2. Referrer code must belong to an existing active user in the database
+        let referrerRecord: { id: string; mobile: string; full_name?: string } | null = null;
         if (finalRefCode) {
           if (finalRefCode === newRefCode) {
             finalRefCode = null;
           } else {
-            const referrerUser = (await sql`SELECT mobile FROM users WHERE referral_code = ${finalRefCode} LIMIT 1;`) as any[];
+            const referrerUser = (await sql`SELECT id, mobile, full_name FROM users WHERE referral_code = ${finalRefCode} LIMIT 1;`) as any[];
             if (!referrerUser || referrerUser.length === 0 || cleanMobile(referrerUser[0].mobile) === cleaned) {
               finalRefCode = null; // Invalidate self-referral or non-existent referrer code
+            } else {
+              referrerRecord = {
+                id: referrerUser[0].id,
+                mobile: cleanMobile(referrerUser[0].mobile),
+                full_name: referrerUser[0].full_name,
+              };
             }
           }
         }
@@ -244,6 +251,63 @@ export class AuthService {
             ${finalRefCode}
           );
         `;
+
+        // When a user successfully registers using another user's referral code,
+        // automatically sync and create/update a record in `referral_leads`
+        // so the referrer immediately sees this user in their "My Referrals" list.
+        if (finalRefCode && referrerRecord) {
+          try {
+            const existingLead = (await sql`
+              SELECT id, status FROM referral_leads 
+              WHERE referrer_mobile = ${referrerRecord.mobile} AND friend_mobile = ${cleaned}
+              LIMIT 1;
+            `) as any[];
+
+            const nowIso = new Date().toISOString();
+
+            if (existingLead && existingLead.length > 0) {
+              // Update existing lead status to Application / Registered
+              await sql`
+                UPDATE referral_leads
+                SET friend_name = ${pendingReg.name.trim()},
+                    status = 'Login / Application',
+                    remarks = 'User registered and completed phone verification using your referral code.',
+                    next_action = 'Loan Point team processing application',
+                    status_updated_at = ${nowIso},
+                    updated_at = NOW()
+                WHERE id = ${existingLead[0].id};
+              `;
+            } else {
+              // Create brand new referral lead record under referrer
+              const leadId = `REF-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
+              await sql`
+                INSERT INTO referral_leads (
+                  id, referrer_user_id, referrer_mobile, friend_name, friend_mobile, loan_product, city, loan_amount, status, payout_amount, payout_status, remarks, next_action, status_updated_at, created_at, updated_at
+                ) VALUES (
+                  ${leadId},
+                  ${referrerRecord.id ? sql`${referrerRecord.id}::uuid` : null},
+                  ${referrerRecord.mobile},
+                  ${pendingReg.name.trim()},
+                  ${cleaned},
+                  'Personal Loan',
+                  ${cleanCity || '—'},
+                  0,
+                  'Referral Submitted',
+                  0,
+                  'Pending',
+                  'Registered via your referral invite code.',
+                  'Loan Point team connecting with lead',
+                  ${nowIso},
+                  NOW(),
+                  NOW()
+                )
+                ON CONFLICT (id) DO NOTHING;
+              `;
+            }
+          } catch (syncErr: any) {
+            console.warn('[AuthService] Could not auto-sync referral_leads on signup:', syncErr?.message || syncErr);
+          }
+        }
       }
     }
 
@@ -413,13 +477,20 @@ export class AuthService {
     // Security validation on referral code:
     // 1. Cannot refer yourself
     // 2. Referrer code must belong to an existing active user in the database
+    let referrerRecord: { id: string; mobile: string; full_name?: string } | null = null;
     if (finalRefCode) {
       if (finalRefCode === newRefCode) {
         finalRefCode = null;
       } else {
-        const referrerUser = (await sql`SELECT mobile FROM users WHERE referral_code = ${finalRefCode} LIMIT 1;`) as any[];
+        const referrerUser = (await sql`SELECT id, mobile, full_name FROM users WHERE referral_code = ${finalRefCode} LIMIT 1;`) as any[];
         if (!referrerUser || referrerUser.length === 0 || cleanMobile(referrerUser[0].mobile) === cleaned) {
           finalRefCode = null;
+        } else {
+          referrerRecord = {
+            id: referrerUser[0].id,
+            mobile: cleanMobile(referrerUser[0].mobile),
+            full_name: referrerUser[0].full_name,
+          };
         }
       }
     }
@@ -437,6 +508,59 @@ export class AuthService {
         ${finalRefCode}
       );
     `;
+
+    // Auto-sync referral_leads table if registered with a valid referrer
+    if (finalRefCode && referrerRecord) {
+      try {
+        const existingLead = (await sql`
+          SELECT id, status FROM referral_leads 
+          WHERE referrer_mobile = ${referrerRecord.mobile} AND friend_mobile = ${cleaned}
+          LIMIT 1;
+        `) as any[];
+
+        const nowIso = new Date().toISOString();
+
+        if (existingLead && existingLead.length > 0) {
+          await sql`
+            UPDATE referral_leads
+            SET friend_name = ${params.name.trim()},
+                status = 'Login / Application',
+                remarks = 'User registered and completed phone verification using your referral code.',
+                next_action = 'Loan Point team processing application',
+                status_updated_at = ${nowIso},
+                updated_at = NOW()
+            WHERE id = ${existingLead[0].id};
+          `;
+        } else {
+          const leadId = `REF-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
+          await sql`
+            INSERT INTO referral_leads (
+              id, referrer_user_id, referrer_mobile, friend_name, friend_mobile, loan_product, city, loan_amount, status, payout_amount, payout_status, remarks, next_action, status_updated_at, created_at, updated_at
+            ) VALUES (
+              ${leadId},
+              ${referrerRecord.id ? sql`${referrerRecord.id}::uuid` : null},
+              ${referrerRecord.mobile},
+              ${params.name.trim()},
+              ${cleaned},
+              'Personal Loan',
+              ${cleanCity || '—'},
+              0,
+              'Referral Submitted',
+              0,
+              'Pending',
+              'Registered via your referral invite code.',
+              'Loan Point team connecting with lead',
+              ${nowIso},
+              NOW(),
+              NOW()
+            )
+            ON CONFLICT (id) DO NOTHING;
+          `;
+        }
+      } catch (syncErr: any) {
+        console.warn('[AuthService] Could not auto-sync referral_leads on registerUser:', syncErr?.message || syncErr);
+      }
+    }
 
     const updated = (await sql`
       SELECT id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, referred_by, pan_number, aadhaar_last_four, aadhaar_number, company_name, work_experience, salary_bank, company_type, has_credit_card, cibil_score_range, is_kyc_completed, documents, created_at

@@ -334,13 +334,13 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
       // Open Referral Submitted Successfully view
       setScreenMode('submitted_success');
     } catch (err: any) {
-      console.error('Error submitting referral lead:', err);
       const msg = err?.message || '';
       if (msg.includes('User are present')) {
         Alert.alert('User are present', 'This user is already registered or referred in Loan Point.');
       } else if (msg.includes('own mobile')) {
         Alert.alert('Invalid Referral', 'You cannot refer your own mobile number.');
       } else {
+        console.error('Error submitting referral lead:', err);
         Alert.alert('Error', msg || 'Failed to submit referral lead. Please try again.');
       }
     } finally {
@@ -348,16 +348,17 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
     }
   };
 
-  // Helper for loan icon in list using attractive colourful LoanIcon
+  // Helper for loan icon in list using attractive colourful 3D asset image from exploreAllLoanProducts
   const renderProductIcon = (product: string) => {
     return (
       <LoanIcon
         type={product}
         name={product}
-        size={18}
+        size={24}
         containerSize={36}
-        borderRadius={18}
-        style={{ marginRight: 2 }}
+        borderRadius={10}
+        useAssetImage={true}
+        style={{ marginBottom: 3 }}
       />
     );
   };
@@ -944,7 +945,16 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
 
                   <View style={styles.recordInfoRow}>
                     <Text style={styles.recordInfoLabel}>Loan Product</Text>
-                    <Text style={styles.recordInfoValue}>{selectedReferralItem.loanProduct}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <LoanIcon
+                        type={selectedReferralItem.loanProduct}
+                        size={22}
+                        containerSize={30}
+                        borderRadius={8}
+                        useAssetImage={true}
+                      />
+                      <Text style={styles.recordInfoValue}>{selectedReferralItem.loanProduct}</Text>
+                    </View>
                   </View>
 
                   <View style={styles.recordInfoRow}>
@@ -1098,50 +1108,66 @@ export const OffersReferralScreen: React.FC<OffersReferralScreenProps> = ({
             </View>
 
             <View style={styles.detailsGridRow}>
-              <View style={styles.detailGridCol}>
-                <View style={styles.gridIconCircle}>
-                  <Ionicons name="person-outline" size={18} color="#004aad" />
+              {/* Row 1: Full Name & Mobile Number */}
+              <View style={styles.detailsGridSubRow}>
+                <View style={styles.detailGridCol}>
+                  <View style={styles.detailGridTopMeta}>
+                    <View style={styles.gridIconCircle}>
+                      <Ionicons name="person-outline" size={15} color="#004aad" />
+                    </View>
+                    <Text style={styles.detailGridLabel} numberOfLines={1}>Full Name</Text>
+                  </View>
+                  <Text style={styles.detailGridValue} numberOfLines={1} ellipsizeMode="tail">
+                    {currentSubmitted.fullName}
+                  </Text>
                 </View>
-                <Text style={styles.detailGridLabel}>Full Name</Text>
-                <Text style={styles.detailGridValue} numberOfLines={1}>
-                  {currentSubmitted.fullName}
-                </Text>
-              </View>
 
-              <View style={styles.detailGridDivider} />
+                <View style={styles.detailGridDivider} />
 
-              <View style={styles.detailGridCol}>
-                <View style={styles.gridIconCircle}>
-                  <Ionicons name="call" size={18} color="#004aad" />
-                </View>
-                <Text style={styles.detailGridLabel}>Mobile Number</Text>
-                <Text style={styles.detailGridValue}>
-                  {currentSubmitted.mobileNumber}
-                </Text>
-              </View>
-
-              <View style={styles.detailGridDivider} />
-
-              <View style={styles.detailGridCol}>
-                <View style={styles.gridIconCircleGold}>
-                  <Ionicons name="cash" size={18} color="#d97706" />
-                </View>
-                <Text style={styles.detailGridLabel}>Loan Required</Text>
-                <View style={styles.yellowLoanPill}>
-                  <Text style={styles.yellowLoanPillText}>
-                    {currentSubmitted.loanType}
+                <View style={styles.detailGridCol}>
+                  <View style={styles.detailGridTopMeta}>
+                    <View style={styles.gridIconCircle}>
+                      <Ionicons name="call" size={15} color="#004aad" />
+                    </View>
+                    <Text style={styles.detailGridLabel} numberOfLines={1}>Mobile Number</Text>
+                  </View>
+                  <Text style={styles.detailGridValue} numberOfLines={1} ellipsizeMode="tail">
+                    {currentSubmitted.mobileNumber}
                   </Text>
                 </View>
               </View>
 
-              <View style={styles.detailGridDivider} />
+              <View style={styles.detailsGridHorizontalDivider} />
 
-              <View style={styles.detailGridCol}>
-                <View style={styles.gridIconCircleBlue}>
-                  <Ionicons name="location" size={18} color="#004aad" />
+              {/* Row 2: Loan Required & City / Location */}
+              <View style={styles.detailsGridSubRow}>
+                <View style={styles.detailGridCol}>
+                  <View style={styles.detailGridTopMeta}>
+                    <View style={styles.gridIconCircleGold}>
+                      <Ionicons name="cash" size={15} color="#d97706" />
+                    </View>
+                    <Text style={styles.detailGridLabel} numberOfLines={1}>Loan Required</Text>
+                  </View>
+                  <View style={styles.yellowLoanPill}>
+                    <Text style={styles.yellowLoanPillText} numberOfLines={1} ellipsizeMode="tail">
+                      {currentSubmitted.loanType}
+                    </Text>
+                  </View>
                 </View>
-                <Text style={styles.detailGridLabel}>City / Location</Text>
-                <Text style={styles.detailGridValue}>{currentSubmitted.city || '—'}</Text>
+
+                <View style={styles.detailGridDivider} />
+
+                <View style={styles.detailGridCol}>
+                  <View style={styles.detailGridTopMeta}>
+                    <View style={styles.gridIconCircleBlue}>
+                      <Ionicons name="location" size={15} color="#004aad" />
+                    </View>
+                    <Text style={styles.detailGridLabel} numberOfLines={1}>City / Location</Text>
+                  </View>
+                  <Text style={styles.detailGridValue} numberOfLines={1} ellipsizeMode="tail">
+                    {currentSubmitted.city || '—'}
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
@@ -2606,23 +2632,26 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 2,
+    gap: 8,
   },
   refIdLeftCol: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    flex: 1.1,
+    flex: 1,
+    minWidth: 0,
   },
   refIdIconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#e0f2fe',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   refIdLabel: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '700',
     color: '#002e75',
     marginBottom: 2,
@@ -2634,6 +2663,8 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderWidth: 1,
     borderColor: '#f59e0b',
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
   },
   refIdPillText: {
     fontSize: 11,
@@ -2642,19 +2673,21 @@ const styles = StyleSheet.create({
   },
   refIdDivider: {
     width: 1,
-    height: 40,
+    height: 38,
     backgroundColor: '#cbd5e1',
-    marginHorizontal: 8,
   },
   refIdRightCol: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    minWidth: 0,
+    gap: 6,
   },
   refIdDateText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '800',
     color: '#0f172a',
+    flexShrink: 1,
   },
 
   // Section Outer Card & Tab Header Banner
@@ -2663,9 +2696,9 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1.5,
     borderColor: '#fde68a',
-    paddingTop: 18,
+    paddingTop: 20,
     paddingBottom: 14,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     marginBottom: 14,
     position: 'relative',
     shadowColor: '#000',
@@ -2699,72 +2732,86 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   detailsGridRow: {
+    flexDirection: 'column',
+    paddingTop: 4,
+  },
+  detailsGridSubRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 6,
+    paddingVertical: 4,
+  },
+  detailsGridHorizontalDivider: {
+    height: 1,
+    backgroundColor: '#f1f5f9',
+    marginVertical: 6,
   },
   detailGridCol: {
     flex: 1,
+    alignItems: 'flex-start',
+    paddingHorizontal: 6,
+    minWidth: 0,
+  },
+  detailGridTopMeta: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 2,
+    gap: 6,
+    marginBottom: 4,
   },
   gridIconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: '#e0f2fe',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
   },
   gridIconCircleGold: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: '#fef3c7',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
   },
   gridIconCircleBlue: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: '#dbeafe',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
   },
   detailGridLabel: {
-    fontSize: 9.5,
+    fontSize: 11,
     fontWeight: '700',
     color: '#64748b',
-    textAlign: 'center',
-    marginBottom: 3,
+    flexShrink: 1,
   },
   detailGridValue: {
-    fontSize: 11,
+    fontSize: 12.5,
     fontWeight: '800',
     color: '#0f172a',
-    textAlign: 'center',
+    textAlign: 'left',
+    width: '100%',
   },
   yellowLoanPill: {
     backgroundColor: '#fef08a',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#fbbf24',
+    maxWidth: '100%',
   },
   yellowLoanPillText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '900',
     color: '#78350f',
   },
   detailGridDivider: {
     width: 1,
-    height: 48,
+    height: 38,
     backgroundColor: '#f1f5f9',
   },
 
@@ -2776,7 +2823,7 @@ const styles = StyleSheet.create({
     borderColor: '#fde68a',
     paddingTop: 22,
     paddingBottom: 14,
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
     marginBottom: 14,
     position: 'relative',
     shadowColor: '#000',
@@ -2811,6 +2858,8 @@ const styles = StyleSheet.create({
   stepNodeItem: {
     flex: 1,
     alignItems: 'center',
+    paddingHorizontal: 2,
+    minWidth: 0,
   },
   stepNodeCircleActive: {
     width: 28,
@@ -2839,41 +2888,44 @@ const styles = StyleSheet.create({
   },
   stepPillActive: {
     backgroundColor: '#ecfdf5',
-    paddingHorizontal: 6,
+    paddingHorizontal: 4,
     paddingVertical: 3,
-    borderRadius: 8,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: '#a7f3d0',
     alignItems: 'center',
+    width: '95%',
   },
   stepPillActiveTitle: {
-    fontSize: 9.5,
+    fontSize: 9,
     fontWeight: '900',
     color: '#065f46',
     textAlign: 'center',
-    lineHeight: 12,
+    lineHeight: 11,
   },
   stepTimeSubtext: {
-    fontSize: 8.5,
+    fontSize: 8,
     color: '#059669',
     fontWeight: '700',
     marginTop: 3,
+    textAlign: 'center',
   },
   stepPillInactive: {
     backgroundColor: '#f8fafc',
-    paddingHorizontal: 5,
+    paddingHorizontal: 4,
     paddingVertical: 3,
-    borderRadius: 8,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     alignItems: 'center',
+    width: '95%',
   },
   stepPillInactiveTitle: {
-    fontSize: 9.5,
+    fontSize: 9,
     fontWeight: '700',
     color: '#0f172a',
     textAlign: 'center',
-    lineHeight: 12,
+    lineHeight: 11,
   },
 
   // Earning Potential Card
@@ -2893,70 +2945,34 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   moneyBagWrap: {
-    width: 74,
-    height: 74,
+    width: 60,
+    height: 60,
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8,
+    marginRight: 10,
+    flexShrink: 0,
   },
   moneyBagBody: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: '#f59e0b',
-    borderWidth: 2,
-    borderColor: '#d97706',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  moneyBagNeck: {
-    position: 'absolute',
-    top: -6,
-    width: 22,
-    height: 10,
-    backgroundColor: '#b45309',
-    borderRadius: 4,
-  },
-  moneyBagSymbol: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: '#78350f',
-  },
-  miniCoinStack: {
-    position: 'absolute',
-    right: -2,
-    bottom: 2,
-  },
-  miniCoin: {
-    width: 20,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#fde047',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#fef3c7',
     borderWidth: 1.5,
-    borderColor: '#ca8a04',
+    borderColor: '#f59e0b',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  miniCoinText: {
-    fontSize: 6,
-    fontWeight: '900',
-    color: '#713f12',
   },
   earningContentCol: {
     flex: 1,
+    minWidth: 0,
   },
   earningTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 4,
-    marginBottom: 2,
+    gap: 6,
+    marginBottom: 4,
   },
   earningPotentialBadge: {
     backgroundColor: '#002e75',
@@ -2973,6 +2989,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
     color: '#0f172a',
+    flexShrink: 1,
   },
   earningRateRow: {
     flexDirection: 'row',
@@ -2980,12 +2997,12 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   earningRatePrefix: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '900',
     color: '#002e75',
   },
   earningRateRed: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '900',
     color: '#dc2626',
   },
@@ -2996,26 +3013,31 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderWidth: 1,
     borderColor: '#fbbf24',
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
   },
   recurringYellowBannerText: {
     fontSize: 9.5,
     fontWeight: '800',
     color: '#92400e',
+    flexWrap: 'wrap',
   },
 
   // Action Buttons Row (Add Another Referral + View My Referrals)
   actionButtonsRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
     marginBottom: 12,
   },
   addAnotherBtn: {
     flex: 1,
+    minWidth: 0,
     backgroundColor: '#ffffff',
     borderWidth: 1.5,
     borderColor: '#002e75',
     borderRadius: 14,
     paddingVertical: 12,
+    paddingHorizontal: 6,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -3026,17 +3048,21 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   addAnotherBtnText: {
-    fontSize: 13,
+    fontSize: 11.5,
     fontWeight: '800',
     color: '#002e75',
+    textAlign: 'center',
+    flexShrink: 1,
   },
   viewMyReferralsBtn: {
     flex: 1,
+    minWidth: 0,
     backgroundColor: '#ffffff',
     borderWidth: 1.5,
     borderColor: '#002e75',
     borderRadius: 14,
     paddingVertical: 12,
+    paddingHorizontal: 6,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -3047,9 +3073,11 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   viewMyReferralsBtnText: {
-    fontSize: 13,
+    fontSize: 11.5,
     fontWeight: '800',
     color: '#002e75',
+    textAlign: 'center',
+    flexShrink: 1,
   },
 
   // Big Blue Button: Back to Home
