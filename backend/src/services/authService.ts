@@ -417,8 +417,8 @@ export class AuthService {
       };
     }
 
-    // Unregistered user attempting to login without registration
-    throw new Error('Mobile number not found in database. Please register for an account first.');
+    // Unregistered user attempting to login without an existing account
+    throw new Error('This mobile number is not registered with us. Please create a new account first.');
   }
 
   public async register(params: {

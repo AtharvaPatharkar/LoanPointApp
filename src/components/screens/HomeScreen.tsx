@@ -101,9 +101,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       contentContainerStyle={styles.scrollContainer}
       showsVerticalScrollIndicator={false}
     >
-      {/* 1. Welcome to Loan Point 👋 */}
+      {/* 1. Welcome to Loan Point  */}
       <View style={styles.welcomeRow}>
-        <Text style={styles.welcomeTitle}>Welcome to Loan Point 👋</Text>
+        <Text style={styles.welcomeTitle}>Welcome to Loan Point </Text>
       </View>
 
       {/* 2. Hero Banner: Need Extra Funds? */}
@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
   },
 
-  // 1. Welcome to Loan Point 👋
+  // 1. Welcome to Loan Point 
   welcomeRow: {
     marginBottom: 10,
     marginTop: 4,

@@ -25,6 +25,7 @@ interface TopUpLoanScreenProps {
   applications?: LoanApplication[];
   onSelectApplication?: (app: LoanApplication) => void;
   onBack: () => void;
+  onApplyNew?: () => void;
   onApplySuccess?: () => void;
   onTrackRequest?: (reqId: string) => void;
   onOpenCall?: (phone: string) => void;
@@ -47,23 +48,39 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
   applications = [],
   onSelectApplication,
   onBack,
+  onApplyNew,
   onApplySuccess,
   onTrackRequest,
   onOpenCall,
   onOpenWhatsApp,
 }) => {
-  // Available eligible applications (non-topup active loans)
+  // Available eligible applications: strictly active running loans (Approved or Disbursed with running EMI, non-topup)
   const availableLoans = useMemo(() => {
-    const list = applications.filter(a => !a.isTopUp);
+    const list = applications.filter(
+      (a) => !a.isTopUp && (a.status === 'Disbursed' || a.status === 'Approved')
+    );
     if (list.length > 0) return list;
-    if (applications.length > 0) return applications;
-    return application ? [application] : [];
+    if (
+      application &&
+      !application.isTopUp &&
+      (application.status === 'Disbursed' || application.status === 'Approved')
+    ) {
+      return [application];
+    }
+    return [];
   }, [applications, application]);
 
   // Current selected active loan
   const [selectedApp, setSelectedApp] = useState<LoanApplication | null>(() => {
     return application || (availableLoans.length > 0 ? availableLoans[0] : null);
   });
+
+  // When parent passes a new specific application prop, update selectedApp
+  React.useEffect(() => {
+    if (application) {
+      setSelectedApp(application);
+    }
+  }, [application]);
 
   const [showLoanPickerModal, setShowLoanPickerModal] = useState<boolean>(false);
 
@@ -78,7 +95,8 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
   const balanceTenure = tenureMonths >= 12 
     ? `${Math.round(tenureMonths / 12)} Years` 
     : `${tenureMonths} Months`;
-  const existingEmiVal = calculateEMI(existingLoanAmountVal, 9.5, tenureMonths);
+  const interestRate = activeApp?.interestRate ? parseFloat(String(activeApp.interestRate)) || 8.5 : 8.5;
+  const existingEmiVal = calculateEMI(existingLoanAmountVal, interestRate, tenureMonths);
   const currentEmi = existingLoanAmountVal > 0 ? formatINR(existingEmiVal) : '₹0';
 
   const rmName = activeApp?.assignedManager?.name || 'Loan Point Support';
@@ -94,6 +112,7 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
   const [showPurposeModal, setShowPurposeModal] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [copiedNotification, setCopiedNotification] = useState<boolean>(false);
+  const [showEmiRulesModal, setShowEmiRulesModal] = useState<boolean>(false);
 
   // Dynamic submitted request tracking details
   const [topUpRequestId, setTopUpRequestId] = useState<string>('');
@@ -106,7 +125,7 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
 
   const revisedLoanAmountVal = existingLoanAmountVal + parsedTopUpAmount;
   const revisedLoanAmount = formatINR(revisedLoanAmountVal);
-  const revisedEmiVal = calculateEMI(revisedLoanAmountVal, 9.5, tenureMonths);
+  const revisedEmiVal = calculateEMI(revisedLoanAmountVal, interestRate, tenureMonths);
   const revisedEmi = formatINR(revisedEmiVal);
 
   // Formatting amount
@@ -229,7 +248,8 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
               <LoanIcon
                 type={activeApp?.loanType || 'home'}
                 name={loanTypeName}
-                size={24}
+                useAssetImage={true}
+                size={30}
                 containerSize={48}
                 borderRadius={12}
               />
@@ -551,8 +571,9 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
                   <LoanIcon
                     type={activeApp?.loanType || 'home'}
                     name={loanTypeName}
-                    size={20}
-                    containerSize={38}
+                    useAssetImage={true}
+                    size={24}
+                    containerSize={40}
                     borderRadius={10}
                   />
                   <View style={styles.summaryTextCol}>
@@ -730,16 +751,30 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
           </View>
           <Text style={styles.emptyTitle}>No Active Loans Found</Text>
           <Text style={styles.emptyDescription}>
-            Top Up loans are offered as an additional sanction on an existing active loan. Once you have an active disbursed loan, you can request extra funds here instantly.
+            Top Up loans are offered as an additional sanction on an existing active loan. Apply for a new loan first to become eligible for instant pre-approved top up funds.
           </Text>
-          <TouchableOpacity
-            style={styles.emptyActionBtn}
-            onPress={onBack}
-            activeOpacity={0.88}
-          >
-            <Ionicons name="arrow-back" size={18} color="#ffffff" style={{ marginRight: 6 }} />
-            <Text style={styles.emptyActionBtnText}>Back to Home</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 10, width: '100%', justifyContent: 'center' }}>
+            <TouchableOpacity
+              style={[styles.emptyActionBtn, { backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: '#cbd5e1' }]}
+              onPress={onBack}
+              activeOpacity={0.88}
+            >
+              <Ionicons name="arrow-back" size={16} color="#0f172a" style={{ marginRight: 6 }} />
+              <Text style={[styles.emptyActionBtnText, { color: '#0f172a' }]}>Back</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.emptyActionBtn, { backgroundColor: '#004aad' }]}
+              onPress={() => {
+                if (onApplyNew) onApplyNew();
+                else onBack();
+              }}
+              activeOpacity={0.88}
+            >
+              <Ionicons name="sparkles" size={16} color="#ffffff" style={{ marginRight: 6 }} />
+              <Text style={styles.emptyActionBtnText}>Explore Loan Products</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     );
@@ -754,50 +789,66 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Navigation & Header Bar with Back Button */}
+        <View style={styles.formTopBar}>
+          <TouchableOpacity
+            style={styles.backButtonCircle}
+            onPress={onBack}
+            activeOpacity={0.75}
+          >
+            <Ionicons name="chevron-back" size={22} color="#0f172a" />
+          </TouchableOpacity>
+          <View style={styles.formTopBarCenter}>
+            <Text style={styles.formTopBarTitle}>Top Up Loan Request</Text>
+            <Text style={styles.formTopBarSubtitle}>Get instant extra funds on your active loan</Text>
+          </View>
+          <View style={{ width: 38 }} />
+        </View>
+
         {/* Top Header Card: Golden Pill Header matching reference image */}
         <View style={styles.topHeaderPill}>
           <View style={styles.topHeaderIconRow}>
             <View style={styles.topHeaderCoinsWrap}>
-              <MaterialCommunityIcons name="cash-plus" size={32} color="#d97706" />
+              <MaterialCommunityIcons name="cash-plus" size={28} color="#d97706" />
             </View>
-            <Text style={styles.topHeaderTitle}>Top Up Request</Text>
+            <Text style={styles.topHeaderTitle}>Instant Top Up Funds</Text>
           </View>
           <Text style={styles.topHeaderSubtitle}>
-            Request additional loan on your existing loan
+            Pre-approved additional loan with zero hassle & low rates
           </Text>
         </View>
 
         {/* 1. Existing Loan Details Card */}
         <View style={styles.sectionCard}>
-          <View style={styles.sectionHeaderTabRow}>
-            <View style={styles.sectionHeaderTab}>
-              <Text style={styles.sectionHeaderText}>Existing Loan Details</Text>
-            </View>
-            {availableLoans.length > 1 && (
-              <TouchableOpacity
-                style={styles.changeLoanPill}
-                onPress={() => setShowLoanPickerModal(true)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.changeLoanPillText}>Change Loan</Text>
-                <Ionicons name="chevron-forward" size={12} color="#004aad" />
-              </TouchableOpacity>
-            )}
+          <View style={styles.sectionHeaderTab}>
+            <Text style={styles.sectionHeaderText}>Existing Loan Details</Text>
           </View>
+          {availableLoans.length > 1 && (
+            <TouchableOpacity
+              style={styles.changeLoanTopRightBtn}
+              onPress={() => setShowLoanPickerModal(true)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="swap-horizontal" size={13} color="#004aad" />
+              <Text style={styles.changeLoanTopRightText} numberOfLines={1}>Change Loan</Text>
+              <Ionicons name="chevron-down" size={12} color="#004aad" />
+            </TouchableOpacity>
+          )}
 
           <View style={styles.existingLoanHeaderRow}>
             <LoanIcon
               type={activeApp.loanType || 'home'}
               name={loanTypeName}
-              size={24}
-              containerSize={48}
-              borderRadius={12}
+              useAssetImage={true}
+              size={32}
+              containerSize={52}
+              borderRadius={14}
             />
 
             <View style={styles.loanTitleCol}>
-              <Text style={styles.loanTitleText}>{loanTypeName}</Text>
+              <Text style={styles.loanTitleText} numberOfLines={1}>{loanTypeName}</Text>
               <View style={styles.appIdBadgePill}>
-                <Text style={styles.appIdBadgeText}>Application ID: {existingAppId}</Text>
+                <Text style={styles.appIdBadgeText} numberOfLines={1}>Application ID: {existingAppId}</Text>
               </View>
             </View>
 
@@ -805,7 +856,7 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
               <View style={{ alignSelf: 'center', marginBottom: 2 }}>
                 <BankLogo bank={bankName} width={30} height={30} />
               </View>
-              <Text style={styles.bankNameText}>{bankName}</Text>
+              <Text style={styles.bankNameText} numberOfLines={1}>{bankName}</Text>
             </View>
           </View>
 
@@ -815,29 +866,29 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
                 <View style={styles.moneyBagIconCircle}>
                   <Text style={styles.moneyBagSymbol}>₹</Text>
                 </View>
-                <Text style={styles.metricLabel}>Current Loan Amount</Text>
+                <Text style={styles.metricLabel} numberOfLines={1}>Current Loan</Text>
               </View>
-              <Text style={styles.metricBoldValue}>{currentLoanAmount}</Text>
+              <Text style={styles.metricBoldValue} numberOfLines={1}>{currentLoanAmount}</Text>
             </View>
 
             <View style={styles.verticalDivider} />
 
             <View style={styles.metricCol}>
               <View style={styles.metricLabelRow}>
-                <Ionicons name="calendar-outline" size={16} color="#d97706" />
-                <Text style={styles.metricLabel}>Balance Tenure</Text>
+                <Ionicons name="calendar-outline" size={14} color="#d97706" />
+                <Text style={styles.metricLabel} numberOfLines={1}>Bal. Tenure</Text>
               </View>
-              <Text style={styles.metricBoldValue}>{balanceTenure}</Text>
+              <Text style={styles.metricBoldValue} numberOfLines={1}>{balanceTenure}</Text>
             </View>
 
             <View style={styles.verticalDivider} />
 
             <View style={styles.metricCol}>
               <View style={styles.metricLabelRow}>
-                <Ionicons name="calendar-outline" size={16} color="#d97706" />
-                <Text style={styles.metricLabel}>Current EMI</Text>
+                <Ionicons name="card-outline" size={14} color="#d97706" />
+                <Text style={styles.metricLabel} numberOfLines={1}>Current EMI</Text>
               </View>
-              <Text style={styles.metricBoldValue}>{currentEmi}</Text>
+              <Text style={styles.metricBoldValue} numberOfLines={1}>{currentEmi}</Text>
             </View>
           </View>
         </View>
@@ -848,7 +899,7 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
             <Text style={styles.sectionHeaderText}>Top Up Request Details</Text>
           </View>
 
-          <View style={styles.formRow}>
+          <View style={styles.fieldGroup}>
             <Text style={styles.inputFieldLabel}>
               Top Up Required Amount<Text style={styles.requiredStar}>*</Text>
             </Text>
@@ -865,7 +916,7 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
             </View>
           </View>
 
-          <View style={styles.formRow}>
+          <View style={styles.fieldGroup}>
             <Text style={styles.inputFieldLabel}>
               Purpose of Top Up<Text style={styles.requiredStar}>*</Text>
             </Text>
@@ -885,16 +936,55 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
             <View style={styles.calcIconBox}>
               <Ionicons name="calculator" size={24} color="#004aad" />
             </View>
-            <Text style={styles.estimatedEmiLabel}>
-              Estimated EMI{'\n'}After Top Up
-            </Text>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Text style={styles.estimatedEmiLabelText}>
+                  Estimated EMI After Top Up
+                </Text>
+                <TouchableOpacity
+                  style={styles.ruleInfoTouch}
+                  onPress={() => setShowEmiRulesModal(true)}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="information-circle" size={17} color="#0284c7" />
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.estimatedEmiSubtext}>
+                Combined (Existing + Top Up)
+              </Text>
+            </View>
 
             <View style={styles.estimatedEmiDivider} />
 
             <View style={styles.estimatedEmiPill}>
-              <Text style={styles.estimatedEmiValue}>{revisedEmi} / Month</Text>
+              <Text style={styles.estimatedEmiValue} numberOfLines={1}>{revisedEmi} / Mo</Text>
             </View>
           </View>
+
+          {/* EMI Calculation Note & Rules Information Callout */}
+          <TouchableOpacity
+            style={styles.emiRulesNoteCard}
+            onPress={() => setShowEmiRulesModal(true)}
+            activeOpacity={0.85}
+          >
+            <View style={styles.rulesIconBadge}>
+              <Ionicons name="document-text" size={16} color="#0284c7" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={styles.rulesCardTitleRow}>
+                <Text style={styles.rulesCardTitle}>Interest Rate & EMI Disclaimer</Text>
+                <View style={styles.viewRulesPill}>
+                  <Text style={styles.viewRulesPillText}>View Rules</Text>
+                  <Ionicons name="chevron-forward" size={10} color="#0284c7" />
+                </View>
+              </View>
+              <Text style={styles.rulesCardSnippet} numberOfLines={2}>
+                • Interest rate is not fixed ({interestRate}% p.a. is indicative).
+                {'\n'}• Rate & EMI may vary based on bank policies, lender partner norms, and profile assessment.
+              </Text>
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* 3. Relationship Manager Bar */}
@@ -1028,11 +1118,15 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
             <FlatList
               data={availableLoans}
               keyExtractor={(item) => item.id}
+              showsVerticalScrollIndicator={false}
               renderItem={({ item }) => {
                 const isSelected = selectedApp?.id === item.id;
                 const itemLoanName = item.loanTypeName || `${item.loanType.charAt(0).toUpperCase() + item.loanType.slice(1)} Loan`;
                 const itemBank = item.bankName || 'Partner Bank';
                 const itemAmount = item.requestedAmount ? formatINR(item.requestedAmount) : '₹0';
+                const itemRate = item.interestRate ? parseFloat(String(item.interestRate)) || 8.5 : 8.5;
+                const itemTenure = item.tenureMonths || 240;
+                const itemEmi = item.emiAmount ? item.emiAmount : formatINR(calculateEMI(item.requestedAmount || 0, itemRate, itemTenure));
 
                 return (
                   <TouchableOpacity
@@ -1045,23 +1139,162 @@ export const TopUpLoanScreen: React.FC<TopUpLoanScreenProps> = ({
                       if (onSelectApplication) onSelectApplication(item);
                       setShowLoanPickerModal(false);
                     }}
+                    activeOpacity={0.8}
                   >
                     <View style={{ marginRight: 12 }}>
-                      <LoanIcon type={item.loanType} size={22} containerSize={40} borderRadius={10} />
+                      <LoanIcon
+                        type={item.loanType}
+                        useAssetImage={true}
+                        size={26}
+                        containerSize={44}
+                        borderRadius={12}
+                      />
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.loanPickerTitle}>{itemLoanName}</Text>
-                      <Text style={styles.loanPickerSubtitle}>
-                        {itemBank} • {itemAmount} • ID: {item.id}
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                        <Text style={styles.loanPickerTitle} numberOfLines={1}>{itemLoanName}</Text>
+                        <View style={styles.activeEmiTag}>
+                          <Text style={styles.activeEmiTagText}>Active EMI</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.loanPickerSubtitle} numberOfLines={1}>
+                        {itemBank} • Disbursed: {itemAmount}
                       </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3, gap: 6 }}>
+                        <Text style={styles.loanPickerEmiText} numberOfLines={1}>
+                          EMI: {itemEmi}/mo
+                        </Text>
+                        <Text style={styles.loanPickerIdText} numberOfLines={1}>
+                          • ID: {item.id}
+                        </Text>
+                      </View>
                     </View>
                     {isSelected && (
-                      <Ionicons name="checkmark-circle" size={22} color="#16a34a" />
+                      <Ionicons name="checkmark-circle" size={24} color="#16a34a" />
                     )}
                   </TouchableOpacity>
                 );
               }}
             />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* EMI Calculation Rules & Note Information Modal */}
+      <Modal
+        visible={showEmiRulesModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowEmiRulesModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowEmiRulesModal(false)}
+        >
+          <View style={[styles.modalContentCard, { maxHeight: '80%' }]}>
+            <View style={styles.modalHeaderRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={styles.rulesModalIconCircle}>
+                  <Ionicons name="calculator" size={20} color="#004aad" />
+                </View>
+                <Text style={styles.modalTitle}>Estimated EMI Rules & Note</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowEmiRulesModal(false)}>
+                <Ionicons name="close-circle" size={24} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 6 }}>
+              {/* Highlight Banner */}
+              <View style={styles.rulesBannerBox}>
+                <Ionicons name="information-circle" size={20} color="#0284c7" style={{ marginRight: 6 }} />
+                <Text style={styles.rulesBannerText}>
+                  Interest rate is not fixed. Final interest rate and monthly EMI may change according to bank guidelines and lender partner policies.
+                </Text>
+              </View>
+
+              {/* Rule Item 1 */}
+              <View style={styles.ruleInfoItem}>
+                <View style={styles.ruleNumberCircle}>
+                  <Text style={styles.ruleNumberText}>1</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.ruleItemTitle}>Indicative & Variable Interest Rates</Text>
+                  <Text style={styles.ruleItemDescription}>
+                    The calculation uses an indicative rate of {interestRate}% p.a. from your current loan. This is NOT a fixed rate — the actual interest offered by {bankName} or our lending partners may differ based on prevailing market rates and loan risk grading.
+                  </Text>
+                </View>
+              </View>
+
+              {/* Rule Item 2 */}
+              <View style={styles.ruleInfoItem}>
+                <View style={styles.ruleNumberCircle}>
+                  <Text style={styles.ruleNumberText}>2</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.ruleItemTitle}>Bank & Partner Norms</Text>
+                  <Text style={styles.ruleItemDescription}>
+                    Each bank and NBFC partner maintains independent underwriting criteria. The interest rate for top-up funding may be adjusted higher or lower depending on their internal rate matrix.
+                  </Text>
+                </View>
+              </View>
+
+              {/* Rule Item 3 */}
+              <View style={styles.ruleInfoItem}>
+                <View style={styles.ruleNumberCircle}>
+                  <Text style={styles.ruleNumberText}>3</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.ruleItemTitle}>Credit Profile & Repayment Track</Text>
+                  <Text style={styles.ruleItemDescription}>
+                    Your past on-time EMI repayments, current CIBIL/credit score, and debt-to-income ratio directly influence the final interest rate sanctioned by the bank.
+                  </Text>
+                </View>
+              </View>
+
+              {/* Rule Item 4 */}
+              <View style={styles.ruleInfoItem}>
+                <View style={styles.ruleNumberCircle}>
+                  <Text style={styles.ruleNumberText}>4</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.ruleItemTitle}>Zero Penalty on Primary Loan</Text>
+                  <Text style={styles.ruleItemDescription}>
+                    Top Up funds are extended as an add-on facility. Your primary loan agreement continues smoothly with no foreclosure or prepayment penalties.
+                  </Text>
+                </View>
+              </View>
+
+              {/* Rule Item 5 */}
+              <View style={styles.ruleInfoItem}>
+                <View style={styles.ruleNumberCircle}>
+                  <Text style={styles.ruleNumberText}>5</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.ruleItemTitle}>Processing Fees & Statutory Taxes</Text>
+                  <Text style={styles.ruleItemDescription}>
+                    A nominal processing fee (typically 0.5% - 1%) plus applicable GST may be levied by the lending bank and will be clearly outlined in your formal sanction letter.
+                  </Text>
+                </View>
+              </View>
+
+              {/* Legal / Note Disclaimer */}
+              <View style={styles.ruleDisclaimerBox}>
+                <Text style={styles.ruleDisclaimerTitle}>Important Rate Disclaimer:</Text>
+                <Text style={styles.ruleDisclaimerText}>
+                  The figures displayed above are for estimation and guidance only. Interest rates are not fixed and are subject to change. The final interest rate, monthly EMI amount, and repayment tenure will be officially determined and confirmed by {bankName} upon credit evaluation.
+                </Text>
+              </View>
+            </ScrollView>
+
+            <TouchableOpacity
+              style={styles.rulesCloseBtn}
+              onPress={() => setShowEmiRulesModal(false)}
+              activeOpacity={0.88}
+            >
+              <Text style={styles.rulesCloseBtnText}>I Understand</Text>
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -1749,6 +1982,47 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
 
+  // ---------------- FORM TOP BAR WITH BACK BUTTON ----------------
+  formTopBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    marginBottom: 12,
+  },
+  backButtonCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  formTopBarCenter: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  formTopBarTitle: {
+    fontSize: 17,
+    fontWeight: '900',
+    color: '#0f172a',
+    letterSpacing: -0.2,
+  },
+  formTopBarSubtitle: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '600',
+    marginTop: 1,
+  },
+
   // ---------------- TOP HEADER CARD (GOLD GRADIENT PILL) ----------------
   topHeaderPill: {
     backgroundColor: '#fffbeb',
@@ -1844,6 +2118,8 @@ const styles = StyleSheet.create({
   },
   loanTitleCol: {
     flex: 1,
+    marginRight: 8,
+    overflow: 'hidden',
   },
   loanTitleText: {
     fontSize: 17,
@@ -1930,6 +2206,9 @@ const styles = StyleSheet.create({
   },
 
   // ---------------- FORM ROW STYLING ----------------
+  fieldGroup: {
+    marginBottom: 14,
+  },
   formRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1940,51 +2219,49 @@ const styles = StyleSheet.create({
   inputFieldLabel: {
     fontSize: 12.5,
     fontWeight: '800',
-    color: '#002e75',
-    flex: 1.1,
+    color: '#0f172a',
+    marginBottom: 6,
   },
   requiredStar: {
     color: '#dc2626',
     fontWeight: '900',
   },
   amountInputWrap: {
-    flex: 1.4,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ffffff',
     borderWidth: 1.5,
-    borderColor: '#94a3b8',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    height: 40,
+    borderColor: '#cbd5e1',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 46,
   },
   currencySymbol: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '900',
     color: '#0f172a',
-    marginRight: 6,
+    marginRight: 8,
   },
   amountTextInput: {
     flex: 1,
-    fontSize: 14.5,
+    fontSize: 15,
     fontWeight: '800',
     color: '#0f172a',
     padding: 0,
   },
   dropdownInputWrap: {
-    flex: 1.4,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#ffffff',
     borderWidth: 1.5,
-    borderColor: '#94a3b8',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    height: 40,
+    borderColor: '#cbd5e1',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 46,
   },
   dropdownSelectedText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     color: '#0f172a',
     flex: 1,
@@ -2005,18 +2282,25 @@ const styles = StyleSheet.create({
   calcIconBox: {
     marginRight: 8,
   },
-  estimatedEmiLabel: {
+  estimatedEmiLabelText: {
     fontSize: 12,
     fontWeight: '800',
     color: '#002e75',
-    lineHeight: 15,
-    flex: 1,
+  },
+  estimatedEmiSubtext: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: '#0284c7',
+    marginTop: 1,
+  },
+  ruleInfoTouch: {
+    padding: 2,
   },
   estimatedEmiDivider: {
     width: 1,
-    height: 24,
+    height: 26,
     backgroundColor: '#94a3b8',
-    marginHorizontal: 10,
+    marginHorizontal: 8,
   },
   estimatedEmiPill: {
     backgroundColor: '#fef08a',
@@ -2024,12 +2308,160 @@ const styles = StyleSheet.create({
     borderColor: '#fde047',
     borderRadius: 20,
     paddingVertical: 6,
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
   },
   estimatedEmiValue: {
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: '900',
     color: '#002e75',
+  },
+
+  // EMI Calculation Rules & Note Callout Card
+  emiRulesNoteCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    padding: 10,
+    marginTop: 8,
+    gap: 8,
+  },
+  rulesIconBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#e0f2fe',
+    borderWidth: 1,
+    borderColor: '#bae6fd',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  rulesCardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 3,
+  },
+  rulesCardTitle: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: '#002e75',
+  },
+  viewRulesPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e0f2fe',
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+    gap: 2,
+  },
+  viewRulesPillText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#0284c7',
+  },
+  rulesCardSnippet: {
+    fontSize: 10.5,
+    lineHeight: 14.5,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+
+  // Rules Modal Styles
+  rulesModalIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#e0f2fe',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rulesBannerBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f9ff',
+    borderWidth: 1,
+    borderColor: '#bae6fd',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 12,
+  },
+  rulesBannerText: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#0369a1',
+    flex: 1,
+    lineHeight: 16,
+  },
+  ruleInfoItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+    gap: 10,
+  },
+  ruleNumberCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#004aad',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  ruleNumberText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  ruleItemTitle: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginBottom: 2,
+  },
+  ruleItemDescription: {
+    fontSize: 11.5,
+    lineHeight: 16,
+    color: '#475569',
+    fontWeight: '500',
+  },
+  ruleDisclaimerBox: {
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fef08a',
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 4,
+    marginBottom: 12,
+  },
+  ruleDisclaimerTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#b45309',
+    marginBottom: 2,
+  },
+  ruleDisclaimerText: {
+    fontSize: 10.5,
+    lineHeight: 15,
+    color: '#92400e',
+    fontWeight: '500',
+  },
+  rulesCloseBtn: {
+    backgroundColor: '#004aad',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  rulesCloseBtnText: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: '#ffffff',
   },
 
   // ---------------- RM BOTTOM BAR ----------------
@@ -2113,15 +2545,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#003399',
+    backgroundColor: '#0f172a',
     borderRadius: 28,
     borderWidth: 1.5,
     borderColor: '#eab308',
     paddingVertical: 14,
     gap: 8,
-    shadowColor: '#002e75',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.35,
+    shadowOpacity: 0.25,
     shadowRadius: 5,
     elevation: 4,
   },
@@ -2205,31 +2637,57 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     color: '#002e75',
-    marginBottom: 2,
+    flex: 1,
+  },
+  activeEmiTag: {
+    backgroundColor: '#dcfce7',
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#86efac',
+    marginLeft: 6,
+  },
+  activeEmiTagText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#15803d',
   },
   loanPickerSubtitle: {
     fontSize: 12,
     color: '#64748b',
     fontWeight: '500',
   },
-  sectionHeaderTabRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
+  loanPickerEmiText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#004aad',
   },
-  changeLoanPill: {
+  loanPickerIdText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#94a3b8',
+  },
+  changeLoanTopRightBtn: {
+    position: 'absolute',
+    top: -12,
+    right: 14,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#eff6ff',
-    borderWidth: 1,
-    borderColor: '#bfdbfe',
-    borderRadius: 12,
-    paddingVertical: 4,
+    borderWidth: 1.5,
+    borderColor: '#93c5fd',
+    borderRadius: 10,
+    paddingVertical: 3,
     paddingHorizontal: 8,
     gap: 4,
+    shadowColor: '#004aad',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  changeLoanPillText: {
+  changeLoanTopRightText: {
     fontSize: 11,
     fontWeight: '800',
     color: '#004aad',

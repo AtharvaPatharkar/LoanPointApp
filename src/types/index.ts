@@ -189,10 +189,14 @@ export interface NotificationItem {
   id: string;
   title: string;
   message: string;
-  type: 'application' | 'emi_due' | 'reminder' | 'offer' | 'support';
+  type: 'application' | 'emi_due' | 'reminder' | 'offer' | 'support' | 'admin_direct' | 'user_query';
   timestamp: string;
   read: boolean;
   actionScreen?: string;
+  sender?: 'admin' | 'user';
+  userId?: string;
+  userName?: string;
+  userMobile?: string;
 }
 
 export interface NotificationPreferences {

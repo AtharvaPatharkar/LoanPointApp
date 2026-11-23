@@ -23,7 +23,7 @@ interface ApplicationsScreenProps {
   applications: LoanApplication[];
   onSelectApplication: (app: LoanApplication) => void;
   onApplyNew: () => void;
-  onTopUpLoan?: () => void;
+  onTopUpLoan?: (app?: LoanApplication) => void;
   onUploadDocForApp?: (app: LoanApplication, docName: string) => void;
   onOpenCall?: (phone: string) => void;
   onOpenWhatsApp?: (phone: string, text?: string) => void;
@@ -554,7 +554,7 @@ export const ApplicationsScreen: React.FC<ApplicationsScreenProps> = ({
                       style={styles.topUpRequestBadge}
                       activeOpacity={0.8}
                       onPress={() => {
-                        if (onTopUpLoan) onTopUpLoan();
+                        if (onTopUpLoan) onTopUpLoan(app);
                         else onSelectApplication(app);
                       }}
                     >

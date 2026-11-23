@@ -58,6 +58,31 @@ export async function handleAdminUpdateUser(req: AuthenticatedRequest, res: Serv
   }
 }
 
+export async function handleAdminCreateUser(req: AuthenticatedRequest, res: ServerResponse) {
+  try {
+    const user = await userService.adminCreateCustomer(req.parsedBody || {});
+    return sendSuccess(res, { user }, 'Customer created successfully', 201);
+  } catch (err: any) {
+    const statusCode = err.message?.includes('already registered') || err.message?.includes('valid 10-digit') ? 400 : 500;
+    return sendError(res, statusCode, err.message || 'Failed to create customer');
+  }
+}
+
+export async function handleAdminDeleteUser(req: AuthenticatedRequest, res: ServerResponse) {
+  const userId = req.params?.id;
+  if (!userId) {
+    return sendError(res, 400, 'User ID parameter is required');
+  }
+
+  try {
+    const result = await userService.adminDeleteCustomer(userId);
+    return sendSuccess(res, result, 'Customer deleted successfully');
+  } catch (err: any) {
+    const statusCode = err.message?.includes('not found') ? 404 : 500;
+    return sendError(res, statusCode, err.message || 'Failed to delete customer');
+  }
+}
+
 export async function handleSaveDocument(req: AuthenticatedRequest, res: ServerResponse) {
   if (!req.user) {
     return sendError(res, 401, 'Unauthorized');
@@ -91,5 +116,24 @@ export async function handleDeleteDocument(req: AuthenticatedRequest, res: Serve
     return sendSuccess(res, { documents }, 'Document deleted successfully');
   } catch (err: any) {
     return sendError(res, 500, err.message || 'Failed to delete document');
+  }
+}
+
+export async function handleAdminDeleteDocument(req: AuthenticatedRequest, res: ServerResponse) {
+  const userId = req.params?.userId;
+  const docId = req.params?.docId;
+  if (!userId || !docId) {
+    return sendError(res, 400, 'Both userId and docId parameters are required');
+  }
+
+  try {
+    const user = await userService.getProfileByUserId(userId);
+    if (!user) {
+      return sendError(res, 404, 'Customer profile not found');
+    }
+    const documents = await userService.deleteUserDocument(user.mobile, docId);
+    return sendSuccess(res, { documents }, 'Customer document deleted successfully by admin');
+  } catch (err: any) {
+    return sendError(res, 500, err.message || 'Failed to delete customer document');
   }
 }

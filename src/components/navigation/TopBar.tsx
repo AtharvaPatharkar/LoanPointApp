@@ -157,7 +157,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               {unreadCount > 0 && (
                 <View style={styles.badgeCountPill}>
                   <Text style={styles.badgeCountText}>
-                    {unreadCount > 9 ? '9+' : unreadCount}
+                    +{unreadCount > 99 ? '99' : unreadCount}
                   </Text>
                 </View>
               )}
@@ -309,23 +309,29 @@ const styles = StyleSheet.create({
   },
   badgeCountPill: {
     position: 'absolute',
-    top: -2,
-    right: -2,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#ef4444',
+    top: -4,
+    right: -6,
+    minWidth: 20,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#dc2626',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 3,
+    paddingHorizontal: 4,
     borderWidth: 1.5,
     borderColor: '#ffffff',
+    shadowColor: '#dc2626',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 3,
   },
   badgeCountText: {
-    fontSize: 9,
-    fontWeight: '800',
+    fontSize: 9.5,
+    fontWeight: '900',
     color: '#ffffff',
     textAlign: 'center',
+    letterSpacing: -0.2,
   },
   iconBtnPlatform: {
     width: 36,

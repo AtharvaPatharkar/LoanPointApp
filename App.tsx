@@ -583,6 +583,9 @@ function MainApp() {
                 applications={applications}
                 onSelectApplication={(app) => setSelectedApplication(app)}
                 onBack={handleBack}
+                onApplyNew={() => {
+                  setActiveSubScreen('services');
+                }}
                 onApplySuccess={() => {
                   setApplications(loanService.getApplications());
                   setActiveSubScreen(null);
@@ -665,7 +668,10 @@ function MainApp() {
                     onApplyNew={() => {
                       setActiveSubScreen('services');
                     }}
-                    onTopUpLoan={() => {
+                    onTopUpLoan={(specificApp) => {
+                      if (specificApp) {
+                        setSelectedApplication(specificApp);
+                      }
                       setActiveSubScreen('top_up_loan');
                     }}
                     onUploadDocForApp={(app) => {

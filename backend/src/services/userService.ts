@@ -118,6 +118,130 @@ export class UserService {
     return await this.getProfileByUserId(userId);
   }
 
+  public async adminCreateCustomer(payload: any): Promise<any> {
+    const sql = getDb();
+    const rawMobile = payload.mobile || '';
+    const cleaned = cleanMobile(rawMobile);
+    if (!cleaned || cleaned.length !== 10) {
+      throw new Error('Please enter a valid 10-digit mobile number.');
+    }
+
+    const name = (payload.name || payload.fullName || '').trim();
+    if (!name) {
+      throw new Error('Customer full name is required.');
+    }
+
+    // Check duplicate mobile
+    const existing = (await sql`
+      SELECT id, full_name, mobile FROM users WHERE mobile = ${cleaned} LIMIT 1;
+    `) as any[];
+    if (existing && existing.length > 0) {
+      throw new Error(`A customer with mobile number ${cleaned} is already registered (${existing[0].full_name}).`);
+    }
+
+    // Generate unique referral code
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let newRefCode = 'LP';
+    for (let i = 0; i < 6; i++) {
+      newRefCode += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const collision = (await sql`SELECT id FROM users WHERE referral_code = ${newRefCode} LIMIT 1;`) as any[];
+      if (!collision || collision.length === 0) break;
+      newRefCode = 'LP' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    }
+
+    const cleanAadhaar = payload.aadhaarNumber ? payload.aadhaarNumber.replace(/\D/g, '') : '';
+    const fullAadhaar = cleanAadhaar.length === 12 ? cleanAadhaar : (payload.aadhaar_number || null);
+    const lastFour = cleanAadhaar.length >= 4 ? cleanAadhaar.slice(-4) : (payload.aadhaar_last_four || null);
+    const panNumber = (payload.panNumber || '').trim().toUpperCase() || null;
+    const email = (payload.email || '').trim().toLowerCase() || null;
+    const city = (payload.city || '').trim() || null;
+    const employmentType = payload.employmentType || 'Salaried';
+    const monthlyIncome = Number(payload.monthlyIncome) || 0;
+    const isKyc = Boolean(payload.isKycCompleted);
+    const docsJson = Array.isArray(payload.documents) ? JSON.stringify(payload.documents) : '[]';
+
+    const insertResult = (await sql`
+      INSERT INTO users (
+        full_name,
+        mobile,
+        email,
+        city,
+        employment_type,
+        monthly_income,
+        pan_number,
+        aadhaar_number,
+        aadhaar_last_four,
+        referral_code,
+        is_kyc_completed,
+        documents,
+        created_at,
+        updated_at
+      ) VALUES (
+        ${name},
+        ${cleaned},
+        ${email},
+        ${city},
+        ${employmentType},
+        ${monthlyIncome},
+        ${panNumber},
+        ${fullAadhaar},
+        ${lastFour},
+        ${newRefCode},
+        ${isKyc},
+        ${docsJson}::jsonb,
+        NOW(),
+        NOW()
+      )
+      RETURNING id, full_name, mobile, email, city, employment_type, monthly_income, referral_code, pan_number, aadhaar_last_four, aadhaar_number, is_kyc_completed, documents, created_at, updated_at;
+    `) as any[];
+
+    if (!insertResult || insertResult.length === 0) {
+      throw new Error('Failed to create customer record in database.');
+    }
+
+    return this.mapUserRow(insertResult[0]);
+  }
+
+  public async adminDeleteCustomer(userId: string): Promise<{ success: boolean; deletedUser: any }> {
+    const sql = getDb();
+    const existing = await this.getProfileByUserId(userId);
+    if (!existing) {
+      throw new Error('Customer not found or already deleted.');
+    }
+
+    const cleaned = cleanMobile(existing.mobile);
+
+    // 1. Delete user sessions to revoke active tokens
+    try {
+      await sql`DELETE FROM user_sessions WHERE user_id = ${userId} OR mobile = ${cleaned};`;
+    } catch (e: any) {
+      console.warn('[UserService] Could not delete user_sessions:', e.message);
+    }
+
+    // 2. Unlink or clean up loan applications if any
+    try {
+      // Soft-unlink or retain loan records with an unlinked flag so financial auditing is not lost
+      await sql`
+        UPDATE loan_applications
+        SET applicant_name = applicant_name || ' (Deleted Account)',
+            remarks = COALESCE(remarks, '') || ' [Customer deleted by admin]'
+        WHERE mobile = ${cleaned};
+      `;
+    } catch (e: any) {
+      console.warn('[UserService] Could not update loan_applications on delete:', e.message);
+    }
+
+    // 3. Delete user record from users table
+    await sql`DELETE FROM users WHERE id = ${userId};`;
+
+    return {
+      success: true,
+      deletedUser: existing,
+    };
+  }
+
   public async saveUserDocument(mobile: string, documentItem: any): Promise<any[]> {
     const cleaned = cleanMobile(mobile);
     const sql = getDb();

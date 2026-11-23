@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -27,6 +27,7 @@ import {
 } from '../../types';
 import { loanService } from '../../services/loanService';
 import { dbSyncService } from '../../services/dbSyncService';
+import { notificationService } from '../../services/notificationService';
 import { COMPANY_INFO } from '../../data/mockData';
 import { colors } from '../../theme/colors';
 
@@ -92,15 +93,50 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
   const [detailedUser, setDetailedUser] = useState<UserProfile | null>(null);
   const [activeUserDetailTab, setActiveUserDetailTab] = useState<'overview' | 'loans' | 'documents' | 'referrals'>('overview');
 
+  // Customer Actions & Modals State
+  const [showCreateCustomerModal, setShowCreateCustomerModal] = useState<boolean>(false);
+  const [newCustName, setNewCustName] = useState<string>('');
+  const [newCustMobile, setNewCustMobile] = useState<string>('');
+  const [newCustEmail, setNewCustEmail] = useState<string>('');
+  const [newCustCity, setNewCustCity] = useState<string>('');
+  const [newCustEmployment, setNewCustEmployment] = useState<UserProfile['employmentType']>('Salaried');
+  const [newCustIncome, setNewCustIncome] = useState<string>('');
+  const [newCustPan, setNewCustPan] = useState<string>('');
+  const [newCustAadhaar, setNewCustAadhaar] = useState<string>('');
+  const [newCustKyc, setNewCustKyc] = useState<boolean>(false);
+  const [isCreatingCustomer, setIsCreatingCustomer] = useState<boolean>(false);
+  const [createCustomerError, setCreateCustomerError] = useState<string | null>(null);
+
+  // Custom Confirm Delete Customer Modal State
+  const [confirmDeleteUserTarget, setConfirmDeleteUserTarget] = useState<UserProfile | null>(null);
+  const [isDeletingUser, setIsDeletingUser] = useState<boolean>(false);
+
+  // Wrong Document Rejection & Deletion State
+  const [deletingDocTarget, setDeletingDocTarget] = useState<{
+    doc: DocumentItem;
+    userId: string;
+    userName: string;
+    userMobile: string;
+  } | null>(null);
+  const [docRejectReason, setDocRejectReason] = useState<string>('The uploaded image is blurry or unclear. Please re-upload a clear copy.');
+  const [isDeletingDoc, setIsDeletingDoc] = useState<boolean>(false);
+
   // Edit User State
   const [isEditingUser, setIsEditingUser] = useState<boolean>(false);
   const [editUserName, setEditUserName] = useState<string>('');
   const [editUserEmail, setEditUserEmail] = useState<string>('');
   const [editUserCity, setEditUserCity] = useState<string>('');
+  const [editUserPincode, setEditUserPincode] = useState<string>('');
+  const [editUserDob, setEditUserDob] = useState<string>('');
   const [editUserEmployment, setEditUserEmployment] = useState<UserProfile['employmentType']>('Salaried');
   const [editUserIncome, setEditUserIncome] = useState<string>('0');
+  const [editUserCompanyName, setEditUserCompanyName] = useState<string>('');
+  const [editUserWorkExp, setEditUserWorkExp] = useState<string>('');
+  const [editUserSalaryBank, setEditUserSalaryBank] = useState<string>('');
+  const [editUserCompanyType, setEditUserCompanyType] = useState<string>('');
   const [editUserPan, setEditUserPan] = useState<string>('');
   const [editUserAadhaar, setEditUserAadhaar] = useState<string>('');
+  const [editUserCibil, setEditUserCibil] = useState<string>('');
   const [editUserKyc, setEditUserKyc] = useState<boolean>(false);
   const [isSavingUserEdit, setIsSavingUserEdit] = useState<boolean>(false);
   const [userEditSuccessMsg, setUserEditSuccessMsg] = useState<string | null>(null);
@@ -111,6 +147,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
   const [notifMessage, setNotifMessage] = useState<string>('');
   const [isSendingNotif, setIsSendingNotif] = useState<boolean>(false);
   const [notifSuccessMsg, setNotifSuccessMsg] = useState<string | null>(null);
+  const [showNotifHistoryModal, setShowNotifHistoryModal] = useState<boolean>(false);
 
   // Status Update Modal State for Loans
   const [editingApp, setEditingApp] = useState<LoanApplication | null>(null);
@@ -252,10 +289,17 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
     setEditUserName(user.name || '');
     setEditUserEmail(user.email || '');
     setEditUserCity(user.city || '');
+    setEditUserPincode((user as any).pincode || '');
+    setEditUserDob((user as any).dob || '');
     setEditUserEmployment(user.employmentType || 'Salaried');
     setEditUserIncome(user.monthlyIncome ? user.monthlyIncome.toString() : '0');
+    setEditUserCompanyName((user as any).companyName || '');
+    setEditUserWorkExp((user as any).workExperience || '');
+    setEditUserSalaryBank((user as any).salaryBank || '');
+    setEditUserCompanyType((user as any).companyType || '');
     setEditUserPan(user.panNumber || '');
     setEditUserAadhaar(user.aadhaarNumber || '');
+    setEditUserCibil((user as any).cibilScoreRange || '');
     setEditUserKyc(Boolean(user.isKycCompleted));
     setIsEditingUser(true);
     setUserEditSuccessMsg(null);
@@ -268,14 +312,21 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
     setUserEditSuccessMsg(null);
 
     try {
-      const updates: Partial<UserProfile> = {
+      const updates: any = {
         name: editUserName.trim(),
         email: editUserEmail.trim(),
         city: editUserCity.trim(),
+        pincode: editUserPincode.trim(),
+        dob: editUserDob.trim(),
         employmentType: editUserEmployment,
         monthlyIncome: parseFloat(editUserIncome) || 0,
+        companyName: editUserCompanyName.trim(),
+        workExperience: editUserWorkExp.trim(),
+        salaryBank: editUserSalaryBank.trim(),
+        companyType: editUserCompanyType.trim(),
         panNumber: editUserPan.trim().toUpperCase(),
         aadhaarNumber: editUserAadhaar.trim(),
+        cibilScoreRange: editUserCibil.trim(),
         isKycCompleted: editUserKyc,
       };
 
@@ -293,6 +344,162 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
     } finally {
       setIsSavingUserEdit(false);
     }
+  };
+
+  // Create Customer
+  const handleOpenCreateCustomerModal = () => {
+    setNewCustName('');
+    setNewCustMobile('');
+    setNewCustEmail('');
+    setNewCustCity('');
+    setNewCustEmployment('Salaried');
+    setNewCustIncome('');
+    setNewCustPan('');
+    setNewCustAadhaar('');
+    setNewCustKyc(false);
+    setCreateCustomerError(null);
+    setShowCreateCustomerModal(true);
+  };
+
+  const handleCreateCustomerSubmit = async () => {
+    if (!newCustName.trim()) {
+      setCreateCustomerError('Customer full legal name is required.');
+      return;
+    }
+    const cleanMob = newCustMobile.replace(/\D/g, '').slice(-10);
+    if (!cleanMob || cleanMob.length !== 10) {
+      setCreateCustomerError('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+
+    setIsCreatingCustomer(true);
+    setCreateCustomerError(null);
+
+    try {
+      const payload: Partial<UserProfile> = {
+        name: newCustName.trim(),
+        mobile: cleanMob,
+        email: newCustEmail.trim() || undefined,
+        city: newCustCity.trim() || undefined,
+        employmentType: newCustEmployment,
+        monthlyIncome: parseFloat(newCustIncome) || 0,
+        panNumber: newCustPan.trim().toUpperCase() || undefined,
+        aadhaarNumber: newCustAadhaar.trim() || undefined,
+        isKycCompleted: newCustKyc,
+      };
+
+      const createdUser = await dbSyncService.adminCreateUser(payload);
+      setRegisteredUsers((prev) => [createdUser, ...prev]);
+      setShowCreateCustomerModal(false);
+      Alert.alert('Success', `Customer ${createdUser.name} created successfully!`);
+    } catch (err: any) {
+      setCreateCustomerError(err?.message || 'Failed to create customer.');
+    } finally {
+      setIsCreatingCustomer(false);
+    }
+  };
+
+  // Open Delete Customer Confirmation Modal
+  const handleDeleteCustomerConfirm = (user: UserProfile) => {
+    setConfirmDeleteUserTarget(user);
+  };
+
+  // Delete Customer Action from Confirmation Modal
+  const handleExecuteDeleteCustomer = async () => {
+    if (!confirmDeleteUserTarget) return;
+    setIsDeletingUser(true);
+    try {
+      const ok = await dbSyncService.adminDeleteUser(confirmDeleteUserTarget.id);
+      if (ok) {
+        setRegisteredUsers((prev) => prev.filter((u) => u.id !== confirmDeleteUserTarget.id));
+        if (detailedUser?.id === confirmDeleteUserTarget.id) {
+          setDetailedUser(null);
+        }
+        setConfirmDeleteUserTarget(null);
+        Alert.alert('Customer Deleted', `Customer profile for ${confirmDeleteUserTarget.name} has been removed.`);
+      } else {
+        Alert.alert('Error', 'Unable to delete customer from database.');
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to delete customer.');
+    } finally {
+      setIsDeletingUser(false);
+    }
+  };
+
+  // Wrong Document Deletion & Customer Notification Trigger
+  const handleOpenDocDeleteDialog = (doc: DocumentItem, userId: string, userName: string, userMobile: string) => {
+    setDeletingDocTarget({ doc, userId, userName, userMobile });
+    setDocRejectReason(`Your uploaded ${doc.name || 'document'} is unclear or invalid. Please re-upload a clear copy in the app.`);
+  };
+
+  const handleExecuteDocDelete = async () => {
+    if (!deletingDocTarget) return;
+    setIsDeletingDoc(true);
+    try {
+      const updatedDocs = await dbSyncService.adminDeleteUserDocument(deletingDocTarget.userId, deletingDocTarget.doc.id);
+
+      // Update local user state
+      if (detailedUser && detailedUser.id === deletingDocTarget.userId) {
+        setDetailedUser({ ...detailedUser, documents: updatedDocs });
+      }
+      setRegisteredUsers((prev) =>
+        prev.map((u) => (u.id === deletingDocTarget.userId ? { ...u, documents: updatedDocs } : u))
+      );
+
+      // Send automated push notification / alert to customer
+      await notificationService.sendAdminNotification(
+        deletingDocTarget.userId,
+        deletingDocTarget.userName,
+        deletingDocTarget.userMobile,
+        docRejectReason.trim(),
+        `Document Action: ${deletingDocTarget.doc.name || 'KYC'}`
+      );
+
+      Alert.alert('Document Deleted', `Document removed. Customer was notified: "${docRejectReason.trim()}"`);
+      setDeletingDocTarget(null);
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to delete document.');
+    } finally {
+      setIsDeletingDoc(false);
+    }
+  };
+
+  // Delete Referral Lead with Referrer Notification
+  const handleDeleteReferralLead = async (lead: ReferralLead) => {
+    Alert.alert(
+      'Delete Referral Lead',
+      `Are you sure you want to delete referral lead "${lead.friendName}" (+91 ${lead.friendMobile})?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await dbSyncService.adminDeleteReferral(lead.id);
+              setReferralLeads((prev) => prev.filter((r) => r.id !== lead.id));
+              setEditingRefLead(null);
+
+              // Notify referrer customer
+              if (lead.referrerUserId || lead.referrerMobile) {
+                await notificationService.sendAdminNotification(
+                  lead.referrerUserId || lead.referrerMobile,
+                  'Valued Partner',
+                  lead.referrerMobile,
+                  `Your referral entry for ${lead.friendName} was closed/removed by the loan operations team.`,
+                  'Referral Lead Update'
+                );
+              }
+
+              Alert.alert('Referral Deleted', 'The referral lead has been deleted and the referrer was notified.');
+            } catch (err: any) {
+              Alert.alert('Error', err?.message || 'Failed to delete referral lead.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   // Open send notification modal
@@ -464,6 +671,22 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
       );
 
       setRefSaveSuccessMsg(`Referral ${editingRefLead.id} updated to "${newRefStatus}"!`);
+
+      // Dispatch automated notification to referrer customer
+      if (editingRefLead.referrerUserId || editingRefLead.referrerMobile) {
+        const notifTxt = numPayout > 0
+          ? `Update on your referral for ${editingRefLead.friendName}: Status is now "${newRefStatus}" with payout ₹${numPayout} (${refPayoutStatus}).`
+          : `Update on your referral for ${editingRefLead.friendName}: Status is now "${newRefStatus}". Remarks: ${adminRefRemarks || 'Under review'}.`;
+
+        notificationService.sendAdminNotification(
+          editingRefLead.referrerUserId || editingRefLead.referrerMobile,
+          'Valued Partner',
+          editingRefLead.referrerMobile,
+          notifTxt,
+          `Referral Lead Status: ${newRefStatus}`
+        ).catch(() => {});
+      }
+
       setTimeout(() => {
         setEditingRefLead(null);
         setRefSaveSuccessMsg(null);
@@ -2223,6 +2446,15 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
               </ScrollView>
 
               <View style={styles.modalBtnRow}>
+                <TouchableOpacity
+                  style={[styles.modalCancelBtn, { backgroundColor: '#fef2f2', borderColor: '#fecaca' }]}
+                  onPress={() => handleDeleteReferralLead(editingRefLead)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="trash-outline" size={15} color="#dc2626" />
+                  <Text style={[styles.modalCancelText, { color: '#dc2626' }]}>Delete</Text>
+                </TouchableOpacity>
+
                 <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setEditingRefLead(null)}>
                   <Text style={styles.modalCancelText}>Cancel</Text>
                 </TouchableOpacity>
@@ -2292,14 +2524,27 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                         {doc.category || 'KYC'} • {doc.uploadDate || 'Uploaded'}
                       </Text>
                     </View>
-                    <TouchableOpacity
-                      style={styles.docItemOpenBtn}
-                      onPress={() => handleOpenDocFile(doc)}
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons name="eye" size={14} color="#ffffff" />
-                      <Text style={styles.docItemOpenBtnText}>View</Text>
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <TouchableOpacity
+                        style={styles.docItemOpenBtn}
+                        onPress={() => handleOpenDocFile(doc)}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="eye" size={14} color="#ffffff" />
+                        <Text style={styles.docItemOpenBtnText}>View</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.docItemOpenBtn, { backgroundColor: '#dc2626', paddingHorizontal: 8 }]}
+                        onPress={() => {
+                          const matchedUser = registeredUsers.find((u) => u.mobile.replace(/\D/g, '').slice(-10) === viewingDocsUser.mobile.replace(/\D/g, '').slice(-10));
+                          const uId = matchedUser?.id || viewingDocsUser.mobile;
+                          handleOpenDocDeleteDialog(doc, uId, viewingDocsUser.name, viewingDocsUser.mobile);
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="trash" size={14} color="#ffffff" />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 ))}
               </ScrollView>
@@ -2367,7 +2612,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                       {detailedUser.name || 'Valued Customer'}
                     </Text>
                     <Text style={styles.modalSub}>
-                      ID: {detailedUser.id} • +91 {detailedUser.mobile}
+                      +91 {detailedUser.mobile} {detailedUser.referralCode ? `• Ref: ${detailedUser.referralCode}` : ''}
                     </Text>
                   </View>
                 </View>
@@ -2389,46 +2634,56 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                 </View>
               )}
 
-              {/* Action Toolbar */}
+              {/* Action Toolbar - Icon-Only Round Actions (No Text) */}
               <View style={styles.detailActionToolbar}>
                 <TouchableOpacity
-                  style={[styles.quickActionPill, { backgroundColor: '#ecfdf5', borderColor: '#86efac' }]}
+                  style={[styles.quickActionRoundBtn, { backgroundColor: '#ecfdf5', borderColor: '#86efac' }]}
                   onPress={() => handleCallApplicant(detailedUser.mobile)}
                   activeOpacity={0.7}
+                  accessibilityLabel="Call Customer"
                 >
-                  <Ionicons name="call" size={13} color="#059669" />
-                  <Text style={[styles.quickActionText, { color: '#059669' }]}>Call</Text>
+                  <Ionicons name="call" size={16} color="#059669" />
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.quickActionPill, { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }]}
+                  style={[styles.quickActionRoundBtn, { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }]}
                   onPress={() => {
                     const cleanMob = detailedUser.mobile.replace(/\D/g, '').slice(-10);
                     const msg = encodeURIComponent(`Hello ${detailedUser.name || 'Customer'}, this is Loan Point Admin regarding your profile.`);
                     Linking.openURL(`https://wa.me/91${cleanMob}?text=${msg}`).catch(() => {});
                   }}
                   activeOpacity={0.7}
+                  accessibilityLabel="WhatsApp Customer"
                 >
-                  <Ionicons name="logo-whatsapp" size={13} color="#16a34a" />
-                  <Text style={[styles.quickActionText, { color: '#16a34a' }]}>WhatsApp</Text>
+                  <Ionicons name="logo-whatsapp" size={16} color="#16a34a" />
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.quickActionPill, { backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }]}
+                  style={[styles.quickActionRoundBtn, { backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }]}
                   onPress={() => handleOpenSendNotification(detailedUser)}
                   activeOpacity={0.7}
+                  accessibilityLabel="Send Notification"
                 >
-                  <Ionicons name="notifications" size={13} color="#2563eb" />
-                  <Text style={[styles.quickActionText, { color: '#2563eb' }]}>Notify</Text>
+                  <Ionicons name="notifications" size={16} color="#2563eb" />
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.quickActionPill, { backgroundColor: isEditingUser ? '#fef3c7' : '#f8fafc', borderColor: '#cbd5e1' }]}
+                  style={[styles.quickActionRoundBtn, { backgroundColor: isEditingUser ? '#fef3c7' : '#f8fafc', borderColor: '#cbd5e1' }]}
                   onPress={() => (isEditingUser ? setIsEditingUser(false) : handleStartEditUser(detailedUser))}
                   activeOpacity={0.7}
+                  accessibilityLabel={isEditingUser ? "View Mode" : "Edit Customer"}
                 >
-                  <Ionicons name={isEditingUser ? 'eye-outline' : 'create-outline'} size={13} color="#334155" />
-                  <Text style={[styles.quickActionText, { color: '#334155' }]}>{isEditingUser ? 'View' : 'Edit'}</Text>
+                  <Ionicons name={isEditingUser ? 'eye-outline' : 'create-outline'} size={16} color="#334155" />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.quickActionRoundBtn, { backgroundColor: '#fef2f2', borderColor: '#fecaca' }]}
+                  onPress={() => handleDeleteCustomerConfirm(detailedUser)}
+                  disabled={isDeletingUser}
+                  activeOpacity={0.7}
+                  accessibilityLabel="Delete Customer"
+                >
+                  <Ionicons name="trash-outline" size={16} color="#dc2626" />
                 </TouchableOpacity>
               </View>
 
@@ -2834,14 +3089,23 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                               {doc.category || 'KYC'} • {doc.uploadDate || 'Uploaded'}
                             </Text>
                           </View>
-                          <TouchableOpacity
-                            style={styles.docItemOpenBtn}
-                            onPress={() => handleOpenDocFile(doc)}
-                            activeOpacity={0.8}
-                          >
-                            <Ionicons name="eye" size={14} color="#ffffff" />
-                            <Text style={styles.docItemOpenBtnText}>View</Text>
-                          </TouchableOpacity>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <TouchableOpacity
+                              style={styles.docItemOpenBtn}
+                              onPress={() => handleOpenDocFile(doc)}
+                              activeOpacity={0.8}
+                            >
+                              <Ionicons name="eye" size={14} color="#ffffff" />
+                              <Text style={styles.docItemOpenBtnText}>View</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[styles.docItemOpenBtn, { backgroundColor: '#dc2626', paddingHorizontal: 8 }]}
+                              onPress={() => handleOpenDocDeleteDialog(doc, detailedUser.id, detailedUser.name, detailedUser.mobile)}
+                              activeOpacity={0.8}
+                            >
+                              <Ionicons name="trash" size={14} color="#ffffff" />
+                            </TouchableOpacity>
+                          </View>
                         </View>
                       ))
                     )}
@@ -2903,7 +3167,403 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
         </Modal>
       )}
 
-      {/* ---------------- SEND NOTIFICATION MODAL ---------------- */}
+      {/* ---------------- CREATE CUSTOMER MODAL ---------------- */}
+      {showCreateCustomerModal && (
+        <Modal
+          visible={true}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => {
+            if (!isCreatingCustomer) setShowCreateCustomerModal(false);
+          }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalCard, { maxHeight: '90%' }]}>
+              <View style={styles.modalHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.modalTitle}>Create New Customer</Text>
+                  <Text style={styles.modalSub}>
+                    Register a new customer account directly into the database
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setShowCreateCustomerModal(false)}
+                  disabled={isCreatingCustomer}
+                  style={styles.closeBtn}
+                >
+                  <Ionicons name="close" size={22} color="#64748b" />
+                </TouchableOpacity>
+              </View>
+
+              {createCustomerError && (
+                <View style={[styles.modalSuccessBanner, { backgroundColor: '#fef2f2', borderColor: '#fca5a5' }]}>
+                  <Ionicons name="alert-circle" size={18} color="#dc2626" />
+                  <Text style={[styles.modalSuccessText, { color: '#dc2626' }]}>{createCustomerError}</Text>
+                </View>
+              )}
+
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                <Text style={styles.inputGroupLabel}>
+                  Full Legal Name <Text style={{ color: '#dc2626' }}>*</Text>:
+                </Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={newCustName}
+                  onChangeText={setNewCustName}
+                  placeholder="e.g. Ramesh S. Patil"
+                  placeholderTextColor="#94a3b8"
+                />
+
+                <Text style={styles.inputGroupLabel}>
+                  Mobile Number (10 Digits) <Text style={{ color: '#dc2626' }}>*</Text>:
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <View style={{ backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 10 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#334155' }}>+91</Text>
+                  </View>
+                  <TextInput
+                    style={[styles.modalInput, { flex: 1 }]}
+                    value={newCustMobile}
+                    onChangeText={setNewCustMobile}
+                    placeholder="10-digit Mobile Number"
+                    placeholderTextColor="#94a3b8"
+                    keyboardType="phone-pad"
+                    maxLength={10}
+                  />
+                </View>
+
+                <Text style={styles.inputGroupLabel}>Email Address (Optional):</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={newCustEmail}
+                  onChangeText={setNewCustEmail}
+                  placeholder="e.g. ramesh@gmail.com"
+                  placeholderTextColor="#94a3b8"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+
+                <Text style={styles.inputGroupLabel}>City / Location:</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={newCustCity}
+                  onChangeText={setNewCustCity}
+                  placeholder="e.g. Mumbai, Pune, Nagpur"
+                  placeholderTextColor="#94a3b8"
+                />
+
+                <Text style={styles.inputGroupLabel}>Employment Type:</Text>
+                <View style={styles.statusGrid}>
+                  {(['Salaried', 'Self Employed', 'Business Owner', 'Agriculturist', 'Others'] as const).map((emp) => {
+                    const isSelected = newCustEmployment === emp;
+                    return (
+                      <TouchableOpacity
+                        key={emp}
+                        style={[styles.statusOptionPill, isSelected && styles.statusOptionPillActive]}
+                        onPress={() => setNewCustEmployment(emp)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.statusOptionText, isSelected && styles.statusOptionTextActive]}>
+                          {emp}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                <Text style={styles.inputGroupLabel}>Monthly Net Income (₹):</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={newCustIncome}
+                  onChangeText={setNewCustIncome}
+                  placeholder="e.g. 50000"
+                  placeholderTextColor="#94a3b8"
+                  keyboardType="numeric"
+                />
+
+                <Text style={styles.inputGroupLabel}>PAN Card Number:</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={newCustPan}
+                  onChangeText={setNewCustPan}
+                  placeholder="e.g. ABCDE1234F"
+                  placeholderTextColor="#94a3b8"
+                  autoCapitalize="characters"
+                  maxLength={10}
+                />
+
+                <Text style={styles.inputGroupLabel}>Aadhaar Card Number:</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={newCustAadhaar}
+                  onChangeText={setNewCustAadhaar}
+                  placeholder="12-digit Aadhaar Number"
+                  placeholderTextColor="#94a3b8"
+                  keyboardType="numeric"
+                  maxLength={12}
+                />
+
+                <Text style={styles.inputGroupLabel}>Initial KYC Verification Status:</Text>
+                <TouchableOpacity
+                  style={[
+                    styles.kycToggleBtn,
+                    { backgroundColor: newCustKyc ? '#ecfdf5' : '#f8fafc', borderColor: newCustKyc ? '#86efac' : '#cbd5e1' },
+                  ]}
+                  onPress={() => setNewCustKyc(!newCustKyc)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={newCustKyc ? 'checkmark-circle' : 'ellipse-outline'}
+                    size={18}
+                    color={newCustKyc ? '#15803d' : '#64748b'}
+                  />
+                  <Text style={[styles.kycToggleText, { color: newCustKyc ? '#15803d' : '#475569' }]}>
+                    {newCustKyc ? 'KYC Verified (Documents Checked)' : 'KYC Pending (Unverified)'}
+                  </Text>
+                </TouchableOpacity>
+
+                <View style={[styles.modalBtnRow, { marginTop: 16 }]}>
+                  <TouchableOpacity
+                    style={styles.modalCancelBtn}
+                    onPress={() => setShowCreateCustomerModal(false)}
+                    disabled={isCreatingCustomer}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.modalCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.modalSaveBtn, { backgroundColor: '#059669' }]}
+                    onPress={handleCreateCustomerSubmit}
+                    disabled={isCreatingCustomer}
+                    activeOpacity={0.8}
+                  >
+                    {isCreatingCustomer ? (
+                      <ActivityIndicator color="#ffffff" size="small" />
+                    ) : (
+                      <>
+                        <Ionicons name="person-add" size={16} color="#ffffff" />
+                        <Text style={styles.modalSaveText}>Create Customer</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* ---------------- CUSTOM CONFIRM DELETE CUSTOMER POPUP ---------------- */}
+      {confirmDeleteUserTarget && (
+        <Modal
+          visible={true}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => {
+            if (!isDeletingUser) setConfirmDeleteUserTarget(null);
+          }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalCard, { maxWidth: 360 }]}>
+              <View style={{ alignItems: 'center', marginBottom: 12 }}>
+                <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#fee2e2', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+                  <Ionicons name="warning-outline" size={26} color="#dc2626" />
+                </View>
+                <Text style={{ fontSize: 16, fontWeight: '900', color: '#0f172a', textAlign: 'center' }}>
+                  Confirm Permanent Deletion
+                </Text>
+                <Text style={{ fontSize: 12, color: '#64748b', textAlign: 'center', marginTop: 4 }}>
+                  Customer: <Text style={{ fontWeight: '800', color: '#0f172a' }}>{confirmDeleteUserTarget.name}</Text>
+                  {'\n'}+91 {confirmDeleteUserTarget.mobile}
+                </Text>
+              </View>
+
+              <View style={{ backgroundColor: '#fff5f5', borderWidth: 1, borderColor: '#fecaca', borderRadius: 10, padding: 10, marginBottom: 14 }}>
+                <Text style={{ fontSize: 11, color: '#b91c1c', lineHeight: 15 }}>
+                  • Deleting will revoke all active login sessions and mobile tokens.
+                  {'\n'}• Loan records will be retained in unlinked/archived audit state.
+                </Text>
+              </View>
+
+              <View style={styles.modalBtnRow}>
+                <TouchableOpacity
+                  style={styles.modalCancelBtn}
+                  onPress={() => setConfirmDeleteUserTarget(null)}
+                  disabled={isDeletingUser}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modalSaveBtn, { backgroundColor: '#dc2626' }]}
+                  onPress={handleExecuteDeleteCustomer}
+                  disabled={isDeletingUser}
+                  activeOpacity={0.8}
+                >
+                  {isDeletingUser ? (
+                    <ActivityIndicator color="#ffffff" size="small" />
+                  ) : (
+                    <>
+                      <Ionicons name="trash" size={15} color="#ffffff" />
+                      <Text style={styles.modalSaveText}>Yes, Delete Customer</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* ---------------- WRONG DOCUMENT DELETION & NOTIFICATION DIALOG ---------------- */}
+      {deletingDocTarget && (
+        <Modal
+          visible={true}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => {
+            if (!isDeletingDoc) setDeletingDocTarget(null);
+          }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalCard, { maxWidth: 380 }]}>
+              <View style={styles.modalHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.modalTitle}>Delete Wrong Document</Text>
+                  <Text style={styles.modalSub}>
+                    Document: {deletingDocTarget.doc.name} • {deletingDocTarget.userName}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => setDeletingDocTarget(null)} style={styles.closeBtn}>
+                  <Ionicons name="close" size={22} color="#64748b" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={{ backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fef08a', borderRadius: 8, padding: 8, marginBottom: 10 }}>
+                <Text style={{ fontSize: 11, color: '#92400e', lineHeight: 15 }}>
+                  This document will be deleted from the customer's vault. A notification message will be automatically sent to the customer explaining the reason and requesting a re-upload.
+                </Text>
+              </View>
+
+              <Text style={styles.inputGroupLabel}>Notification Message to Customer:</Text>
+              <TextInput
+                style={[styles.modalInput, { minHeight: 70 }]}
+                value={docRejectReason}
+                onChangeText={setDocRejectReason}
+                placeholder="Reason for deletion..."
+                placeholderTextColor="#94a3b8"
+                multiline
+                numberOfLines={3}
+              />
+
+              <View style={styles.modalBtnRow}>
+                <TouchableOpacity
+                  style={styles.modalCancelBtn}
+                  onPress={() => setDeletingDocTarget(null)}
+                  disabled={isDeletingDoc}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modalSaveBtn, { backgroundColor: '#dc2626' }]}
+                  onPress={handleExecuteDocDelete}
+                  disabled={isDeletingDoc}
+                  activeOpacity={0.8}
+                >
+                  {isDeletingDoc ? (
+                    <ActivityIndicator color="#ffffff" size="small" />
+                  ) : (
+                    <>
+                      <Ionicons name="trash" size={15} color="#ffffff" />
+                      <Text style={styles.modalSaveText}>Delete & Notify</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* ---------------- OLD MESSAGES & NOTIFICATIONS HISTORY MODAL ---------------- */}
+      {showNotifHistoryModal && notificationTargetUser && (
+        <Modal
+          visible={true}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowNotifHistoryModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalCard, { maxHeight: '85%' }]}>
+              <View style={styles.modalHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.modalTitle}>Message & Notification History</Text>
+                  <Text style={styles.modalSub}>
+                    History with {notificationTargetUser.name} (+91 {notificationTargetUser.mobile})
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => setShowNotifHistoryModal(false)} style={styles.closeBtn}>
+                  <Ionicons name="close" size={22} color="#64748b" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 8 }}>
+                {(() => {
+                  const allNotifs = notificationService.getUserNotifications(notificationTargetUser.id);
+
+                  if (allNotifs.length === 0) {
+                    return (
+                      <View style={styles.emptyState}>
+                        <Ionicons name="chatbubbles-outline" size={40} color="#94a3b8" />
+                        <Text style={styles.emptyTitle}>No Old Messages Found</Text>
+                        <Text style={styles.emptySubtitle}>No past messages or notifications recorded for this customer.</Text>
+                      </View>
+                    );
+                  }
+
+                  return (
+                    <View style={{ gap: 10 }}>
+                      {allNotifs.map((n: any) => (
+                        <View key={n.id} style={[styles.innerAppItemCard, { backgroundColor: n.sender === 'user' ? '#f0fdf4' : '#eff6ff', borderColor: n.sender === 'user' ? '#bbf7d0' : '#bfdbfe' }]}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <Ionicons
+                                name={n.sender === 'user' ? 'arrow-down-circle' : 'arrow-up-circle'}
+                                size={15}
+                                color={n.sender === 'user' ? '#16a34a' : '#2563eb'}
+                              />
+                              <Text style={{ fontSize: 11, fontWeight: '800', color: n.sender === 'user' ? '#15803d' : '#1d4ed8' }}>
+                                {n.sender === 'user' ? 'Customer Inquiry' : 'Admin Notification'}
+                              </Text>
+                            </View>
+                            <Text style={{ fontSize: 10, color: '#64748b', fontWeight: '600' }}>
+                              {n.timestamp ? new Date(n.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Recent'}
+                            </Text>
+                          </View>
+                          <Text style={{ fontSize: 12.5, fontWeight: '800', color: '#0f172a', marginBottom: 2 }}>{n.title}</Text>
+                          <Text style={{ fontSize: 12, color: '#334155', lineHeight: 16 }}>{n.message}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  );
+                })()}
+              </ScrollView>
+
+              <TouchableOpacity
+                style={[styles.modalCancelBtn, { marginTop: 10 }]}
+                onPress={() => setShowNotifHistoryModal(false)}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.modalCancelText}>Close History</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
       {notificationTargetUser && (
         <Modal
           visible={true}
@@ -3803,6 +4463,19 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
     marginBottom: 6,
+  },
+  quickActionRoundBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   quickActionPill: {
     flex: 1,

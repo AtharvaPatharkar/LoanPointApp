@@ -132,3 +132,17 @@ export async function handleUpdateReferralStatus(req: AuthenticatedRequest, res:
     return sendError(res, 500, err.message || 'Failed to update referral status');
   }
 }
+
+export async function handleDeleteReferral(req: AuthenticatedRequest, res: ServerResponse) {
+  const leadId = req.params?.id;
+  if (!leadId) {
+    return sendError(res, 400, 'Lead ID parameter is required');
+  }
+
+  try {
+    await businessService.deleteReferralLead(leadId);
+    return sendSuccess(res, {}, 'Referral lead deleted successfully by admin');
+  } catch (err: any) {
+    return sendError(res, 500, err.message || 'Failed to delete referral lead');
+  }
+}

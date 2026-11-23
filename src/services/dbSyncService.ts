@@ -73,6 +73,70 @@ export class DbSyncService {
   }
 
   /**
+   * Admin create a new customer
+   */
+  public async adminCreateUser(customerData: Partial<UserProfile>): Promise<UserProfile> {
+    const res = await apiRequest(`/admin/users`, {
+      method: 'POST',
+      body: customerData,
+    });
+    if (!res || !res.user) {
+      throw new Error(res?.message || 'Failed to create customer');
+    }
+    return res.user;
+  }
+
+  /**
+   * Admin delete a customer
+   */
+  public async adminDeleteUser(userId: string): Promise<boolean> {
+    const res = await apiRequest(`/admin/users/${userId}`, {
+      method: 'DELETE',
+    });
+    return Boolean(res && res.success);
+  }
+
+  /**
+   * Admin delete a customer's document
+   */
+  public async adminDeleteUserDocument(userId: string, docId: string): Promise<any[]> {
+    const res = await apiRequest(`/admin/users/${userId}/documents/${docId}`, {
+      method: 'DELETE',
+    });
+    return res?.documents || [];
+  }
+
+  /**
+   * Admin delete a referral lead
+   */
+  public async adminDeleteReferral(referralId: string): Promise<boolean> {
+    const res = await apiRequest(`/admin/referrals/${referralId}`, {
+      method: 'DELETE',
+    });
+    return Boolean(res && res.success);
+  }
+
+  /**
+   * Admin update a referral lead
+   */
+  public async adminUpdateReferral(
+    referralId: string,
+    updates: {
+      status: string;
+      remarks?: string;
+      nextAction?: string;
+      payoutAmount?: number;
+      payoutStatus?: string;
+    }
+  ): Promise<boolean> {
+    const res = await apiRequest(`/admin/referrals/${referralId}/status`, {
+      method: 'PUT',
+      body: updates,
+    });
+    return Boolean(res && res.success);
+  }
+
+  /**
    * Fetch current user profile
    */
   public async getUserByMobile(mobile: string): Promise<UserProfile | null> {

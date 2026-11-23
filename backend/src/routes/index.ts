@@ -125,13 +125,17 @@ export function buildAppRouter(): Router {
 
   // Admin Operations (Admin auth required)
   router.register('GET', '/api/v1/admin/users', userController.handleGetAllUsers, { admin: true });
+  router.register('POST', '/api/v1/admin/users', userController.handleAdminCreateUser, { admin: true });
   router.register('PUT', '/api/v1/admin/users/:id', userController.handleAdminUpdateUser, { admin: true });
+  router.register('DELETE', '/api/v1/admin/users/:id', userController.handleAdminDeleteUser, { admin: true });
+  router.register('DELETE', '/api/v1/admin/users/:userId/documents/:docId', userController.handleAdminDeleteDocument, { admin: true });
   router.register('GET', '/api/v1/admin/loans', loanController.handleGetAllApplications, { admin: true });
   router.register('PUT', '/api/v1/admin/loans/:id/status', loanController.handleUpdateApplicationStatus, { admin: true });
   router.register('GET', '/api/v1/admin/insurance', businessController.handleGetAllInsurance, { admin: true });
   router.register('PUT', '/api/v1/admin/insurance/:id/status', businessController.handleUpdateInsuranceStatus, { admin: true });
   router.register('GET', '/api/v1/admin/referrals', businessController.handleGetAllReferrals, { admin: true });
   router.register('PUT', '/api/v1/admin/referrals/:id/status', businessController.handleUpdateReferralStatus, { admin: true });
+  router.register('DELETE', '/api/v1/admin/referrals/:id', businessController.handleDeleteReferral, { admin: true });
 
   return router;
 }
