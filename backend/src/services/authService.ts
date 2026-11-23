@@ -38,7 +38,7 @@ function generateCustomerCode(): string {
 export class AuthService {
   /**
    * Request OTP
-   * In development mode: returns demo OTPs (123456 for customers, 9876 for admin).
+   * In development mode: returns demo OTPs (123456 for customers, 987654 for admin).
    * In production mode: refuses demo OTP and requires real SMS gateway integration.
    * mode: 'login' | 'signup'
    */
@@ -85,7 +85,7 @@ export class AuthService {
     }
 
     // Development / internal APK testing phase
-    const demoOtp = isOwnerAdmin ? '9876' : '123456';
+    const demoOtp = isOwnerAdmin ? '987654' : '123456';
     const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes expiration
 
     otpStore.set(cleaned, {
@@ -156,7 +156,7 @@ export class AuthService {
     const stored = otpStore.get(cleaned);
 
     const isOwnerAdmin = cleaned === cleanMobile(config.adminMobile);
-    const expectedOtp = isOwnerAdmin ? '9876' : '123456';
+    const expectedOtp = isOwnerAdmin ? '987654' : '123456';
 
     const isValid = (otp === expectedOtp) || (stored && stored.code === otp && stored.expiresAt >= Date.now());
 

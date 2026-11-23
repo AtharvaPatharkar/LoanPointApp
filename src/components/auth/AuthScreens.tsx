@@ -11,6 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { SixDigitOtpInput } from './SixDigitOtpInput';
 import { COMPANY_INFO } from '../../data/mockData';
 import { authService } from '../../services/authService';
 import { UserProfile } from '../../types';
@@ -234,14 +235,10 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
             We've sent a verification code to WhatsApp number <Text style={{ fontWeight: '700', color: '#0f172a' }}>+91 {mobileNumber}</Text>
           </Text>
 
-          <TextInput
-            style={styles.otpInputField}
-            keyboardType="numeric"
+          <SixDigitOtpInput
             value={otpCode}
-            onChangeText={setOtpCode}
-            maxLength={6}
-            placeholder="Enter OTP"
-            placeholderTextColor="#94a3b8"
+            onChangeOtp={setOtpCode}
+            disabled={isLoading}
             autoFocus
           />
 
@@ -253,9 +250,9 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
           )}
 
           <TouchableOpacity
-            style={[styles.verifyOtpBtn, (isLoading || otpCode.length < 4) && styles.primaryBtnDisabled]}
+            style={[styles.verifyOtpBtn, (isLoading || otpCode.length < 6) && styles.primaryBtnDisabled]}
             onPress={handleVerifyOtp}
-            disabled={isLoading || otpCode.length < 4}
+            disabled={isLoading || otpCode.length < 6}
             activeOpacity={0.85}
           >
             {isLoading ? (

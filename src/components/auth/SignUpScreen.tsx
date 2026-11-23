@@ -12,6 +12,7 @@ import {
   Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { SixDigitOtpInput } from './SixDigitOtpInput';
 import { COMPANY_INFO } from '../../data/mockData';
 import { authService } from '../../services/authService';
 import { UserProfile } from '../../types';
@@ -736,14 +737,10 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
             We've sent a verification code to WhatsApp number <Text style={{ fontWeight: '700', color: '#0f172a' }}>+91 {mobileNumber}</Text>
           </Text>
 
-          <TextInput
-            style={styles.otpInputField}
-            keyboardType="numeric"
+          <SixDigitOtpInput
             value={otpCode}
-            onChangeText={setOtpCode}
-            maxLength={6}
-            placeholder="Enter OTP"
-            placeholderTextColor="#94a3b8"
+            onChangeOtp={setOtpCode}
+            disabled={isLoading}
             autoFocus
           />
 
