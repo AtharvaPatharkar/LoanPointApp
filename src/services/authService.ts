@@ -178,11 +178,6 @@ class AuthService {
 
     const cleanMobile = mobile.replace(/\D/g, '').slice(-10);
 
-    // Security check: Admin mobile number is reserved exclusively for admin login
-    if (mode === 'signup' && cleanMobile === '9545555999') {
-      throw new Error('This number is not applicable for registration. Please use the Admin Login.');
-    }
-
     let demoOtp = '123456';
 
     try {

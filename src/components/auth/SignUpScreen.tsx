@@ -159,12 +159,6 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
 
     const cleanMob = mobileNumber.replace(/\D/g, '').slice(-10);
 
-    // Security check: Admin mobile number cannot be registered as a normal customer
-    if (cleanMob === '9545555999') {
-      setErrorMessage('This number is not applicable for registration. Please use the Admin Login.');
-      return;
-    }
-
     setIsLoading(true);
     try {
       const verifiedRefBy = referralStatus === 'verified' ? referredByCode.trim().toUpperCase() : undefined;

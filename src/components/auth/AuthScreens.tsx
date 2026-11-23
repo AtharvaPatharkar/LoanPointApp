@@ -42,7 +42,6 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
   // Quick mobile validation
   const cleanMobile = mobileNumber.replace(/\D/g, '');
   const isMobileValid = cleanMobile.length === 10;
-  const isAdminNumber = cleanMobile === '9545555999';
 
   const handleRequestOtp = async () => {
     setErrorMessage(null);
@@ -259,9 +258,7 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({
               <ActivityIndicator color="#ffffff" />
             ) : (
               <>
-                <Text style={styles.primaryBtnText}>
-                  {isAdminNumber ? 'Verify & Open Admin Portal' : 'Verify & Open My Account'}
-                </Text>
+                <Text style={styles.primaryBtnText}>Verify & Proceed</Text>
                 <Ionicons name="shield-checkmark" size={18} color="#ffffff" />
               </>
             )}
