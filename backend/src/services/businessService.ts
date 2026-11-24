@@ -278,12 +278,9 @@ export class BusinessService {
     `;
   }
 
-  public async deleteReferralLead(leadId: string): Promise<boolean> {
+  public async deleteReferral(leadId: string): Promise<boolean> {
     const sql = getDb();
-    await sql`
-      DELETE FROM referral_leads
-      WHERE id = ${leadId};
-    `;
+    await sql`DELETE FROM referral_leads WHERE id = ${leadId};`;
     return true;
   }
 }

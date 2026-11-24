@@ -83,6 +83,25 @@ export async function handleAdminDeleteUser(req: AuthenticatedRequest, res: Serv
   }
 }
 
+export async function handleAdminDeleteUserDocument(req: AuthenticatedRequest, res: ServerResponse) {
+  const userId = req.params?.userId;
+  const docId = req.params?.docId;
+  if (!userId || !docId) {
+    return sendError(res, 400, 'User ID and Document ID parameters are required');
+  }
+
+  try {
+    const user = await userService.getProfileByUserId(userId);
+    if (!user) {
+      return sendError(res, 404, 'User profile not found');
+    }
+    const documents = await userService.deleteUserDocument(user.mobile, docId);
+    return sendSuccess(res, { documents }, 'Document removed successfully by admin');
+  } catch (err: any) {
+    return sendError(res, 500, err.message || 'Failed to remove customer document');
+  }
+}
+
 export async function handleSaveDocument(req: AuthenticatedRequest, res: ServerResponse) {
   if (!req.user) {
     return sendError(res, 401, 'Unauthorized');
@@ -116,24 +135,5 @@ export async function handleDeleteDocument(req: AuthenticatedRequest, res: Serve
     return sendSuccess(res, { documents }, 'Document deleted successfully');
   } catch (err: any) {
     return sendError(res, 500, err.message || 'Failed to delete document');
-  }
-}
-
-export async function handleAdminDeleteDocument(req: AuthenticatedRequest, res: ServerResponse) {
-  const userId = req.params?.userId;
-  const docId = req.params?.docId;
-  if (!userId || !docId) {
-    return sendError(res, 400, 'Both userId and docId parameters are required');
-  }
-
-  try {
-    const user = await userService.getProfileByUserId(userId);
-    if (!user) {
-      return sendError(res, 404, 'Customer profile not found');
-    }
-    const documents = await userService.deleteUserDocument(user.mobile, docId);
-    return sendSuccess(res, { documents }, 'Customer document deleted successfully by admin');
-  } catch (err: any) {
-    return sendError(res, 500, err.message || 'Failed to delete customer document');
   }
 }

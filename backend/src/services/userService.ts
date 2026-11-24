@@ -109,6 +109,15 @@ export class UserService {
           pan_number = CASE WHEN ${updates.panNumber || ''} <> '' THEN ${updates.panNumber} ELSE pan_number END,
           aadhaar_number = CASE WHEN ${fullAadhaar || ''} <> '' THEN ${fullAadhaar} ELSE aadhaar_number END,
           aadhaar_last_four = CASE WHEN ${lastFour || ''} <> '' THEN ${lastFour} ELSE aadhaar_last_four END,
+          company_name = CASE WHEN ${updates.companyName !== undefined} THEN ${updates.companyName || ''} ELSE company_name END,
+          company_type = CASE WHEN ${updates.companyType !== undefined} THEN ${updates.companyType || ''} ELSE company_type END,
+          work_experience = CASE WHEN ${updates.workExperience !== undefined} THEN ${updates.workExperience || ''} ELSE work_experience END,
+          salary_bank = CASE WHEN ${updates.salaryBank !== undefined} THEN ${updates.salaryBank || ''} ELSE salary_bank END,
+          has_credit_card = CASE WHEN ${updates.hasCreditCard !== undefined} THEN ${updates.hasCreditCard || ''} ELSE has_credit_card END,
+          cibil_score_range = CASE WHEN ${updates.cibilScoreRange !== undefined} THEN ${updates.cibilScoreRange || ''} ELSE cibil_score_range END,
+          dob = CASE WHEN ${updates.dob !== undefined} THEN ${updates.dob || ''} ELSE dob END,
+          registered_business = CASE WHEN ${updates.registeredBusiness !== undefined} THEN ${updates.registeredBusiness || ''} ELSE registered_business END,
+          gstin = CASE WHEN ${updates.gstin !== undefined} THEN ${updates.gstin || ''} ELSE gstin END,
           documents = CASE WHEN ${docsJson || ''} <> '' THEN ${docsJson}::jsonb ELSE documents END,
           is_kyc_completed = CASE WHEN ${isKyc !== null} THEN ${isKyc} ELSE is_kyc_completed END,
           updated_at = NOW()
@@ -213,14 +222,56 @@ export class UserService {
 
     const cleaned = cleanMobile(existing.mobile);
 
-    // 1. Delete user sessions to revoke active tokens
+    // 1. Archive customer record in deleted_users table for full historical auditing
+    try {
+      const docsJson = Array.isArray(existing.documents) ? JSON.stringify(existing.documents) : '[]';
+      await sql`
+        INSERT INTO deleted_users (
+          original_user_id,
+          full_name,
+          mobile,
+          email,
+          city,
+          employment_type,
+          monthly_income,
+          pan_number,
+          aadhaar_number,
+          referral_code,
+          is_kyc_completed,
+          documents,
+          deleted_by,
+          deleted_at,
+          metadata
+        ) VALUES (
+          ${existing.id || userId},
+          ${existing.name || null},
+          ${cleaned},
+          ${existing.email || null},
+          ${existing.city || null},
+          ${existing.employmentType || null},
+          ${Number(existing.monthlyIncome) || 0},
+          ${existing.panNumber || null},
+          ${existing.aadhaarNumber || null},
+          ${existing.referralCode || null},
+          ${Boolean(existing.isKycCompleted)},
+          ${docsJson}::jsonb,
+          'admin',
+          NOW(),
+          ${JSON.stringify({ originalCreatedAt: existing.createdAt || null })}::jsonb
+        );
+      `;
+    } catch (archiveErr: any) {
+      console.warn('[UserService] Could not archive user into deleted_users table:', archiveErr.message);
+    }
+
+    // 2. Delete user sessions to revoke active tokens
     try {
       await sql`DELETE FROM user_sessions WHERE user_id = ${userId} OR mobile = ${cleaned};`;
     } catch (e: any) {
       console.warn('[UserService] Could not delete user_sessions:', e.message);
     }
 
-    // 2. Unlink or clean up loan applications if any
+    // 3. Unlink or clean up loan applications if any
     try {
       // Soft-unlink or retain loan records with an unlinked flag so financial auditing is not lost
       await sql`
@@ -233,7 +284,7 @@ export class UserService {
       console.warn('[UserService] Could not update loan_applications on delete:', e.message);
     }
 
-    // 3. Delete user record from users table
+    // 4. Delete user record from users table
     await sql`DELETE FROM users WHERE id = ${userId};`;
 
     return {

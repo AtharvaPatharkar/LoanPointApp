@@ -140,8 +140,8 @@ export async function handleDeleteReferral(req: AuthenticatedRequest, res: Serve
   }
 
   try {
-    await businessService.deleteReferralLead(leadId);
-    return sendSuccess(res, {}, 'Referral lead deleted successfully by admin');
+    await businessService.deleteReferral(leadId);
+    return sendSuccess(res, {}, 'Referral lead deleted successfully');
   } catch (err: any) {
     return sendError(res, 500, err.message || 'Failed to delete referral lead');
   }

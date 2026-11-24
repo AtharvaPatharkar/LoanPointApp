@@ -101,6 +101,27 @@ export async function testDbConnection(): Promise<boolean> {
     );`;
     await sql`CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);`;
     await sql`CREATE INDEX IF NOT EXISTS idx_user_sessions_hash ON user_sessions(refresh_token_hash);`;
+
+    // Deleted Users Table for archiving removed customer accounts
+    await sql`CREATE TABLE IF NOT EXISTS deleted_users (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      original_user_id VARCHAR(100),
+      full_name VARCHAR(150),
+      mobile VARCHAR(20),
+      email VARCHAR(150),
+      city VARCHAR(100),
+      employment_type VARCHAR(50),
+      monthly_income NUMERIC,
+      pan_number VARCHAR(20),
+      aadhaar_number VARCHAR(20),
+      referral_code VARCHAR(50),
+      is_kyc_completed BOOLEAN,
+      documents JSONB,
+      deleted_by VARCHAR(50) DEFAULT 'admin',
+      deleted_at TIMESTAMPTZ DEFAULT NOW(),
+      metadata JSONB
+    );`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_deleted_users_mobile ON deleted_users(mobile);`;
     
     return Boolean(result && result.length > 0);
   } catch (error) {

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -33,10 +33,59 @@ import { colors } from '../../theme/colors';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+// Top major Indian cities for reliable fast location autocomplete & fallback
+const INDIAN_CITIES: string[] = [
+  'Mumbai, Maharashtra',
+  'Pune, Maharashtra',
+  'Nagpur, Maharashtra',
+  'Nashik, Maharashtra',
+  'Thane, Maharashtra',
+  'Aurangabad, Maharashtra',
+  'Solapur, Maharashtra',
+  'Kolhapur, Maharashtra',
+  'Navi Mumbai, Maharashtra',
+  'Amravati, Maharashtra',
+  'Nanded, Maharashtra',
+  'Jalgaon, Maharashtra',
+  'Akola, Maharashtra',
+  'Latur, Maharashtra',
+  'Dhule, Maharashtra',
+  'Ahmednagar, Maharashtra',
+  'Chandrapur, Maharashtra',
+  'Parbhani, Maharashtra',
+  'Delhi, NCR',
+  'Bengaluru, Karnataka',
+  'Hyderabad, Telangana',
+  'Ahmedabad, Gujarat',
+  'Chennai, Tamil Nadu',
+  'Kolkata, West Bengal',
+  'Surat, Gujarat',
+  'Jaipur, Rajasthan',
+  'Lucknow, Uttar Pradesh',
+  'Kanpur, Uttar Pradesh',
+  'Indore, Madhya Pradesh',
+  'Bhopal, Madhya Pradesh',
+  'Patna, Bihar',
+  'Vadodara, Gujarat',
+  'Ghaziabad, Uttar Pradesh',
+  'Ludhiana, Punjab',
+  'Agra, Uttar Pradesh',
+  'Coimbatore, Tamil Nadu',
+  'Kochi, Kerala',
+  'Visakhapatnam, Andhra Pradesh',
+  'Rajkot, Gujarat',
+  'Varanasi, Uttar Pradesh',
+  'Guwahati, Assam',
+  'Chandigarh, Punjab',
+  'Noida, Uttar Pradesh',
+  'Gurugram, Haryana',
+];
+
 interface AdminScreenProps {
   currentUser: UserProfile | null;
   onLogout: () => void;
   onSwitchToCustomerView?: () => void;
+  onOpenSettings?: () => void;
 }
 
 const ALL_STATUSES: ApplicationStatus[] = [
@@ -71,9 +120,18 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
   currentUser,
   onLogout,
   onSwitchToCustomerView,
+  onOpenSettings,
 }) => {
   // Main Module Tabs
-  const [activeAdminTab, setActiveAdminTab] = useState<'loans' | 'insurance' | 'referrals' | 'users'>('loans');
+  const [activeAdminTab, setActiveAdminTab] = useState<'loans' | 'insurance' | 'referrals' | 'users' | 'messages'>('loans');
+  const [customerMessages, setCustomerMessages] = useState<any[]>(notificationService.getAdminInboxMessages());
+
+  useEffect(() => {
+    const unsub = notificationService.subscribe(() => {
+      setCustomerMessages(notificationService.getAdminInboxMessages());
+    });
+    return unsub;
+  }, []);
 
   // Datasets
   const [applications, setApplications] = useState<LoanApplication[]>(loanService.getApplications());
@@ -93,35 +151,48 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
   const [detailedUser, setDetailedUser] = useState<UserProfile | null>(null);
   const [activeUserDetailTab, setActiveUserDetailTab] = useState<'overview' | 'loans' | 'documents' | 'referrals'>('overview');
 
-  // Customer Actions & Modals State
+  // Header Navigation Menu Drawer State
+  const [showMenuDrawer, setShowMenuDrawer] = useState<boolean>(false);
+
+  // Create Customer Modal State (All Parameters)
   const [showCreateCustomerModal, setShowCreateCustomerModal] = useState<boolean>(false);
   const [newCustName, setNewCustName] = useState<string>('');
   const [newCustMobile, setNewCustMobile] = useState<string>('');
   const [newCustEmail, setNewCustEmail] = useState<string>('');
   const [newCustCity, setNewCustCity] = useState<string>('');
+  const [newCustPincode, setNewCustPincode] = useState<string>('');
+  const [newCustDob, setNewCustDob] = useState<string>('');
   const [newCustEmployment, setNewCustEmployment] = useState<UserProfile['employmentType']>('Salaried');
   const [newCustIncome, setNewCustIncome] = useState<string>('');
   const [newCustPan, setNewCustPan] = useState<string>('');
   const [newCustAadhaar, setNewCustAadhaar] = useState<string>('');
+  const [newCustCompanyName, setNewCustCompanyName] = useState<string>('');
+  const [newCustCompanyType, setNewCustCompanyType] = useState<string>('');
+  const [newCustWorkExp, setNewCustWorkExp] = useState<string>('');
+  const [newCustSalaryBank, setNewCustSalaryBank] = useState<string>('');
+  const [newCustHasCreditCard, setNewCustHasCreditCard] = useState<string>('No');
+  const [newCustCibilScore, setNewCustCibilScore] = useState<string>('750 - 800');
+  const [newCustBusinessName, setNewCustBusinessName] = useState<string>('');
+  const [newCustGst, setNewCustGst] = useState<string>('');
   const [newCustKyc, setNewCustKyc] = useState<boolean>(false);
   const [isCreatingCustomer, setIsCreatingCustomer] = useState<boolean>(false);
   const [createCustomerError, setCreateCustomerError] = useState<string | null>(null);
 
-  // Custom Confirm Delete Customer Modal State
-  const [confirmDeleteUserTarget, setConfirmDeleteUserTarget] = useState<UserProfile | null>(null);
-  const [isDeletingUser, setIsDeletingUser] = useState<boolean>(false);
+  // City Google Places Autocomplete State
+  const [citySuggestions, setCitySuggestions] = useState<string[]>([]);
+  const [isSearchingCity, setIsSearchingCity] = useState<boolean>(false);
+  const [showCitySuggestions, setShowCitySuggestions] = useState<boolean>(false);
 
-  // Wrong Document Rejection & Deletion State
-  const [deletingDocTarget, setDeletingDocTarget] = useState<{
-    doc: DocumentItem;
-    userId: string;
-    userName: string;
-    userMobile: string;
-  } | null>(null);
-  const [docRejectReason, setDocRejectReason] = useState<string>('The uploaded image is blurry or unclear. Please re-upload a clear copy.');
+  // Delete Customer State
+  const [isDeletingUser, setIsDeletingUser] = useState<boolean>(false);
+  const [customerToDelete, setCustomerToDelete] = useState<UserProfile | null>(null);
+
+  // Document Delete Input Modal State
+  const [docToDelete, setDocToDelete] = useState<{ doc: DocumentItem; targetUser: UserProfile } | null>(null);
+  const [docDeleteReason, setDocDeleteReason] = useState<string>('Uploaded document is blurry or unreadable. Please re-upload a clear copy.');
   const [isDeletingDoc, setIsDeletingDoc] = useState<boolean>(false);
 
-  // Edit User State
+  // Edit User State (All Profile Parameters)
   const [isEditingUser, setIsEditingUser] = useState<boolean>(false);
   const [editUserName, setEditUserName] = useState<string>('');
   const [editUserEmail, setEditUserEmail] = useState<string>('');
@@ -130,13 +201,16 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
   const [editUserDob, setEditUserDob] = useState<string>('');
   const [editUserEmployment, setEditUserEmployment] = useState<UserProfile['employmentType']>('Salaried');
   const [editUserIncome, setEditUserIncome] = useState<string>('0');
-  const [editUserCompanyName, setEditUserCompanyName] = useState<string>('');
-  const [editUserWorkExp, setEditUserWorkExp] = useState<string>('');
-  const [editUserSalaryBank, setEditUserSalaryBank] = useState<string>('');
-  const [editUserCompanyType, setEditUserCompanyType] = useState<string>('');
   const [editUserPan, setEditUserPan] = useState<string>('');
   const [editUserAadhaar, setEditUserAadhaar] = useState<string>('');
-  const [editUserCibil, setEditUserCibil] = useState<string>('');
+  const [editUserCompanyName, setEditUserCompanyName] = useState<string>('');
+  const [editUserCompanyType, setEditUserCompanyType] = useState<string>('');
+  const [editUserWorkExp, setEditUserWorkExp] = useState<string>('');
+  const [editUserSalaryBank, setEditUserSalaryBank] = useState<string>('');
+  const [editUserHasCreditCard, setEditUserHasCreditCard] = useState<string>('');
+  const [editUserCibilScore, setEditUserCibilScore] = useState<string>('');
+  const [editUserBusinessName, setEditUserBusinessName] = useState<string>('');
+  const [editUserGstNumber, setEditUserGstNumber] = useState<string>('');
   const [editUserKyc, setEditUserKyc] = useState<boolean>(false);
   const [isSavingUserEdit, setIsSavingUserEdit] = useState<boolean>(false);
   const [userEditSuccessMsg, setUserEditSuccessMsg] = useState<string | null>(null);
@@ -147,7 +221,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
   const [notifMessage, setNotifMessage] = useState<string>('');
   const [isSendingNotif, setIsSendingNotif] = useState<boolean>(false);
   const [notifSuccessMsg, setNotifSuccessMsg] = useState<string | null>(null);
-  const [showNotifHistoryModal, setShowNotifHistoryModal] = useState<boolean>(false);
+  const [showOldMessages, setShowOldMessages] = useState<boolean>(false);
 
   // Status Update Modal State for Loans
   const [editingApp, setEditingApp] = useState<LoanApplication | null>(null);
@@ -245,6 +319,50 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
     setRefSaveSuccessMsg(null);
   };
 
+  // Delete customer document - opens interactive input notification modal
+  const handleDeleteCustomerDoc = (doc: DocumentItem, targetUser: UserProfile) => {
+    setDocToDelete({ doc, targetUser });
+    setDocDeleteReason(`Your uploaded ${doc.name || 'document'} was unclear or invalid. Please re-upload a clear copy.`);
+  };
+
+  const processConfirmDeleteDoc = async () => {
+    if (!docToDelete) return;
+    const { doc, targetUser } = docToDelete;
+    setIsDeletingDoc(true);
+
+    try {
+      const updatedDocs = await dbSyncService.adminDeleteUserDocument(targetUser.id, doc.id);
+
+      // Update local detailedUser and viewingDocsUser states
+      if (detailedUser && detailedUser.id === targetUser.id) {
+        setDetailedUser({ ...detailedUser, documents: updatedDocs });
+      }
+      if (viewingDocsUser && viewingDocsUser.mobile === targetUser.mobile) {
+        setViewingDocsUser({ ...viewingDocsUser, documents: updatedDocs });
+      }
+      setRegisteredUsers((prev) =>
+        prev.map((u) => (u.id === targetUser.id ? { ...u, documents: updatedDocs } : u))
+      );
+
+      // Send in-app notification to customer with reason
+      const notifMsg = docDeleteReason.trim() || `Your uploaded ${doc.name || 'document'} was removed by Admin. Please re-upload a verified clear copy.`;
+      await notificationService.sendAdminNotification(
+        targetUser.id,
+        targetUser.name,
+        targetUser.mobile,
+        notifMsg,
+        'Document Update Required'
+      );
+
+      setDocToDelete(null);
+      Alert.alert('Document Removed', 'Document was deleted from the database and a notification with your reason was sent to the customer.');
+    } catch {
+      Alert.alert('Error', 'Failed to remove document.');
+    } finally {
+      setIsDeletingDoc(false);
+    }
+  };
+
   // View documents for applicant
   const handleViewApplicantDocs = (applicantName?: string, mobile?: string, appDocs?: DocumentItem[]) => {
     if (appDocs && appDocs.length > 0) {
@@ -284,35 +402,38 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
     setUserEditSuccessMsg(null);
   };
 
-  // Prepare Edit User form
+  // Prepare Edit User form with all parameters
   const handleStartEditUser = (user: UserProfile) => {
     setEditUserName(user.name || '');
     setEditUserEmail(user.email || '');
     setEditUserCity(user.city || '');
-    setEditUserPincode((user as any).pincode || '');
-    setEditUserDob((user as any).dob || '');
+    setEditUserPincode(user.pincode || '');
+    setEditUserDob(user.dob || '');
     setEditUserEmployment(user.employmentType || 'Salaried');
     setEditUserIncome(user.monthlyIncome ? user.monthlyIncome.toString() : '0');
-    setEditUserCompanyName((user as any).companyName || '');
-    setEditUserWorkExp((user as any).workExperience || '');
-    setEditUserSalaryBank((user as any).salaryBank || '');
-    setEditUserCompanyType((user as any).companyType || '');
     setEditUserPan(user.panNumber || '');
     setEditUserAadhaar(user.aadhaarNumber || '');
-    setEditUserCibil((user as any).cibilScoreRange || '');
+    setEditUserCompanyName(user.companyName || '');
+    setEditUserCompanyType(user.companyType || '');
+    setEditUserWorkExp(user.workExperience || '');
+    setEditUserSalaryBank(user.salaryBank || '');
+    setEditUserHasCreditCard(user.hasCreditCard || '');
+    setEditUserCibilScore(user.cibilScoreRange || '');
+    setEditUserBusinessName(user.registeredBusiness || '');
+    setEditUserGstNumber(user.gstin || '');
     setEditUserKyc(Boolean(user.isKycCompleted));
     setIsEditingUser(true);
     setUserEditSuccessMsg(null);
   };
 
-  // Save Edit User changes
+  // Save Edit User changes with all parameters
   const handleSaveUserEdit = async () => {
     if (!detailedUser) return;
     setIsSavingUserEdit(true);
     setUserEditSuccessMsg(null);
 
     try {
-      const updates: any = {
+      const updates: Partial<UserProfile> = {
         name: editUserName.trim(),
         email: editUserEmail.trim(),
         city: editUserCity.trim(),
@@ -320,13 +441,16 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
         dob: editUserDob.trim(),
         employmentType: editUserEmployment,
         monthlyIncome: parseFloat(editUserIncome) || 0,
-        companyName: editUserCompanyName.trim(),
-        workExperience: editUserWorkExp.trim(),
-        salaryBank: editUserSalaryBank.trim(),
-        companyType: editUserCompanyType.trim(),
         panNumber: editUserPan.trim().toUpperCase(),
         aadhaarNumber: editUserAadhaar.trim(),
-        cibilScoreRange: editUserCibil.trim(),
+        companyName: editUserCompanyName.trim(),
+        companyType: editUserCompanyType.trim(),
+        workExperience: editUserWorkExp.trim(),
+        salaryBank: editUserSalaryBank.trim(),
+        hasCreditCard: editUserHasCreditCard.trim(),
+        cibilScoreRange: editUserCibilScore.trim(),
+        registeredBusiness: editUserBusinessName.trim(),
+        gstin: editUserGstNumber.trim().toUpperCase(),
         isKycCompleted: editUserKyc,
       };
 
@@ -346,17 +470,69 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
     }
   };
 
-  // Create Customer
+  // Google Places City Search & Autocomplete
+  const handleCitySearch = async (text: string) => {
+    setNewCustCity(text);
+    if (!text || text.trim().length < 2) {
+      setCitySuggestions([]);
+      setShowCitySuggestions(false);
+      return;
+    }
+
+    setShowCitySuggestions(true);
+    setIsSearchingCity(true);
+
+    const query = text.toLowerCase().trim();
+    // Immediate fallback matches from verified list for zero delay
+    const localMatches = INDIAN_CITIES.filter((c) => c.toLowerCase().includes(query)).slice(0, 5);
+
+    try {
+      const apiKey = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || 'AIzaSyB9-nkWX5r9ztnWrtb_0ILUJOITixwQVxc';
+      const endpoint = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(text)}&types=(cities)&components=country:in&key=${apiKey}`;
+      const res = await fetch(endpoint);
+      const data = await res.json();
+      if (data.status === 'OK' && Array.isArray(data.predictions) && data.predictions.length > 0) {
+        const remoteMatches = data.predictions.map((p: any) => p.description || p.structured_formatting?.main_text).filter(Boolean);
+        setCitySuggestions(remoteMatches.slice(0, 6));
+      } else {
+        setCitySuggestions(localMatches);
+      }
+    } catch {
+      setCitySuggestions(localMatches);
+    } finally {
+      setIsSearchingCity(false);
+    }
+  };
+
+  const handleSelectCitySuggestion = (cityText: string) => {
+    setNewCustCity(cityText);
+    setCitySuggestions([]);
+    setShowCitySuggestions(false);
+  };
+
+  // Create new customer from Admin
   const handleOpenCreateCustomerModal = () => {
     setNewCustName('');
     setNewCustMobile('');
     setNewCustEmail('');
     setNewCustCity('');
+    setNewCustPincode('');
+    setNewCustDob('');
     setNewCustEmployment('Salaried');
     setNewCustIncome('');
     setNewCustPan('');
     setNewCustAadhaar('');
+    setNewCustCompanyName('');
+    setNewCustCompanyType('');
+    setNewCustWorkExp('');
+    setNewCustSalaryBank('');
+    setNewCustHasCreditCard('No');
+    setNewCustCibilScore('750 - 800');
+    setNewCustBusinessName('');
+    setNewCustGst('');
     setNewCustKyc(false);
+    setCitySuggestions([]);
+    setShowCitySuggestions(false);
     setCreateCustomerError(null);
     setShowCreateCustomerModal(true);
   };
@@ -381,125 +557,59 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
         mobile: cleanMob,
         email: newCustEmail.trim() || undefined,
         city: newCustCity.trim() || undefined,
+        pincode: newCustPincode.trim() || undefined,
+        dob: newCustDob.trim() || undefined,
         employmentType: newCustEmployment,
         monthlyIncome: parseFloat(newCustIncome) || 0,
         panNumber: newCustPan.trim().toUpperCase() || undefined,
         aadhaarNumber: newCustAadhaar.trim() || undefined,
+        companyName: newCustCompanyName.trim() || undefined,
+        companyType: newCustCompanyType.trim() || undefined,
+        workExperience: newCustWorkExp.trim() || undefined,
+        salaryBank: newCustSalaryBank.trim() || undefined,
+        hasCreditCard: newCustHasCreditCard.trim() || undefined,
+        cibilScoreRange: newCustCibilScore.trim() || undefined,
+        registeredBusiness: newCustBusinessName.trim() || undefined,
+        gstin: newCustGst.trim().toUpperCase() || undefined,
         isKycCompleted: newCustKyc,
       };
 
       const createdUser = await dbSyncService.adminCreateUser(payload);
       setRegisteredUsers((prev) => [createdUser, ...prev]);
       setShowCreateCustomerModal(false);
-      Alert.alert('Success', `Customer ${createdUser.name} created successfully!`);
+      Alert.alert('Success', `Customer ${createdUser.name} created successfully with ID: ${createdUser.id}`);
     } catch (err: any) {
-      setCreateCustomerError(err?.message || 'Failed to create customer.');
+      setCreateCustomerError(err?.message || 'Failed to create customer. Please check input values.');
     } finally {
       setIsCreatingCustomer(false);
     }
   };
 
-  // Open Delete Customer Confirmation Modal
+  // Delete Customer Action - Opens custom popup box for confirmation
   const handleDeleteCustomerConfirm = (user: UserProfile) => {
-    setConfirmDeleteUserTarget(user);
+    setCustomerToDelete(user);
   };
 
-  // Delete Customer Action from Confirmation Modal
-  const handleExecuteDeleteCustomer = async () => {
-    if (!confirmDeleteUserTarget) return;
+  const executeDeleteCustomer = async () => {
+    if (!customerToDelete) return;
     setIsDeletingUser(true);
     try {
-      const ok = await dbSyncService.adminDeleteUser(confirmDeleteUserTarget.id);
+      const ok = await dbSyncService.adminDeleteUser(customerToDelete.id);
       if (ok) {
-        setRegisteredUsers((prev) => prev.filter((u) => u.id !== confirmDeleteUserTarget.id));
-        if (detailedUser?.id === confirmDeleteUserTarget.id) {
+        setRegisteredUsers((prev) => prev.filter((u) => u.id !== customerToDelete.id));
+        if (detailedUser?.id === customerToDelete.id) {
           setDetailedUser(null);
         }
-        setConfirmDeleteUserTarget(null);
-        Alert.alert('Customer Deleted', `Customer profile for ${confirmDeleteUserTarget.name} has been removed.`);
+        setCustomerToDelete(null);
+        Alert.alert('Customer Deleted', `Customer profile for ${customerToDelete.name} was successfully removed from the database.`);
       } else {
-        Alert.alert('Error', 'Unable to delete customer from database.');
+        Alert.alert('Error', 'Unable to delete customer. Please try again.');
       }
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to delete customer.');
+      Alert.alert('Error', err?.message || 'Failed to delete customer profile.');
     } finally {
       setIsDeletingUser(false);
     }
-  };
-
-  // Wrong Document Deletion & Customer Notification Trigger
-  const handleOpenDocDeleteDialog = (doc: DocumentItem, userId: string, userName: string, userMobile: string) => {
-    setDeletingDocTarget({ doc, userId, userName, userMobile });
-    setDocRejectReason(`Your uploaded ${doc.name || 'document'} is unclear or invalid. Please re-upload a clear copy in the app.`);
-  };
-
-  const handleExecuteDocDelete = async () => {
-    if (!deletingDocTarget) return;
-    setIsDeletingDoc(true);
-    try {
-      const updatedDocs = await dbSyncService.adminDeleteUserDocument(deletingDocTarget.userId, deletingDocTarget.doc.id);
-
-      // Update local user state
-      if (detailedUser && detailedUser.id === deletingDocTarget.userId) {
-        setDetailedUser({ ...detailedUser, documents: updatedDocs });
-      }
-      setRegisteredUsers((prev) =>
-        prev.map((u) => (u.id === deletingDocTarget.userId ? { ...u, documents: updatedDocs } : u))
-      );
-
-      // Send automated push notification / alert to customer
-      await notificationService.sendAdminNotification(
-        deletingDocTarget.userId,
-        deletingDocTarget.userName,
-        deletingDocTarget.userMobile,
-        docRejectReason.trim(),
-        `Document Action: ${deletingDocTarget.doc.name || 'KYC'}`
-      );
-
-      Alert.alert('Document Deleted', `Document removed. Customer was notified: "${docRejectReason.trim()}"`);
-      setDeletingDocTarget(null);
-    } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to delete document.');
-    } finally {
-      setIsDeletingDoc(false);
-    }
-  };
-
-  // Delete Referral Lead with Referrer Notification
-  const handleDeleteReferralLead = async (lead: ReferralLead) => {
-    Alert.alert(
-      'Delete Referral Lead',
-      `Are you sure you want to delete referral lead "${lead.friendName}" (+91 ${lead.friendMobile})?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await dbSyncService.adminDeleteReferral(lead.id);
-              setReferralLeads((prev) => prev.filter((r) => r.id !== lead.id));
-              setEditingRefLead(null);
-
-              // Notify referrer customer
-              if (lead.referrerUserId || lead.referrerMobile) {
-                await notificationService.sendAdminNotification(
-                  lead.referrerUserId || lead.referrerMobile,
-                  'Valued Partner',
-                  lead.referrerMobile,
-                  `Your referral entry for ${lead.friendName} was closed/removed by the loan operations team.`,
-                  'Referral Lead Update'
-                );
-              }
-
-              Alert.alert('Referral Deleted', 'The referral lead has been deleted and the referrer was notified.');
-            } catch (err: any) {
-              Alert.alert('Error', err?.message || 'Failed to delete referral lead.');
-            }
-          },
-        },
-      ]
-    );
   };
 
   // Open send notification modal
@@ -520,9 +630,16 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
 
     setIsSendingNotif(true);
     try {
-      // In production, triggers Firebase/APNs or WhatsApp message. Simulated here.
-      await new Promise((res) => setTimeout(res, 600));
-      setNotifSuccessMsg(`Notification successfully dispatched to +91 ${notificationTargetUser.mobile}!`);
+      // Dispatches persistent two-way notification so user's bell icon immediately increments +X
+      await notificationService.sendAdminNotification(
+        notificationTargetUser.id,
+        notificationTargetUser.name,
+        notificationTargetUser.mobile,
+        notifMessage.trim(),
+        notifTitle.trim() || 'Loan Point Admin Update'
+      );
+
+      setNotifSuccessMsg(`Notification successfully dispatched to ${notificationTargetUser.name}!`);
       setTimeout(() => {
         setNotificationTargetUser(null);
         setNotifSuccessMsg(null);
@@ -572,12 +689,12 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
         prev.map((a) =>
           a.id === editingApp.id
             ? {
-                ...a,
-                status: newStatus,
-                remarks: adminRemarks,
-                nextAction: nextActionNote,
-                statusUpdatedDate: nowFormatted,
-              }
+              ...a,
+              status: newStatus,
+              remarks: adminRemarks,
+              nextAction: nextActionNote,
+              statusUpdatedDate: nowFormatted,
+            }
             : a
         )
       );
@@ -613,12 +730,12 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
         prev.map((ins) =>
           ins.id === editingInsApp.id
             ? {
-                ...ins,
-                status: newInsStatus as any,
-                remarks: adminInsRemarks,
-                nextAction: nextInsActionNote,
-                statusUpdatedAt: nowIso,
-              }
+              ...ins,
+              status: newInsStatus as any,
+              remarks: adminInsRemarks,
+              nextAction: nextInsActionNote,
+              statusUpdatedAt: nowIso,
+            }
             : ins
         )
       );
@@ -658,33 +775,32 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
         prev.map((r) =>
           r.id === editingRefLead.id
             ? {
-                ...r,
-                status: newRefStatus as any,
-                remarks: adminRefRemarks,
-                nextAction: nextRefActionNote,
-                payoutAmount: numPayout,
-                payoutStatus: refPayoutStatus as any,
-                statusUpdatedAt: nowIso,
-              }
+              ...r,
+              status: newRefStatus as any,
+              remarks: adminRefRemarks,
+              nextAction: nextRefActionNote,
+              payoutAmount: numPayout,
+              payoutStatus: refPayoutStatus as any,
+              statusUpdatedAt: nowIso,
+            }
             : r
         )
       );
 
       setRefSaveSuccessMsg(`Referral ${editingRefLead.id} updated to "${newRefStatus}"!`);
 
-      // Dispatch automated notification to referrer customer
-      if (editingRefLead.referrerUserId || editingRefLead.referrerMobile) {
-        const notifTxt = numPayout > 0
-          ? `Update on your referral for ${editingRefLead.friendName}: Status is now "${newRefStatus}" with payout ₹${numPayout} (${refPayoutStatus}).`
-          : `Update on your referral for ${editingRefLead.friendName}: Status is now "${newRefStatus}". Remarks: ${adminRefRemarks || 'Under review'}.`;
-
-        notificationService.sendAdminNotification(
+      // Automatically dispatch notification to referring user about update
+      try {
+        const notifBody = `Your referral lead for ${editingRefLead.friendName} has been updated to "${newRefStatus}". Payout Status: ${refPayoutStatus} (₹${numPayout}).`;
+        await notificationService.sendAdminNotification(
           editingRefLead.referrerUserId || editingRefLead.referrerMobile,
-          'Valued Partner',
           editingRefLead.referrerMobile,
-          notifTxt,
-          `Referral Lead Status: ${newRefStatus}`
-        ).catch(() => {});
+          editingRefLead.referrerMobile,
+          notifBody,
+          'Referral Update'
+        );
+      } catch (notifErr) {
+        console.warn('Could not dispatch referral notification:', notifErr);
       }
 
       setTimeout(() => {
@@ -699,10 +815,51 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
     }
   };
 
+  // Delete Referral Lead
+  const handleDeleteReferral = (ref: ReferralLead) => {
+    Alert.alert(
+      'Delete Referral Lead',
+      `Are you sure you want to delete referral lead "${ref.friendName}" (+91 ${ref.friendMobile})?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const ok = await dbSyncService.deleteReferralLead(ref.id);
+              if (ok) {
+                setReferralLeads((prev) => prev.filter((r) => r.id !== ref.id));
+                if (editingRefLead?.id === ref.id) {
+                  setEditingRefLead(null);
+                }
+                // Send notification to referring customer
+                try {
+                  await notificationService.sendAdminNotification(
+                    ref.referrerUserId || ref.referrerMobile,
+                    ref.friendName || 'Referral Partner',
+                    ref.referrerMobile,
+                    `Your referral lead for ${ref.friendName} (${ref.loanProduct}) was closed and removed by Admin.`,
+                    'Referral Update'
+                  );
+                } catch { }
+                Alert.alert('Referral Deleted', 'Referral lead was removed and customer notified.');
+              } else {
+                Alert.alert('Error', 'Failed to delete referral lead.');
+              }
+            } catch {
+              Alert.alert('Error', 'Failed to delete referral lead.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   // Make direct phone call or WhatsApp to applicant
   const handleCallApplicant = (phone?: string) => {
     const targetPhone = phone || COMPANY_INFO.contactPhoneRaw;
-    Linking.openURL(`tel:${targetPhone}`).catch(() => {});
+    Linking.openURL(`tel:${targetPhone}`).catch(() => { });
   };
 
   const handleWhatsAppApplicant = (app: LoanApplication) => {
@@ -710,7 +867,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
     const msg = encodeURIComponent(
       `Hello, this is Loan Point Admin regarding your ${app.loanTypeName} application (${app.id}). Current status: ${app.status}.`
     );
-    Linking.openURL(`https://wa.me/91${targetPhone.replace(/\D/g, '').slice(-10)}?text=${msg}`).catch(() => {});
+    Linking.openURL(`https://wa.me/91${targetPhone.replace(/\D/g, '').slice(-10)}?text=${msg}`).catch(() => { });
   };
 
   // Open Document File URI
@@ -737,7 +894,12 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
 
   // Filtered Loans
   const filteredApps = applications.filter((app) => {
-    const matchesFilter = selectedFilter === 'All' ? true : app.status === selectedFilter;
+    let matchesFilter = true;
+    if (selectedFilter === 'Top Up Requests') {
+      matchesFilter = !!app.isTopUp;
+    } else if (selectedFilter !== 'All') {
+      matchesFilter = app.status === selectedFilter;
+    }
     const query = searchQuery.toLowerCase().trim();
     const matchesQuery =
       query === '' ||
@@ -745,6 +907,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
       app.loanTypeName.toLowerCase().includes(query) ||
       (app.applicantName && app.applicantName.toLowerCase().includes(query)) ||
       (app.applicantMobile && app.applicantMobile.includes(query)) ||
+      (app.isTopUp && 'top up'.includes(query)) ||
       app.requestedAmount.toString().includes(query);
 
     return matchesFilter && matchesQuery;
@@ -921,16 +1084,6 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
             <Text style={styles.adminBadgeText}>ADMIN CONSOLE</Text>
           </View>
           <View style={styles.headerActions}>
-            {onSwitchToCustomerView && (
-              <TouchableOpacity
-                style={styles.switchModeBtn}
-                onPress={onSwitchToCustomerView}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="person-outline" size={14} color={colors.primary} />
-                <Text style={styles.switchModeText}>Customer View</Text>
-              </TouchableOpacity>
-            )}
             <TouchableOpacity style={styles.logoutBtn} onPress={onLogout} activeOpacity={0.7}>
               <Ionicons name="log-out-outline" size={16} color="#ef4444" />
               <Text style={styles.logoutText}>Logout</Text>
@@ -958,7 +1111,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
             <Ionicons
               name="cash"
               size={15}
-              color={activeAdminTab === 'loans' ? '#003399' : '#ffffff'}
+              color={activeAdminTab === 'loans' ? '#0f172a' : '#ffffff'}
             />
             <Text
               style={[styles.topTabBtnText, activeAdminTab === 'loans' && styles.topTabBtnTextActive]}
@@ -977,7 +1130,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
             <Ionicons
               name="shield-checkmark"
               size={15}
-              color={activeAdminTab === 'insurance' ? '#003399' : '#ffffff'}
+              color={activeAdminTab === 'insurance' ? '#0f172a' : '#ffffff'}
             />
             <Text
               style={[styles.topTabBtnText, activeAdminTab === 'insurance' && styles.topTabBtnTextActive]}
@@ -996,7 +1149,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
             <Ionicons
               name="gift"
               size={15}
-              color={activeAdminTab === 'referrals' ? '#003399' : '#ffffff'}
+              color={activeAdminTab === 'referrals' ? '#0f172a' : '#ffffff'}
             />
             <Text
               style={[styles.topTabBtnText, activeAdminTab === 'referrals' && styles.topTabBtnTextActive]}
@@ -1015,65 +1168,128 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
             <Ionicons
               name="people"
               size={15}
-              color={activeAdminTab === 'users' ? '#003399' : '#ffffff'}
+              color={activeAdminTab === 'users' ? '#0f172a' : '#ffffff'}
             />
             <Text
               style={[styles.topTabBtnText, activeAdminTab === 'users' && styles.topTabBtnTextActive]}
               numberOfLines={1}
             >
-              Total Users ({registeredUsers.length})
+              Users ({registeredUsers.length})
+            </Text>
+          </TouchableOpacity>
+
+          {/* 5. Customer Messages */}
+          <TouchableOpacity
+            style={[styles.topTabBtn, activeAdminTab === 'messages' && styles.topTabBtnActive]}
+            onPress={() => setActiveAdminTab('messages')}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name="chatbubbles"
+              size={15}
+              color={activeAdminTab === 'messages' ? '#0f172a' : '#ffffff'}
+            />
+            <Text
+              style={[styles.topTabBtnText, activeAdminTab === 'messages' && styles.topTabBtnTextActive]}
+              numberOfLines={1}
+            >
+              Messages ({customerMessages.length})
             </Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* KPI / Analytics Cards */}
+        {/* KPI / Analytics Cards - 2x2 Clickable Grid with Slate & Emerald */}
         {activeAdminTab === 'users' ? (
-          <View style={styles.statsRow}>
-            <View style={[styles.statCard, { borderLeftColor: '#002e75' }]}>
+          <View style={styles.statsGrid}>
+            <TouchableOpacity
+              style={[styles.statCardGrid, { borderLeftColor: '#0f172a' }]}
+              onPress={() => setSelectedUserFilter('All')}
+              activeOpacity={0.75}
+            >
               <Text style={styles.statLabel}>Total Users</Text>
-              <Text style={[styles.statValue, { color: '#002e75' }]}>{totalUserCount}</Text>
-              <Text style={styles.statSub}>All Registered</Text>
-            </View>
-            <View style={[styles.statCard, { borderLeftColor: colors.success }]}>
+              <Text style={[styles.statValue, { color: '#0f172a' }]}>{totalUserCount}</Text>
+              <Text style={styles.statSub}>All Registered ↗</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.statCardGrid, { borderLeftColor: '#059669' }]}
+              onPress={() => setSelectedUserFilter('Active')}
+              activeOpacity={0.75}
+            >
               <Text style={styles.statLabel}>Active Users</Text>
-              <Text style={[styles.statValue, { color: colors.success }]}>{activeUserCount}</Text>
-              <Text style={styles.statSub}>In Loan / KYC</Text>
-            </View>
-            <View style={[styles.statCard, { borderLeftColor: '#0284c7' }]}>
+              <Text style={[styles.statValue, { color: '#059669' }]}>{activeUserCount}</Text>
+              <Text style={styles.statSub}>In Loan / KYC ↗</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.statCardGrid, { borderLeftColor: '#d97706' }]}
+              onPress={() => setSelectedUserFilter('New')}
+              activeOpacity={0.75}
+            >
               <Text style={styles.statLabel}>New Registrations</Text>
-              <Text style={[styles.statValue, { color: '#0284c7' }]}>{newUserCount}</Text>
-              <Text style={styles.statSub}>Recent 30 Days</Text>
-            </View>
-            <View style={[styles.statCard, { borderLeftColor: '#64748b' }]}>
+              <Text style={[styles.statValue, { color: '#d97706' }]}>{newUserCount}</Text>
+              <Text style={styles.statSub}>Recent 30 Days ↗</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.statCardGrid, { borderLeftColor: '#64748b' }]}
+              onPress={() => setSelectedUserFilter('Closed')}
+              activeOpacity={0.75}
+            >
               <Text style={styles.statLabel}>Closed Users</Text>
               <Text style={[styles.statValue, { color: '#64748b' }]}>{closedUserCount}</Text>
-              <Text style={styles.statSub}>Disbursed / Inactive</Text>
-            </View>
+              <Text style={styles.statSub}>Disbursed / Done ↗</Text>
+            </TouchableOpacity>
           </View>
         ) : (
-          <View style={styles.statsRow}>
-            <View style={[styles.statCard, { borderLeftColor: colors.primary }]}>
+          <View style={styles.statsGrid}>
+            <TouchableOpacity
+              style={[styles.statCardGrid, { borderLeftColor: '#0f172a' }]}
+              onPress={() => {
+                setActiveAdminTab('loans');
+                setSelectedFilter('All');
+              }}
+              activeOpacity={0.75}
+            >
               <Text style={styles.statLabel}>Applications</Text>
-              <Text style={styles.statValue}>{applications.length}</Text>
-              <Text style={styles.statSub}>₹{(totalVolume / 100000).toFixed(1)}L Total</Text>
-            </View>
-            <View style={[styles.statCard, { borderLeftColor: colors.success }]}>
+              <Text style={[styles.statValue, { color: '#0f172a' }]}>{applications.length}</Text>
+              <Text style={styles.statSub}>₹{(totalVolume / 100000).toFixed(1)}L Total ↗</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.statCardGrid, { borderLeftColor: '#059669' }]}
+              onPress={() => {
+                setActiveAdminTab('loans');
+                setSelectedFilter('Approved');
+              }}
+              activeOpacity={0.75}
+            >
               <Text style={styles.statLabel}>Sanctioned</Text>
-              <Text style={[styles.statValue, { color: colors.success }]}>{approvedCount}</Text>
-              <Text style={styles.statSub}>Approved/Disbursed</Text>
-            </View>
-            <View style={[styles.statCard, { borderLeftColor: colors.secondaryRed }]}>
+              <Text style={[styles.statValue, { color: '#059669' }]}>{approvedCount}</Text>
+              <Text style={styles.statSub}>Approved/Disbursed ↗</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.statCardGrid, { borderLeftColor: '#ef4444' }]}
+              onPress={() => {
+                setActiveAdminTab('loans');
+                setSelectedFilter('Documents Pending');
+              }}
+              activeOpacity={0.75}
+            >
               <Text style={styles.statLabel}>Action Req.</Text>
-              <Text style={[styles.statValue, { color: colors.secondaryRed }]}>{pendingCount}</Text>
-              <Text style={styles.statSub}>Pending / Review</Text>
-            </View>
-            <View style={[styles.statCard, { borderLeftColor: '#8b5cf6' }]}>
+              <Text style={[styles.statValue, { color: '#ef4444' }]}>{pendingCount}</Text>
+              <Text style={styles.statSub}>Pending / Review ↗</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.statCardGrid, { borderLeftColor: '#7c3aed' }]}
+              onPress={() => {
+                setActiveAdminTab('users');
+                setSelectedUserFilter('All');
+              }}
+              activeOpacity={0.75}
+            >
               <Text style={styles.statLabel}>Registered</Text>
-              <Text style={[styles.statValue, { color: '#8b5cf6' }]}>{registeredUsers.length}</Text>
-              <Text style={styles.statSub}>Total Users</Text>
-            </View>
+              <Text style={[styles.statValue, { color: '#7c3aed' }]}>{registeredUsers.length}</Text>
+              <Text style={styles.statSub}>Total Users ↗</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -1086,10 +1302,10 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
               activeAdminTab === 'loans'
                 ? 'Search by ID, Customer, Loan Type, or Amount...'
                 : activeAdminTab === 'insurance'
-                ? 'Search by Request ID, Customer, or Insurance Type...'
-                : activeAdminTab === 'referrals'
-                ? 'Search by Friend, Product, or Mobile...'
-                : 'Search registered users by Name, Mobile, City, or Code...'
+                  ? 'Search by Request ID, Customer, or Insurance Type...'
+                  : activeAdminTab === 'referrals'
+                    ? 'Search by Friend, Product, or Mobile...'
+                    : 'Search registered users by Name, Mobile, City, or Code...'
             }
             placeholderTextColor="#94a3b8"
             value={searchQuery}
@@ -1105,7 +1321,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
         {/* Filters according to active tab */}
         {activeAdminTab === 'loans' && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-            {['All', ...ALL_STATUSES].map((status) => {
+            {['All', 'Top Up Requests', ...ALL_STATUSES].map((status) => {
               const isActive = selectedFilter === status;
               return (
                 <TouchableOpacity
@@ -1189,15 +1405,29 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
             {activeAdminTab === 'loans'
               ? `Loan Applications (${filteredApps.length})`
               : activeAdminTab === 'insurance'
-              ? `Insurance Requests (${filteredInsuranceApps.length})`
-              : activeAdminTab === 'referrals'
-              ? `Referral Leads (${filteredReferralLeads.length})`
-              : `Registered Customers (${filteredUsers.length})`}
+                ? `Insurance Requests (${filteredInsuranceApps.length})`
+                : activeAdminTab === 'referrals'
+                  ? `Referral Leads (${filteredReferralLeads.length})`
+                  : activeAdminTab === 'messages'
+                    ? `Customer Inquiries (${customerMessages.length})`
+                    : `Registered Customers (${filteredUsers.length})`}
           </Text>
-          <TouchableOpacity onPress={refreshList} style={styles.refreshBtn} activeOpacity={0.75}>
-            <Ionicons name="reload" size={13} color={colors.primary} />
-            <Text style={styles.refreshBtnText}>Refresh</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {activeAdminTab === 'users' && (
+              <TouchableOpacity
+                onPress={handleOpenCreateCustomerModal}
+                style={[styles.refreshBtn, { backgroundColor: '#059669', borderColor: '#059669' }]}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="person-add" size={13} color="#ffffff" />
+                <Text style={[styles.refreshBtnText, { color: '#ffffff', fontWeight: '800' }]}>+ Add Customer</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={refreshList} style={styles.refreshBtn} activeOpacity={0.75}>
+              <Ionicons name="reload" size={13} color="#059669" />
+              <Text style={styles.refreshBtnText}>Refresh</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* ---------------- 1. LOANS LIST ---------------- */}
@@ -1218,6 +1448,12 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                     <View style={{ flex: 1 }}>
                       <View style={styles.appIdRow}>
                         <Text style={styles.appIdText}>{app.id}</Text>
+                        {app.isTopUp && (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#fef3c7', borderWidth: 1, borderColor: '#fde68a', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1, gap: 3 }}>
+                            <Ionicons name="cash" size={10} color="#d97706" />
+                            <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#b45309' }}>TOP UP</Text>
+                          </View>
+                        )}
                       </View>
                       <Text style={styles.appLoanType}>{app.loanTypeName}</Text>
                     </View>
@@ -1290,7 +1526,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                       }}
                       activeOpacity={0.75}
                     >
-                      <Ionicons name="information-circle-outline" size={14} color="#002e75" />
+                      <Ionicons name="information-circle-outline" size={14} color="#059669" />
                       <Text style={styles.loanDetailViewBtnText}>Full Details</Text>
                     </TouchableOpacity>
 
@@ -1359,7 +1595,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
 
                     <View style={styles.detailItem}>
                       <Text style={styles.detailLabel}>Insurance Category</Text>
-                      <Text style={[styles.detailValue, { color: '#003399' }]} numberOfLines={1}>
+                      <Text style={[styles.detailValue, { color: '#0f172a' }]} numberOfLines={1}>
                         {ins.insuranceType?.toUpperCase()}
                       </Text>
                       <Text style={styles.detailSub}>
@@ -1396,7 +1632,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                         const msg = encodeURIComponent(
                           `Hello, this is Loan Point Insurance Advisor regarding your enquiry (${ins.id}).`
                         );
-                        Linking.openURL(`https://wa.me/91${cleanMob}?text=${msg}`).catch(() => {});
+                        Linking.openURL(`https://wa.me/91${cleanMob}?text=${msg}`).catch(() => { });
                       }}
                       activeOpacity={0.7}
                     >
@@ -1497,7 +1733,15 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                       activeOpacity={0.8}
                     >
                       <Ionicons name="create-outline" size={15} color="#ffffff" />
-                      <Text style={styles.manageBtnText}>Update Lead</Text>
+                      <Text style={styles.manageBtnText}>Update</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.manageBtn, { backgroundColor: '#fee2e2', borderColor: '#fca5a5', borderWidth: 1 }]}
+                      onPress={() => handleDeleteReferral(ref)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="trash-outline" size={15} color="#dc2626" />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -1519,10 +1763,10 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
               const docCount = u.documents?.length || 0;
               const formattedDate = u.createdAt
                 ? new Date(u.createdAt).toLocaleDateString('en-IN', {
-                    day: '2-digit',
-                    month: 'short',
-                    year: 'numeric',
-                  })
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric',
+                })
                 : u.memberSince || 'Registered';
 
               return (
@@ -1602,7 +1846,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                         e.stopPropagation?.();
                         const cleanMob = u.mobile.replace(/\D/g, '').slice(-10);
                         const msg = encodeURIComponent(`Hello ${u.name || 'Customer'}, this is Loan Point Admin.`);
-                        Linking.openURL(`https://wa.me/91${cleanMob}?text=${msg}`).catch(() => {});
+                        Linking.openURL(`https://wa.me/91${cleanMob}?text=${msg}`).catch(() => { });
                       }}
                       activeOpacity={0.7}
                     >
@@ -1611,7 +1855,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={[styles.manageBtn, { backgroundColor: '#002e75' }]}
+                      style={[styles.manageBtn, { backgroundColor: '#0f172a' }]}
                       onPress={(e) => {
                         e.stopPropagation?.();
                         handleOpenUserDetail(u);
@@ -1625,6 +1869,92 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                 </TouchableOpacity>
               );
             })
+          )
+        )}
+
+        {/* ---------------- 5. CUSTOMER INBOX MESSAGES TAB ---------------- */}
+        {activeAdminTab === 'messages' && (
+          customerMessages.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="chatbubbles-outline" size={44} color="#94a3b8" />
+              <Text style={styles.emptyTitle}>No Inquiries Received Yet</Text>
+              <Text style={styles.emptySubtitle}>Customer messages and questions sent from the app will appear here.</Text>
+            </View>
+          ) : (
+            customerMessages.map((msg) => (
+              <View key={msg.id} style={styles.inboxCard}>
+                <View style={styles.inboxCardHeader}>
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.inboxUserRow}>
+                      <Ionicons name="person-circle" size={18} color="#059669" />
+                      <Text style={styles.inboxUserName}>{msg.userName || 'Customer'}</Text>
+                      {msg.userMobile && (
+                        <Text style={styles.inboxUserMobile}>+91 {msg.userMobile}</Text>
+                      )}
+                    </View>
+                    <Text style={styles.inboxTitle}>{msg.title}</Text>
+                  </View>
+                  <Text style={styles.inboxTime}>{new Date(msg.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</Text>
+                </View>
+
+                <View style={styles.inboxBody}>
+                  <Text style={styles.inboxMessageText}>{msg.message}</Text>
+                </View>
+
+                <View style={styles.inboxActionRow}>
+                  {msg.userMobile && (
+                    <TouchableOpacity
+                      style={styles.contactBtn}
+                      onPress={() => handleCallApplicant(msg.userMobile)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="call-outline" size={14} color="#059669" />
+                      <Text style={styles.contactBtnText}>Call</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {msg.userMobile && (
+                    <TouchableOpacity
+                      style={styles.contactBtn}
+                      onPress={() => {
+                        const cleanMob = (msg.userMobile || '').replace(/\D/g, '').slice(-10);
+                        const replyMsg = encodeURIComponent(`Hello ${msg.userName || 'Customer'}, regarding your query: "${msg.title}"`);
+                        Linking.openURL(`https://wa.me/91${cleanMob}?text=${replyMsg}`).catch(() => { });
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="logo-whatsapp" size={14} color="#16a34a" />
+                      <Text style={styles.contactBtnText}>WhatsApp</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  <TouchableOpacity
+                    style={[styles.manageBtn, { backgroundColor: '#0f172a' }]}
+                    onPress={() => {
+                      setNotificationTargetUser({
+                        id: msg.userId || 'unknown',
+                        name: msg.userName || 'Customer',
+                        mobile: msg.userMobile || '',
+                        email: '',
+                        city: '',
+                        employmentType: 'Salaried',
+                        monthlyIncome: 0,
+                        aadhaarLinked: false,
+                        memberSince: new Date().getFullYear().toString(),
+                        referralCode: '',
+                        createdAt: new Date().toISOString(),
+                      });
+                      setNotifTitle(`Re: ${msg.title}`);
+                      setNotifMessage('');
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="paper-plane" size={13} color="#ffffff" />
+                    <Text style={styles.manageBtnText}>Direct Reply</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))
           )
         )}
       </ScrollView>
@@ -1743,7 +2073,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <View style={styles.loanDetailTypeIcon}>
-                      <Ionicons name="document-text" size={16} color="#002e75" />
+                      <Ionicons name="document-text" size={16} color="#059669" />
                     </View>
                     <Text style={styles.modalTitle} numberOfLines={1}>
                       {viewingLoanDetail.loanTypeName}
@@ -1768,7 +2098,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                   style={[styles.modalSubTabBtn, activeLoanDetailTab === 'loan' && styles.modalSubTabBtnActive]}
                   onPress={() => setActiveLoanDetailTab('loan')}
                 >
-                  <Ionicons name="cash-outline" size={13} color={activeLoanDetailTab === 'loan' ? '#002e75' : '#64748b'} />
+                  <Ionicons name="cash-outline" size={13} color={activeLoanDetailTab === 'loan' ? '#0f172a' : '#64748b'} />
                   <Text style={[styles.modalSubTabText, activeLoanDetailTab === 'loan' && styles.modalSubTabTextActive]}>
                     Loan Summary
                   </Text>
@@ -1778,7 +2108,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                   style={[styles.modalSubTabBtn, activeLoanDetailTab === 'user' && styles.modalSubTabBtnActive]}
                   onPress={() => setActiveLoanDetailTab('user')}
                 >
-                  <Ionicons name="person-outline" size={13} color={activeLoanDetailTab === 'user' ? '#002e75' : '#64748b'} />
+                  <Ionicons name="person-outline" size={13} color={activeLoanDetailTab === 'user' ? '#0f172a' : '#64748b'} />
                   <Text style={[styles.modalSubTabText, activeLoanDetailTab === 'user' && styles.modalSubTabTextActive]}>
                     User Profile ({viewingLoanDetail.applicantProfile ? 'Live DB' : 'Basic'})
                   </Text>
@@ -1788,7 +2118,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                   style={[styles.modalSubTabBtn, activeLoanDetailTab === 'property_asset' && styles.modalSubTabBtnActive]}
                   onPress={() => setActiveLoanDetailTab('property_asset')}
                 >
-                  <Ionicons name="layers-outline" size={13} color={activeLoanDetailTab === 'property_asset' ? '#002e75' : '#64748b'} />
+                  <Ionicons name="layers-outline" size={13} color={activeLoanDetailTab === 'property_asset' ? '#0f172a' : '#64748b'} />
                   <Text style={[styles.modalSubTabText, activeLoanDetailTab === 'property_asset' && styles.modalSubTabTextActive]}>
                     Asset / Collateral
                   </Text>
@@ -1798,7 +2128,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                   style={[styles.modalSubTabBtn, activeLoanDetailTab === 'documents' && styles.modalSubTabBtnActive]}
                   onPress={() => setActiveLoanDetailTab('documents')}
                 >
-                  <Ionicons name="folder-open-outline" size={13} color={activeLoanDetailTab === 'documents' ? '#002e75' : '#64748b'} />
+                  <Ionicons name="folder-open-outline" size={13} color={activeLoanDetailTab === 'documents' ? '#0f172a' : '#64748b'} />
                   <Text style={[styles.modalSubTabText, activeLoanDetailTab === 'documents' && styles.modalSubTabTextActive]}>
                     Docs ({viewingLoanDetail.documents?.length || 0})
                   </Text>
@@ -1960,8 +2290,8 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                             {viewingLoanDetail.applicantProfile?.aadhaarNumber
                               ? `XXXX-XXXX-${viewingLoanDetail.applicantProfile.aadhaarNumber.slice(-4)}`
                               : viewingLoanDetail.applicantProfile?.aadhaarLastFour
-                              ? `XXXX-XXXX-${viewingLoanDetail.applicantProfile.aadhaarLastFour}`
-                              : '—'}
+                                ? `XXXX-XXXX-${viewingLoanDetail.applicantProfile.aadhaarLastFour}`
+                                : '—'}
                           </Text>
                         </View>
                       </View>
@@ -2208,7 +2538,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                               activeOpacity={0.75}
                             >
                               <View style={styles.docViewerIconBadge}>
-                                <Ionicons name="document-text" size={18} color="#002e75" />
+                                <Ionicons name="document-text" size={18} color="#059669" />
                               </View>
                               <View style={{ flex: 1, minWidth: 0 }}>
                                 <Text style={styles.docViewerTitle} numberOfLines={1}>
@@ -2447,11 +2777,14 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
 
               <View style={styles.modalBtnRow}>
                 <TouchableOpacity
-                  style={[styles.modalCancelBtn, { backgroundColor: '#fef2f2', borderColor: '#fecaca' }]}
-                  onPress={() => handleDeleteReferralLead(editingRefLead)}
+                  style={[styles.modalCancelBtn, { backgroundColor: '#fee2e2', borderColor: '#fca5a5' }]}
+                  onPress={() => {
+                    const lead = editingRefLead;
+                    if (lead) handleDeleteReferral(lead);
+                  }}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="trash-outline" size={15} color="#dc2626" />
+                  <Ionicons name="trash-outline" size={14} color="#dc2626" style={{ marginRight: 4 }} />
                   <Text style={[styles.modalCancelText, { color: '#dc2626' }]}>Delete</Text>
                 </TouchableOpacity>
 
@@ -2533,16 +2866,37 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                         <Ionicons name="eye" size={14} color="#ffffff" />
                         <Text style={styles.docItemOpenBtnText}>View</Text>
                       </TouchableOpacity>
+
                       <TouchableOpacity
-                        style={[styles.docItemOpenBtn, { backgroundColor: '#dc2626', paddingHorizontal: 8 }]}
+                        style={[styles.docItemOpenBtn, { backgroundColor: '#fee2e2', borderWidth: 1, borderColor: '#fca5a5' }]}
                         onPress={() => {
-                          const matchedUser = registeredUsers.find((u) => u.mobile.replace(/\D/g, '').slice(-10) === viewingDocsUser.mobile.replace(/\D/g, '').slice(-10));
-                          const uId = matchedUser?.id || viewingDocsUser.mobile;
-                          handleOpenDocDeleteDialog(doc, uId, viewingDocsUser.name, viewingDocsUser.mobile);
+                          const matchedUser = registeredUsers.find(
+                            (u) => (u.mobile || '').replace(/\D/g, '').slice(-10) === (viewingDocsUser.mobile || '').replace(/\D/g, '').slice(-10)
+                          );
+                          if (matchedUser) {
+                            handleDeleteCustomerDoc(doc, matchedUser);
+                          } else {
+                            const fallbackUser: UserProfile = {
+                              id: viewingDocsUser.mobile,
+                              name: viewingDocsUser.name || 'Customer',
+                              mobile: viewingDocsUser.mobile,
+                              email: '',
+                              city: '',
+                              employmentType: 'Salaried',
+                              monthlyIncome: 0,
+                              panNumber: '',
+                              aadhaarNumber: '',
+                              aadhaarLinked: false,
+                              memberSince: 'Recently',
+                              referralCode: 'LP' + viewingDocsUser.mobile.slice(-4),
+                              documents: viewingDocsUser.documents,
+                            };
+                            handleDeleteCustomerDoc(doc, fallbackUser);
+                          }
                         }}
                         activeOpacity={0.8}
                       >
-                        <Ionicons name="trash" size={14} color="#ffffff" />
+                        <Ionicons name="trash" size={13} color="#dc2626" />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -2612,7 +2966,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                       {detailedUser.name || 'Valued Customer'}
                     </Text>
                     <Text style={styles.modalSub}>
-                      +91 {detailedUser.mobile} {detailedUser.referralCode ? `• Ref: ${detailedUser.referralCode}` : ''}
+                      +91 {detailedUser.mobile} • {detailedUser.city || 'Verified Customer'}
                     </Text>
                   </View>
                 </View>
@@ -2634,56 +2988,56 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                 </View>
               )}
 
-              {/* Action Toolbar - Icon-Only Round Actions (No Text) */}
+              {/* Action Toolbar - Clean Icon-Only Action Buttons */}
               <View style={styles.detailActionToolbar}>
                 <TouchableOpacity
-                  style={[styles.quickActionRoundBtn, { backgroundColor: '#ecfdf5', borderColor: '#86efac' }]}
+                  style={[styles.quickActionPill, { backgroundColor: '#ecfdf5', borderColor: '#86efac' }]}
                   onPress={() => handleCallApplicant(detailedUser.mobile)}
                   activeOpacity={0.7}
                   accessibilityLabel="Call Customer"
                 >
-                  <Ionicons name="call" size={16} color="#059669" />
+                  <Ionicons name="call" size={18} color="#059669" />
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.quickActionRoundBtn, { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }]}
+                  style={[styles.quickActionPill, { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }]}
                   onPress={() => {
                     const cleanMob = detailedUser.mobile.replace(/\D/g, '').slice(-10);
                     const msg = encodeURIComponent(`Hello ${detailedUser.name || 'Customer'}, this is Loan Point Admin regarding your profile.`);
-                    Linking.openURL(`https://wa.me/91${cleanMob}?text=${msg}`).catch(() => {});
+                    Linking.openURL(`https://wa.me/91${cleanMob}?text=${msg}`).catch(() => { });
                   }}
                   activeOpacity={0.7}
-                  accessibilityLabel="WhatsApp Customer"
+                  accessibilityLabel="WhatsApp"
                 >
-                  <Ionicons name="logo-whatsapp" size={16} color="#16a34a" />
+                  <Ionicons name="logo-whatsapp" size={18} color="#16a34a" />
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.quickActionRoundBtn, { backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }]}
+                  style={[styles.quickActionPill, { backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }]}
                   onPress={() => handleOpenSendNotification(detailedUser)}
                   activeOpacity={0.7}
                   accessibilityLabel="Send Notification"
                 >
-                  <Ionicons name="notifications" size={16} color="#2563eb" />
+                  <Ionicons name="notifications" size={18} color="#2563eb" />
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.quickActionRoundBtn, { backgroundColor: isEditingUser ? '#fef3c7' : '#f8fafc', borderColor: '#cbd5e1' }]}
+                  style={[styles.quickActionPill, { backgroundColor: isEditingUser ? '#fef3c7' : '#f8fafc', borderColor: '#cbd5e1' }]}
                   onPress={() => (isEditingUser ? setIsEditingUser(false) : handleStartEditUser(detailedUser))}
                   activeOpacity={0.7}
-                  accessibilityLabel={isEditingUser ? "View Mode" : "Edit Customer"}
+                  accessibilityLabel="Edit Customer"
                 >
-                  <Ionicons name={isEditingUser ? 'eye-outline' : 'create-outline'} size={16} color="#334155" />
+                  <Ionicons name={isEditingUser ? 'eye-outline' : 'create-outline'} size={18} color="#334155" />
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.quickActionRoundBtn, { backgroundColor: '#fef2f2', borderColor: '#fecaca' }]}
+                  style={[styles.quickActionPill, { backgroundColor: '#fef2f2', borderColor: '#fecaca' }]}
                   onPress={() => handleDeleteCustomerConfirm(detailedUser)}
                   disabled={isDeletingUser}
                   activeOpacity={0.7}
                   accessibilityLabel="Delete Customer"
                 >
-                  <Ionicons name="trash-outline" size={16} color="#dc2626" />
+                  <Ionicons name="trash-outline" size={18} color="#dc2626" />
                 </TouchableOpacity>
               </View>
 
@@ -2706,7 +3060,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                         onPress={() => setActiveUserDetailTab(tab.key)}
                         activeOpacity={0.7}
                       >
-                        <Ionicons name={tab.icon as any} size={13} color={isActive ? '#003399' : '#64748b'} />
+                        <Ionicons name={tab.icon as any} size={13} color={isActive ? '#0f172a' : '#64748b'} />
                         <Text style={[styles.userDetailTabText, isActive && styles.userDetailTabTextActive]}>
                           {tab.label}
                         </Text>
@@ -2739,12 +3093,35 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                       autoCapitalize="none"
                     />
 
-                    <Text style={styles.inputGroupLabel}>City / Location:</Text>
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.inputGroupLabel}>City / Location:</Text>
+                        <TextInput
+                          style={styles.modalInput}
+                          value={editUserCity}
+                          onChangeText={setEditUserCity}
+                          placeholder="e.g. Mumbai"
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.inputGroupLabel}>Pincode:</Text>
+                        <TextInput
+                          style={styles.modalInput}
+                          value={editUserPincode}
+                          onChangeText={setEditUserPincode}
+                          placeholder="6-digit Pincode"
+                          keyboardType="numeric"
+                          maxLength={6}
+                        />
+                      </View>
+                    </View>
+
+                    <Text style={styles.inputGroupLabel}>Date of Birth (DOB):</Text>
                     <TextInput
                       style={styles.modalInput}
-                      value={editUserCity}
-                      onChangeText={setEditUserCity}
-                      placeholder="e.g. City Name"
+                      value={editUserDob}
+                      onChangeText={setEditUserDob}
+                      placeholder="DD/MM/YYYY"
                     />
 
                     <Text style={styles.inputGroupLabel}>Employment Type:</Text>
@@ -2774,6 +3151,76 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                       placeholder="Monthly Income"
                       keyboardType="numeric"
                     />
+
+                    {/* Company & Employment Details */}
+                    <Text style={styles.inputGroupLabel}>Company / Employer Name:</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      value={editUserCompanyName}
+                      onChangeText={setEditUserCompanyName}
+                      placeholder="e.g. Tata Consultancy Services"
+                    />
+
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.inputGroupLabel}>Salary Bank:</Text>
+                        <TextInput
+                          style={styles.modalInput}
+                          value={editUserSalaryBank}
+                          onChangeText={setEditUserSalaryBank}
+                          placeholder="e.g. HDFC Bank"
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.inputGroupLabel}>Work Experience:</Text>
+                        <TextInput
+                          style={styles.modalInput}
+                          value={editUserWorkExp}
+                          onChangeText={setEditUserWorkExp}
+                          placeholder="e.g. 5 Years"
+                        />
+                      </View>
+                    </View>
+
+                    {/* Business Details (if business/self-employed) */}
+                    <Text style={styles.inputGroupLabel}>Registered Business Name:</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      value={editUserBusinessName}
+                      onChangeText={setEditUserBusinessName}
+                      placeholder="e.g. Patil Enterprises"
+                    />
+
+                    <Text style={styles.inputGroupLabel}>GSTIN (GST Number):</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      value={editUserGstNumber}
+                      onChangeText={setEditUserGstNumber}
+                      placeholder="15-digit GSTIN"
+                      autoCapitalize="characters"
+                      maxLength={15}
+                    />
+
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.inputGroupLabel}>Credit Card Held?</Text>
+                        <TextInput
+                          style={styles.modalInput}
+                          value={editUserHasCreditCard}
+                          onChangeText={setEditUserHasCreditCard}
+                          placeholder="Yes / No"
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.inputGroupLabel}>CIBIL Score Range:</Text>
+                        <TextInput
+                          style={styles.modalInput}
+                          value={editUserCibilScore}
+                          onChangeText={setEditUserCibilScore}
+                          placeholder="e.g. 750+"
+                        />
+                      </View>
+                    </View>
 
                     <Text style={styles.inputGroupLabel}>PAN Card Number:</Text>
                     <TextInput
@@ -2847,18 +3294,18 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                     <View style={styles.detailCard}>
                       <Text style={styles.detailCardHeader}>Account & KYC Status</Text>
                       <View style={styles.detailRow}>
-                        <Text style={styles.detailLabelText}>Customer ID</Text>
-                        <Text style={styles.detailHighlightValue}>{detailedUser.id}</Text>
+                        <Text style={styles.detailLabelText}>Customer Account</Text>
+                        <Text style={styles.detailHighlightValue}>{detailedUser.referralCode || 'Active Member'}</Text>
                       </View>
                       <View style={styles.detailRow}>
                         <Text style={styles.detailLabelText}>Registration Date</Text>
                         <Text style={styles.detailDataValue}>
                           {detailedUser.createdAt
                             ? new Date(detailedUser.createdAt).toLocaleDateString('en-IN', {
-                                day: '2-digit',
-                                month: 'short',
-                                year: 'numeric',
-                              })
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                            })
                             : detailedUser.memberSince || 'N/A'}
                         </Text>
                       </View>
@@ -2930,7 +3377,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                       </View>
                       <View style={styles.detailRow}>
                         <Text style={styles.detailLabelText}>Monthly Income</Text>
-                        <Text style={[styles.detailDataValue, { color: '#002e75', fontWeight: '800' }]}>
+                        <Text style={[styles.detailDataValue, { color: '#059669', fontWeight: '800' }]}>
                           {detailedUser.monthlyIncome ? `₹${detailedUser.monthlyIncome.toLocaleString('en-IN')}` : 'Not stated'}
                         </Text>
                       </View>
@@ -2955,6 +3402,34 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                         <Text style={styles.detailLabelText}>Referred By</Text>
                         <Text style={styles.detailDataValue}>{detailedUser.referredBy || 'Direct Registration'}</Text>
                       </View>
+                    </View>
+
+                    {/* Danger Zone: Delete Account */}
+                    <View style={[styles.detailCard, { borderColor: '#fecaca', backgroundColor: '#fff5f5' }]}>
+                      <Text style={[styles.detailCardHeader, { color: '#dc2626' }]}>Customer Management Danger Zone</Text>
+                      <Text style={{ fontSize: 11.5, color: '#64748b', marginBottom: 10, lineHeight: 16 }}>
+                        Permanently delete this customer record from the database. All active sessions and credentials will be revoked immediately.
+                      </Text>
+                      <TouchableOpacity
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: '#dc2626',
+                          borderRadius: 8,
+                          paddingVertical: 9,
+                          paddingHorizontal: 12,
+                          gap: 6,
+                        }}
+                        onPress={() => handleDeleteCustomerConfirm(detailedUser)}
+                        disabled={isDeletingUser}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="trash" size={15} color="#ffffff" />
+                        <Text style={{ color: '#ffffff', fontSize: 12.5, fontWeight: '800' }}>
+                          {isDeletingUser ? 'Deleting Customer...' : 'Delete Customer Account'}
+                        </Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
                 ) : activeUserDetailTab === 'loans' ? (
@@ -3098,12 +3573,13 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                               <Ionicons name="eye" size={14} color="#ffffff" />
                               <Text style={styles.docItemOpenBtnText}>View</Text>
                             </TouchableOpacity>
+
                             <TouchableOpacity
-                              style={[styles.docItemOpenBtn, { backgroundColor: '#dc2626', paddingHorizontal: 8 }]}
-                              onPress={() => handleOpenDocDeleteDialog(doc, detailedUser.id, detailedUser.name, detailedUser.mobile)}
+                              style={[styles.docItemOpenBtn, { backgroundColor: '#fee2e2', borderWidth: 1, borderColor: '#fca5a5' }]}
+                              onPress={() => handleDeleteCustomerDoc(doc, detailedUser)}
                               activeOpacity={0.8}
                             >
-                              <Ionicons name="trash" size={14} color="#ffffff" />
+                              <Ionicons name="trash" size={13} color="#dc2626" />
                             </TouchableOpacity>
                           </View>
                         </View>
@@ -3167,7 +3643,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
         </Modal>
       )}
 
-      {/* ---------------- CREATE CUSTOMER MODAL ---------------- */}
+      {/* ---------------- CREATE CUSTOMER MODAL (ALL PARAMETERS + GOOGLE PLACES) ---------------- */}
       {showCreateCustomerModal && (
         <Modal
           visible={true}
@@ -3178,12 +3654,13 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
           }}
         >
           <View style={styles.modalOverlay}>
-            <View style={[styles.modalCard, { maxHeight: '90%' }]}>
+            <View style={[styles.modalCard, { maxHeight: '92%', maxWidth: 440 }]}>
+              {/* Header */}
               <View style={styles.modalHeader}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.modalTitle}>Create New Customer</Text>
+                  <Text style={styles.modalTitle}>Create Customer Profile</Text>
                   <Text style={styles.modalSub}>
-                    Register a new customer account directly into the database
+                    Register new customer with complete KYC and employment profile
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -3202,7 +3679,11 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                 </View>
               )}
 
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+                {/* Section 1: Basic & Contact */}
+                <Text style={styles.formSectionHeading}>1. Basic & Contact Details</Text>
+
+                {/* Full Legal Name */}
                 <Text style={styles.inputGroupLabel}>
                   Full Legal Name <Text style={{ color: '#dc2626' }}>*</Text>:
                 </Text>
@@ -3214,6 +3695,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                   placeholderTextColor="#94a3b8"
                 />
 
+                {/* 10-digit Mobile */}
                 <Text style={styles.inputGroupLabel}>
                   Mobile Number (10 Digits) <Text style={{ color: '#dc2626' }}>*</Text>:
                 </Text>
@@ -3232,6 +3714,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                   />
                 </View>
 
+                {/* Email Address */}
                 <Text style={styles.inputGroupLabel}>Email Address (Optional):</Text>
                 <TextInput
                   style={styles.modalInput}
@@ -3243,44 +3726,80 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                   autoCapitalize="none"
                 />
 
-                <Text style={styles.inputGroupLabel}>City / Location:</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  value={newCustCity}
-                  onChangeText={setNewCustCity}
-                  placeholder="e.g. Mumbai, Pune, Nagpur"
-                  placeholderTextColor="#94a3b8"
-                />
+                {/* City / Location with Google Places Autocomplete */}
+                <View style={{ zIndex: 50, marginTop: 4 }}>
+                  <Text style={styles.inputGroupLabel}>
+                    City / Location (Google Places Autocomplete):
+                  </Text>
+                  <View style={{ position: 'relative' }}>
+                    <TextInput
+                      style={styles.modalInput}
+                      value={newCustCity}
+                      onChangeText={handleCitySearch}
+                      placeholder="Type 2-3 characters (e.g. Pune, Mumbai, Delhi)..."
+                      placeholderTextColor="#94a3b8"
+                    />
+                    {isSearchingCity && (
+                      <View style={{ position: 'absolute', right: 12, top: 12 }}>
+                        <ActivityIndicator size="small" color="#059669" />
+                      </View>
+                    )}
+                  </View>
 
-                <Text style={styles.inputGroupLabel}>Employment Type:</Text>
-                <View style={styles.statusGrid}>
-                  {(['Salaried', 'Self Employed', 'Business Owner', 'Agriculturist', 'Others'] as const).map((emp) => {
-                    const isSelected = newCustEmployment === emp;
-                    return (
-                      <TouchableOpacity
-                        key={emp}
-                        style={[styles.statusOptionPill, isSelected && styles.statusOptionPillActive]}
-                        onPress={() => setNewCustEmployment(emp)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[styles.statusOptionText, isSelected && styles.statusOptionTextActive]}>
-                          {emp}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
+                  {/* Autocomplete Suggestions Box */}
+                  {showCitySuggestions && citySuggestions.length > 0 && (
+                    <View style={styles.citySuggestionsBox}>
+                      <View style={{ paddingHorizontal: 10, paddingVertical: 5, backgroundColor: '#f8fafc', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Ionicons name="location" size={13} color="#059669" />
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#64748b' }}>Suggested Locations</Text>
+                      </View>
+                      {citySuggestions.map((suggestion, idx) => (
+                        <TouchableOpacity
+                          key={idx}
+                          style={styles.citySuggestionItem}
+                          onPress={() => handleSelectCitySuggestion(suggestion)}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="location-outline" size={14} color="#0284c7" />
+                          <Text style={styles.citySuggestionText} numberOfLines={1}>
+                            {suggestion}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
                 </View>
 
-                <Text style={styles.inputGroupLabel}>Monthly Net Income (₹):</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  value={newCustIncome}
-                  onChangeText={setNewCustIncome}
-                  placeholder="e.g. 50000"
-                  placeholderTextColor="#94a3b8"
-                  keyboardType="numeric"
-                />
+                {/* Pincode & DOB */}
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputGroupLabel}>Pincode:</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      value={newCustPincode}
+                      onChangeText={setNewCustPincode}
+                      placeholder="e.g. 411001"
+                      placeholderTextColor="#94a3b8"
+                      keyboardType="numeric"
+                      maxLength={6}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputGroupLabel}>Date of Birth:</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      value={newCustDob}
+                      onChangeText={setNewCustDob}
+                      placeholder="DD/MM/YYYY"
+                      placeholderTextColor="#94a3b8"
+                    />
+                  </View>
+                </View>
 
+                {/* Section 2: Identity & KYC */}
+                <Text style={[styles.formSectionHeading, { marginTop: 14 }]}>2. KYC & Identity</Text>
+
+                {/* PAN Number */}
                 <Text style={styles.inputGroupLabel}>PAN Card Number:</Text>
                 <TextInput
                   style={styles.modalInput}
@@ -3292,6 +3811,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                   maxLength={10}
                 />
 
+                {/* Aadhaar Number */}
                 <Text style={styles.inputGroupLabel}>Aadhaar Card Number:</Text>
                 <TextInput
                   style={styles.modalInput}
@@ -3303,6 +3823,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                   maxLength={12}
                 />
 
+                {/* KYC Verification Toggle */}
                 <Text style={styles.inputGroupLabel}>Initial KYC Verification Status:</Text>
                 <TouchableOpacity
                   style={[
@@ -3322,7 +3843,143 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                   </Text>
                 </TouchableOpacity>
 
-                <View style={[styles.modalBtnRow, { marginTop: 16 }]}>
+                {/* Section 3: Employment & Financials */}
+                <Text style={[styles.formSectionHeading, { marginTop: 14 }]}>3. Employment & Financial Profile</Text>
+
+                {/* Employment Type */}
+                <Text style={styles.inputGroupLabel}>Employment Type:</Text>
+                <View style={styles.statusGrid}>
+                  {(['Salaried', 'Self Employed', 'Business Owner', 'Agriculturist', 'Others'] as const).map((emp) => {
+                    const isSelected = newCustEmployment === emp;
+                    return (
+                      <TouchableOpacity
+                        key={emp}
+                        style={[styles.statusOptionPill, isSelected && styles.statusOptionPillActive]}
+                        onPress={() => setNewCustEmployment(emp)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.statusOptionText, isSelected && styles.statusOptionTextActive]}>
+                          {emp}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Monthly Income */}
+                <Text style={styles.inputGroupLabel}>Monthly Net Income (₹):</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={newCustIncome}
+                  onChangeText={setNewCustIncome}
+                  placeholder="e.g. 50000"
+                  placeholderTextColor="#94a3b8"
+                  keyboardType="numeric"
+                />
+
+                {/* Employer / Company Name */}
+                <Text style={styles.inputGroupLabel}>Employer / Company Name:</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={newCustCompanyName}
+                  onChangeText={setNewCustCompanyName}
+                  placeholder="e.g. Infosys, TCS, Self Business"
+                  placeholderTextColor="#94a3b8"
+                />
+
+                {/* Company Type & Work Exp */}
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputGroupLabel}>Company Type:</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      value={newCustCompanyType}
+                      onChangeText={setNewCustCompanyType}
+                      placeholder="Pvt Ltd / Govt / Prop"
+                      placeholderTextColor="#94a3b8"
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputGroupLabel}>Work Experience:</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      value={newCustWorkExp}
+                      onChangeText={setNewCustWorkExp}
+                      placeholder="e.g. 3 Years"
+                      placeholderTextColor="#94a3b8"
+                    />
+                  </View>
+                </View>
+
+                {/* Salary Bank */}
+                <Text style={styles.inputGroupLabel}>Primary / Salary Bank Account:</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={newCustSalaryBank}
+                  onChangeText={setNewCustSalaryBank}
+                  placeholder="e.g. HDFC Bank, SBI, ICICI"
+                  placeholderTextColor="#94a3b8"
+                />
+
+                {/* Credit Card & CIBIL */}
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputGroupLabel}>Has Credit Card:</Text>
+                    <View style={{ flexDirection: 'row', gap: 6 }}>
+                      {['Yes', 'No'].map((opt) => (
+                        <TouchableOpacity
+                          key={opt}
+                          style={[
+                            styles.statusOptionPill,
+                            { flex: 1 },
+                            newCustHasCreditCard === opt && styles.statusOptionPillActive,
+                          ]}
+                          onPress={() => setNewCustHasCreditCard(opt)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.statusOptionText, newCustHasCreditCard === opt && styles.statusOptionTextActive]}>
+                            {opt}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputGroupLabel}>CIBIL Score:</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      value={newCustCibilScore}
+                      onChangeText={setNewCustCibilScore}
+                      placeholder="e.g. 750+"
+                      placeholderTextColor="#94a3b8"
+                    />
+                  </View>
+                </View>
+
+                {/* Registered Business & GST (if business) */}
+                <Text style={styles.inputGroupLabel}>Registered Business Name (If applicable):</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={newCustBusinessName}
+                  onChangeText={setNewCustBusinessName}
+                  placeholder="e.g. Patil Enterprises"
+                  placeholderTextColor="#94a3b8"
+                />
+
+                <Text style={styles.inputGroupLabel}>GSTIN Number (Optional):</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={newCustGst}
+                  onChangeText={setNewCustGst}
+                  placeholder="e.g. 27ABCDE1234F1Z5"
+                  placeholderTextColor="#94a3b8"
+                  autoCapitalize="characters"
+                  maxLength={15}
+                />
+
+                {/* Buttons */}
+                <View style={[styles.modalBtnRow, { marginTop: 20 }]}>
                   <TouchableOpacity
                     style={styles.modalCancelBtn}
                     onPress={() => setShowCreateCustomerModal(false)}
@@ -3354,42 +4011,42 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
         </Modal>
       )}
 
-      {/* ---------------- CUSTOM CONFIRM DELETE CUSTOMER POPUP ---------------- */}
-      {confirmDeleteUserTarget && (
+      {/* ---------------- DELETE CUSTOMER CONFIRMATION POPUP MODAL ---------------- */}
+      {customerToDelete && (
         <Modal
           visible={true}
           transparent={true}
           animationType="fade"
           onRequestClose={() => {
-            if (!isDeletingUser) setConfirmDeleteUserTarget(null);
+            if (!isDeletingUser) setCustomerToDelete(null);
           }}
         >
           <View style={styles.modalOverlay}>
-            <View style={[styles.modalCard, { maxWidth: 360 }]}>
-              <View style={{ alignItems: 'center', marginBottom: 12 }}>
-                <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#fee2e2', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
-                  <Ionicons name="warning-outline" size={26} color="#dc2626" />
+            <View style={[styles.modalCard, { maxWidth: 380 }]}>
+              <View style={{ alignItems: 'center', marginBottom: 14 }}>
+                <View style={{ width: 54, height: 54, borderRadius: 27, backgroundColor: '#fef2f2', alignItems: 'center', justifyContent: 'center', marginBottom: 10, borderWidth: 1.5, borderColor: '#fca5a5' }}>
+                  <Ionicons name="trash" size={28} color="#dc2626" />
                 </View>
-                <Text style={{ fontSize: 16, fontWeight: '900', color: '#0f172a', textAlign: 'center' }}>
-                  Confirm Permanent Deletion
+                <Text style={{ fontSize: 17, fontWeight: '900', color: '#0f172a', textAlign: 'center', marginBottom: 4 }}>
+                  Delete Customer Account?
                 </Text>
-                <Text style={{ fontSize: 12, color: '#64748b', textAlign: 'center', marginTop: 4 }}>
-                  Customer: <Text style={{ fontWeight: '800', color: '#0f172a' }}>{confirmDeleteUserTarget.name}</Text>
-                  {'\n'}+91 {confirmDeleteUserTarget.mobile}
+                <Text style={{ fontSize: 13, color: '#64748b', textAlign: 'center', fontWeight: '600' }}>
+                  {customerToDelete.name || 'Customer'} (+91 {customerToDelete.mobile})
                 </Text>
               </View>
 
-              <View style={{ backgroundColor: '#fff5f5', borderWidth: 1, borderColor: '#fecaca', borderRadius: 10, padding: 10, marginBottom: 14 }}>
-                <Text style={{ fontSize: 11, color: '#b91c1c', lineHeight: 15 }}>
-                  • Deleting will revoke all active login sessions and mobile tokens.
-                  {'\n'}• Loan records will be retained in unlinked/archived audit state.
+              <View style={{ backgroundColor: '#fff5f5', borderWidth: 1, borderColor: '#fed7d7', borderRadius: 10, padding: 12, marginBottom: 16 }}>
+                <Text style={{ fontSize: 12, color: '#991b1b', lineHeight: 17, fontWeight: '600' }}>
+                  • All active credentials and login sessions will be permanently revoked.{'\n'}
+                  • Customer profile will be deleted from database.{'\n'}
+                  • Any historical applications will be archived for audit compliance.
                 </Text>
               </View>
 
               <View style={styles.modalBtnRow}>
                 <TouchableOpacity
-                  style={styles.modalCancelBtn}
-                  onPress={() => setConfirmDeleteUserTarget(null)}
+                  style={[styles.modalCancelBtn, { flex: 1 }]}
+                  onPress={() => setCustomerToDelete(null)}
                   disabled={isDeletingUser}
                   activeOpacity={0.7}
                 >
@@ -3397,17 +4054,17 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.modalSaveBtn, { backgroundColor: '#dc2626' }]}
-                  onPress={handleExecuteDeleteCustomer}
+                  style={[styles.modalSaveBtn, { flex: 1, backgroundColor: '#dc2626' }]}
+                  onPress={executeDeleteCustomer}
                   disabled={isDeletingUser}
-                  activeOpacity={0.8}
+                  activeOpacity={0.85}
                 >
                   {isDeletingUser ? (
                     <ActivityIndicator color="#ffffff" size="small" />
                   ) : (
                     <>
-                      <Ionicons name="trash" size={15} color="#ffffff" />
-                      <Text style={styles.modalSaveText}>Yes, Delete Customer</Text>
+                      <Ionicons name="trash-outline" size={16} color="#ffffff" />
+                      <Text style={styles.modalSaveText}>Yes, Delete</Text>
                     </>
                   )}
                 </TouchableOpacity>
@@ -3417,153 +4074,7 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
         </Modal>
       )}
 
-      {/* ---------------- WRONG DOCUMENT DELETION & NOTIFICATION DIALOG ---------------- */}
-      {deletingDocTarget && (
-        <Modal
-          visible={true}
-          transparent={true}
-          animationType="fade"
-          onRequestClose={() => {
-            if (!isDeletingDoc) setDeletingDocTarget(null);
-          }}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalCard, { maxWidth: 380 }]}>
-              <View style={styles.modalHeader}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.modalTitle}>Delete Wrong Document</Text>
-                  <Text style={styles.modalSub}>
-                    Document: {deletingDocTarget.doc.name} • {deletingDocTarget.userName}
-                  </Text>
-                </View>
-                <TouchableOpacity onPress={() => setDeletingDocTarget(null)} style={styles.closeBtn}>
-                  <Ionicons name="close" size={22} color="#64748b" />
-                </TouchableOpacity>
-              </View>
-
-              <View style={{ backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fef08a', borderRadius: 8, padding: 8, marginBottom: 10 }}>
-                <Text style={{ fontSize: 11, color: '#92400e', lineHeight: 15 }}>
-                  This document will be deleted from the customer's vault. A notification message will be automatically sent to the customer explaining the reason and requesting a re-upload.
-                </Text>
-              </View>
-
-              <Text style={styles.inputGroupLabel}>Notification Message to Customer:</Text>
-              <TextInput
-                style={[styles.modalInput, { minHeight: 70 }]}
-                value={docRejectReason}
-                onChangeText={setDocRejectReason}
-                placeholder="Reason for deletion..."
-                placeholderTextColor="#94a3b8"
-                multiline
-                numberOfLines={3}
-              />
-
-              <View style={styles.modalBtnRow}>
-                <TouchableOpacity
-                  style={styles.modalCancelBtn}
-                  onPress={() => setDeletingDocTarget(null)}
-                  disabled={isDeletingDoc}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.modalCancelText}>Cancel</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.modalSaveBtn, { backgroundColor: '#dc2626' }]}
-                  onPress={handleExecuteDocDelete}
-                  disabled={isDeletingDoc}
-                  activeOpacity={0.8}
-                >
-                  {isDeletingDoc ? (
-                    <ActivityIndicator color="#ffffff" size="small" />
-                  ) : (
-                    <>
-                      <Ionicons name="trash" size={15} color="#ffffff" />
-                      <Text style={styles.modalSaveText}>Delete & Notify</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
-      )}
-
-      {/* ---------------- OLD MESSAGES & NOTIFICATIONS HISTORY MODAL ---------------- */}
-      {showNotifHistoryModal && notificationTargetUser && (
-        <Modal
-          visible={true}
-          transparent={true}
-          animationType="fade"
-          onRequestClose={() => setShowNotifHistoryModal(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalCard, { maxHeight: '85%' }]}>
-              <View style={styles.modalHeader}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.modalTitle}>Message & Notification History</Text>
-                  <Text style={styles.modalSub}>
-                    History with {notificationTargetUser.name} (+91 {notificationTargetUser.mobile})
-                  </Text>
-                </View>
-                <TouchableOpacity onPress={() => setShowNotifHistoryModal(false)} style={styles.closeBtn}>
-                  <Ionicons name="close" size={22} color="#64748b" />
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 8 }}>
-                {(() => {
-                  const allNotifs = notificationService.getUserNotifications(notificationTargetUser.id);
-
-                  if (allNotifs.length === 0) {
-                    return (
-                      <View style={styles.emptyState}>
-                        <Ionicons name="chatbubbles-outline" size={40} color="#94a3b8" />
-                        <Text style={styles.emptyTitle}>No Old Messages Found</Text>
-                        <Text style={styles.emptySubtitle}>No past messages or notifications recorded for this customer.</Text>
-                      </View>
-                    );
-                  }
-
-                  return (
-                    <View style={{ gap: 10 }}>
-                      {allNotifs.map((n: any) => (
-                        <View key={n.id} style={[styles.innerAppItemCard, { backgroundColor: n.sender === 'user' ? '#f0fdf4' : '#eff6ff', borderColor: n.sender === 'user' ? '#bbf7d0' : '#bfdbfe' }]}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                              <Ionicons
-                                name={n.sender === 'user' ? 'arrow-down-circle' : 'arrow-up-circle'}
-                                size={15}
-                                color={n.sender === 'user' ? '#16a34a' : '#2563eb'}
-                              />
-                              <Text style={{ fontSize: 11, fontWeight: '800', color: n.sender === 'user' ? '#15803d' : '#1d4ed8' }}>
-                                {n.sender === 'user' ? 'Customer Inquiry' : 'Admin Notification'}
-                              </Text>
-                            </View>
-                            <Text style={{ fontSize: 10, color: '#64748b', fontWeight: '600' }}>
-                              {n.timestamp ? new Date(n.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Recent'}
-                            </Text>
-                          </View>
-                          <Text style={{ fontSize: 12.5, fontWeight: '800', color: '#0f172a', marginBottom: 2 }}>{n.title}</Text>
-                          <Text style={{ fontSize: 12, color: '#334155', lineHeight: 16 }}>{n.message}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  );
-                })()}
-              </ScrollView>
-
-              <TouchableOpacity
-                style={[styles.modalCancelBtn, { marginTop: 10 }]}
-                onPress={() => setShowNotifHistoryModal(false)}
-                activeOpacity={0.75}
-              >
-                <Text style={styles.modalCancelText}>Close History</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-      )}
+      {/* ---------------- SEND NOTIFICATION MODAL ---------------- */}
       {notificationTargetUser && (
         <Modal
           visible={true}
@@ -3591,6 +4102,80 @@ export const AdminScreen: React.FC<AdminScreenProps> = ({
                   <Text style={styles.modalSuccessText}>{notifSuccessMsg}</Text>
                 </View>
               )}
+
+              {/* Old Messages and Notifications Toggle Button */}
+              {(() => {
+                const userHistory = notificationService.getUserNotifications(notificationTargetUser.id);
+                return (
+                  <View style={{ marginTop: 8, marginBottom: 10 }}>
+                    <TouchableOpacity
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        backgroundColor: '#f8fafc',
+                        borderWidth: 1,
+                        borderColor: '#cbd5e1',
+                        borderRadius: 8,
+                        paddingVertical: 8,
+                        paddingHorizontal: 12,
+                      }}
+                      onPress={() => setShowOldMessages(!showOldMessages)}
+                      activeOpacity={0.8}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Ionicons name="time-outline" size={16} color="#004aad" />
+                        <Text style={{ fontSize: 12.5, fontWeight: '800', color: '#004aad' }}>
+                          Old Messages & Notifications ({userHistory.length})
+                        </Text>
+                      </View>
+                      <Ionicons
+                        name={showOldMessages ? 'chevron-up' : 'chevron-down'}
+                        size={16}
+                        color="#64748b"
+                      />
+                    </TouchableOpacity>
+
+                    {showOldMessages && (
+                      <View style={{ maxHeight: 180, marginTop: 8, backgroundColor: '#f1f5f9', borderRadius: 8, padding: 8 }}>
+                        {userHistory.length === 0 ? (
+                          <Text style={{ fontSize: 11.5, color: '#64748b', textAlign: 'center', paddingVertical: 10 }}>
+                            No previous notifications found for this customer.
+                          </Text>
+                        ) : (
+                          <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={true}>
+                            {userHistory.map((msg) => (
+                              <View
+                                key={msg.id}
+                                style={{
+                                  backgroundColor: '#ffffff',
+                                  borderRadius: 6,
+                                  padding: 8,
+                                  marginBottom: 6,
+                                  borderLeftWidth: 3,
+                                  borderLeftColor: msg.sender === 'user' ? '#059669' : '#2563eb',
+                                }}
+                              >
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+                                  <Text style={{ fontSize: 12, fontWeight: '800', color: '#0f172a', flex: 1 }} numberOfLines={1}>
+                                    {msg.title}
+                                  </Text>
+                                  <Text style={{ fontSize: 10, color: '#94a3b8', fontWeight: '600' }}>
+                                    {msg.timestamp}
+                                  </Text>
+                                </View>
+                                <Text style={{ fontSize: 11, color: '#475569', lineHeight: 15 }}>
+                                  {msg.message}
+                                </Text>
+                              </View>
+                            ))}
+                          </ScrollView>
+                        )}
+                      </View>
+                    )}
+                  </View>
+                );
+              })()}
 
               <Text style={styles.inputGroupLabel}>Notification Title:</Text>
               <TextInput
@@ -3649,7 +4234,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f1f5f9',
   },
   header: {
-    backgroundColor: '#002e75',
+    backgroundColor: '#0f172a',
     paddingTop: Platform.OS === 'ios' ? 44 : 20,
     paddingBottom: 14,
     paddingHorizontal: 16,
@@ -3699,7 +4284,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   switchModeText: {
-    color: '#003399',
+    color: '#0f172a',
     fontSize: 11.5,
     fontWeight: '800',
   },
@@ -3762,12 +4347,32 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   topTabBtnTextActive: {
-    color: '#003399',
+    color: '#0f172a',
     fontWeight: '900',
   },
   scrollContent: {
     padding: 14,
     paddingBottom: 40,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 14,
+  },
+  statCardGrid: {
+    width: '48%',
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderLeftWidth: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   statsRow: {
     flexDirection: 'row',
@@ -3789,20 +4394,84 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   statLabel: {
-    fontSize: 10.5,
+    fontSize: 11,
     color: '#64748b',
     fontWeight: '700',
   },
   statValue: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '900',
     color: '#0f172a',
-    marginVertical: 2,
+    marginVertical: 3,
   },
   statSub: {
-    fontSize: 9.5,
+    fontSize: 10,
+    color: '#059669',
+    fontWeight: '700',
+  },
+  inboxCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderLeftWidth: 4,
+    borderLeftColor: '#059669',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  inboxCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  inboxUserRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  inboxUserName: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  inboxUserMobile: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  inboxTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  inboxTime: {
+    fontSize: 10.5,
     color: '#94a3b8',
     fontWeight: '600',
+  },
+  inboxBody: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+  },
+  inboxMessageText: {
+    fontSize: 12.5,
+    color: '#334155',
+    lineHeight: 18,
+  },
+  inboxActionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
   },
   searchWrapper: {
     flexDirection: 'row',
@@ -3840,8 +4509,8 @@ const styles = StyleSheet.create({
     borderColor: '#cbd5e1',
   },
   filterChipActive: {
-    backgroundColor: '#003399',
-    borderColor: '#003399',
+    backgroundColor: '#0f172a',
+    borderColor: '#0f172a',
   },
   filterChipText: {
     fontSize: 11.5,
@@ -3965,7 +4634,7 @@ const styles = StyleSheet.create({
   detailAmount: {
     fontSize: 15,
     fontWeight: '900',
-    color: '#003399',
+    color: '#059669',
     marginTop: 2,
   },
   detailValue: {
@@ -4025,9 +4694,9 @@ const styles = StyleSheet.create({
   loanDetailViewBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#eff6ff',
+    backgroundColor: '#ecfdf5',
     borderWidth: 1,
-    borderColor: '#bfdbfe',
+    borderColor: '#a7f3d0',
     paddingVertical: 7,
     paddingHorizontal: 9,
     borderRadius: 8,
@@ -4037,14 +4706,14 @@ const styles = StyleSheet.create({
   loanDetailViewBtnText: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#002e75',
+    color: '#059669',
   },
   viewDocsBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f9ff',
+    backgroundColor: '#f8fafc',
     borderWidth: 1,
-    borderColor: '#bae6fd',
+    borderColor: '#cbd5e1',
     paddingVertical: 7,
     paddingHorizontal: 8,
     borderRadius: 8,
@@ -4054,7 +4723,7 @@ const styles = StyleSheet.create({
   viewDocsBtnText: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#0284c7',
+    color: '#0f172a',
   },
   manageBtn: {
     flex: 1,
@@ -4062,7 +4731,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#002e75',
+    backgroundColor: '#0f172a',
     paddingVertical: 7.5,
     borderRadius: 8,
     gap: 4,
@@ -4078,7 +4747,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#e0f2fe',
+    backgroundColor: '#ecfdf5',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -4113,7 +4782,7 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
   modalSubTabTextActive: {
-    color: '#002e75',
+    color: '#0f172a',
     fontWeight: '900',
   },
   detailSectionBox: {
@@ -4127,7 +4796,7 @@ const styles = StyleSheet.create({
   detailSectionHeader: {
     fontSize: 12,
     fontWeight: '900',
-    color: '#002e75',
+    color: '#0f172a',
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
     paddingBottom: 6,
@@ -4157,7 +4826,7 @@ const styles = StyleSheet.create({
   detailGridFieldValueHighlight: {
     fontSize: 12.5,
     fontWeight: '900',
-    color: '#002e75',
+    color: '#059669',
     marginTop: 2,
   },
   detailBoxNoteText: {
@@ -4206,7 +4875,7 @@ const styles = StyleSheet.create({
   userCardMobile: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#003399',
+    color: '#059669',
     marginTop: 1,
   },
   kycStatusBadge: {
@@ -4297,8 +4966,8 @@ const styles = StyleSheet.create({
     borderColor: '#cbd5e1',
   },
   statusOptionPillActive: {
-    backgroundColor: '#003399',
-    borderColor: '#003399',
+    backgroundColor: '#0f172a',
+    borderColor: '#0f172a',
   },
   statusOptionText: {
     fontSize: 11,
@@ -4441,10 +5110,10 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#002e75',
+    backgroundColor: '#0f172a',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#002e75',
+    shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 3,
@@ -4464,28 +5133,13 @@ const styles = StyleSheet.create({
     borderBottomColor: '#f1f5f9',
     marginBottom: 6,
   },
-  quickActionRoundBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+  quickActionPill: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  quickActionPill: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 7,
-    borderRadius: 8,
-    gap: 4,
-    borderWidth: 1,
   },
   quickActionText: {
     fontSize: 11.5,
@@ -4523,7 +5177,7 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
   userDetailTabTextActive: {
-    color: '#003399',
+    color: '#0f172a',
     fontWeight: '800',
   },
   detailCard: {
@@ -4536,7 +5190,7 @@ const styles = StyleSheet.create({
   detailCardHeader: {
     fontSize: 12.5,
     fontWeight: '800',
-    color: '#002e75',
+    color: '#0f172a',
     marginBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
@@ -4562,9 +5216,9 @@ const styles = StyleSheet.create({
   },
   detailHighlightValue: {
     fontSize: 12,
-    color: '#003399',
+    color: '#059669',
     fontWeight: '800',
-    backgroundColor: '#eff6ff',
+    backgroundColor: '#ecfdf5',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -4590,6 +5244,215 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 8,
     marginTop: 4,
+  },
+  // 3-Line Menu Drawer Styles
+  menuDrawerBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  menuDrawerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    justifyContent: 'flex-start',
+  },
+  menuDrawerContent: {
+    width: '82%',
+    maxWidth: 320,
+    backgroundColor: '#ffffff',
+    height: '100%',
+    paddingTop: Platform.OS === 'ios' ? 48 : 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 4, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 16,
+  },
+  drawerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  drawerIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#0f172a',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  drawerTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  drawerSub: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '600',
+  },
+  drawerCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  drawerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  drawerItemActive: {
+    backgroundColor: '#f8fafc',
+    borderLeftWidth: 3.5,
+    borderLeftColor: '#0284c7',
+  },
+  drawerItemIconBox: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  drawerItemText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  drawerItemTextActive: {
+    color: '#0f172a',
+    fontWeight: '800',
+  },
+  drawerBadge: {
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  drawerBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#64748b',
+  },
+  drawerFooter: {
+    marginTop: 'auto',
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+  },
+  drawerSettingsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#f8fafc',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  drawerSettingsText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#334155',
+  },
+
+  // Responsive List Header Actions
+  listActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 0,
+  },
+  addCustCompactBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#059669',
+    borderColor: '#059669',
+    borderWidth: 1,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    gap: 4,
+  },
+  addCustCompactText: {
+    fontSize: 11.5,
+    color: '#ffffff',
+    fontWeight: '800',
+  },
+  refreshCompactBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderColor: '#cbd5e1',
+    borderWidth: 1,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    gap: 4,
+  },
+  refreshCompactText: {
+    fontSize: 11.5,
+    color: '#059669',
+    fontWeight: '700',
+  },
+
+  // Form Section Heading
+  formSectionHeading: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#0f172a',
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginBottom: 8,
+  },
+
+  // City Suggestions Dropdown Box
+  citySuggestionsBox: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    marginTop: 4,
+    marginBottom: 10,
+    maxHeight: 180,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 6,
+    overflow: 'hidden',
+  },
+  citySuggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  citySuggestionText: {
+    fontSize: 12,
+    color: '#0f172a',
+    fontWeight: '600',
+    flex: 1,
   },
   kycToggleText: {
     fontSize: 12.5,

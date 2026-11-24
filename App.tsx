@@ -339,6 +339,7 @@ function MainApp() {
             setActiveSubScreen(null);
             setCurrentTab('home');
           }}
+          onOpenSettings={() => setActiveSubScreen('profile_settings')}
         />
       ) : (
         <View style={styles.appContainer}>
@@ -640,6 +641,7 @@ function MainApp() {
                   setActiveSubScreen(null);
                   setCurrentTab('home');
                 }}
+                onOpenSettings={() => setActiveSubScreen('profile_settings')}
               />
             )}
 

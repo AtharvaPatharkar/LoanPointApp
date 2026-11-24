@@ -97,43 +97,18 @@ export class DbSyncService {
   }
 
   /**
-   * Admin delete a customer's document
+   * Admin delete a customer document
    */
-  public async adminDeleteUserDocument(userId: string, docId: string): Promise<any[]> {
-    const res = await apiRequest(`/admin/users/${userId}/documents/${docId}`, {
-      method: 'DELETE',
-    });
-    return res?.documents || [];
-  }
-
-  /**
-   * Admin delete a referral lead
-   */
-  public async adminDeleteReferral(referralId: string): Promise<boolean> {
-    const res = await apiRequest(`/admin/referrals/${referralId}`, {
-      method: 'DELETE',
-    });
-    return Boolean(res && res.success);
-  }
-
-  /**
-   * Admin update a referral lead
-   */
-  public async adminUpdateReferral(
-    referralId: string,
-    updates: {
-      status: string;
-      remarks?: string;
-      nextAction?: string;
-      payoutAmount?: number;
-      payoutStatus?: string;
+  public async adminDeleteUserDocument(userId: string, docId: string): Promise<DocumentItem[]> {
+    try {
+      const res = await apiRequest(`/admin/users/${userId}/documents/${docId}`, {
+        method: 'DELETE',
+      });
+      return res.documents || [];
+    } catch (err) {
+      console.warn('API adminDeleteUserDocument error:', err);
+      return [];
     }
-  ): Promise<boolean> {
-    const res = await apiRequest(`/admin/referrals/${referralId}/status`, {
-      method: 'PUT',
-      body: updates,
-    });
-    return Boolean(res && res.success);
   }
 
   /**
@@ -472,6 +447,21 @@ export class DbSyncService {
       });
     } catch (err) {
       console.warn('API updateReferralLeadStatus error:', err);
+    }
+  }
+
+  /**
+   * Delete referral lead
+   */
+  public async deleteReferralLead(leadId: string): Promise<boolean> {
+    try {
+      const res = await apiRequest(`/admin/referrals/${leadId}`, {
+        method: 'DELETE',
+      });
+      return Boolean(res && res.success);
+    } catch (err) {
+      console.warn('API deleteReferralLead error:', err);
+      return false;
     }
   }
 }
